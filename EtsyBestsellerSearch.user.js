@@ -7,6 +7,7 @@
 // @match        https://www.etsy.com/search*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        none
+// @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyBestsellerSearch.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyBestsellerSearch.user.js    
 // ==/UserScript==
 
