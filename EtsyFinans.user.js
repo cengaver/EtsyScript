@@ -8,6 +8,7 @@
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
 // @connect      www.tcmb.gov.tr
+// @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyFinans.user.js
 // ==/UserScript==
 
 ; (function () {
