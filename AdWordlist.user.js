@@ -13,6 +13,7 @@
 // @grant        GM_getResourceText
 // @require      https://cdn.jsdelivr.net/npm/notyf@3.0.0/notyf.min.js
 // @resource     notyf-css https://cdn.jsdelivr.net/npm/notyf@3.0.0/notyf.min.css
+// @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/AdWordlist.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/AdWordlist.user.js
 // ==/UserScript==
 
