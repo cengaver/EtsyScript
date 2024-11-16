@@ -7,6 +7,7 @@
 // @match        https://*.customhub.io/*
 // @grant        GM_addStyle
 // @icon         https://v4.customhub.io/Modernize/assets/images/logos/favicon.png
+// @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // ==/UserScript==
 
 (function () {
