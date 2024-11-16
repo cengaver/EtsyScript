@@ -7,6 +7,7 @@
 // @match        https://www.etsy.com/listing/*
 // @grant        GM_addStyle
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
+// @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // ==/UserScript==
 
