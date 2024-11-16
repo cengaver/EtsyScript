@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Erank On Etsy
 // @description  Erank overlay with unified menu for configuration and range selection
-// @version      1.6
+// @version      1.7
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -28,6 +28,7 @@
             const currentConfig = {
                 apiKey: await GM.getValue('apiKey', ''),
                 sheetId: await GM.getValue('sheetId', ''),
+                erankUserKey: await GM.getValue('erankUserKey', ''),
                 authorization: await GM.getValue('authorization', ''),
                 erankKey: await GM.getValue('erankKey', ''),
                 range: await GM.getValue('range', 'Liste!E:AD'),
@@ -38,17 +39,19 @@
                 `Enter values in the format below (keep empty to retain current values):\n\n` +
                 `Google Sheets API Key: ${currentConfig.apiKey}\n` +
                 `Google Sheets Sheet ID: ${currentConfig.sheetId}\n` +
+                `eRank User Key: ${currentConfig.erankUserKey}\n` +
                 `Authorization Token: ${currentConfig.authorization}\n` +
                 `eRank API Key: ${currentConfig.erankKey}\n` +
                 `Range (e.g., Liste!E:AD): ${currentConfig.range}\n\n` +
-                `Format: apiKey|sheetId|authorization|erankKey|range`,
-                `${currentConfig.apiKey}|${currentConfig.sheetId}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}`
+                `Format: apiKey|sheetId|erankUserKeyauthorization|erankKey|range`,
+                `${currentConfig.apiKey}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}`
             );
 
             if (input) {
-                const [apiKey, sheetId, authorization, erankKey, range] = input.split('|');
+                const [apiKey, sheetId, erankUserKey, authorization, erankKey, range] = input.split('|');
                 if (apiKey) await GM.setValue('apiKey', apiKey.trim());
                 if (sheetId) await GM.setValue('sheetId', sheetId.trim());
+                if (erankUserKey) await GM.setValue('erankUserKey', erankUserKey.trim());
                 if (authorization) await GM.setValue('authorization', authorization.trim());
                 if (erankKey) await GM.setValue('erankKey', erankKey.trim());
                 if (range) await GM.setValue('range', range.trim());
@@ -59,42 +62,59 @@
             }
         });
     };
+    setApiConfigMenu();
 
     const getApiConfig = async () => {
         const apiKey = await GM.getValue('apiKey', '');
         const sheetId = await GM.getValue('sheetId', '');
+        const erankUserKey = await GM.getValue('erankUserKey', '');
         const authorization = await GM.getValue('authorization', '');
         const erankKey = await GM.getValue('erankKey', '');
         const range = await GM.getValue('range', 'Liste!E:AD');
 
-        if (!apiKey || !sheetId || !authorization || !erankKey || !range) {
+        if (!apiKey || !sheetId || !erankUserKey|| !authorization || !erankKey || !range) {
             alert("API Configurations are not set. Please configure it using the menu.");
             return null;
         }
 
-        return { apiKey, sheetId, authorization, erankKey, range };
+        return { apiKey, sheetId, erankUserKey, authorization, erankKey, range };
     };
 
+    let ids = JSON.parse(sessionStorage.getItem('cachedData')) || null;
+    const config = await getApiConfig();
+    if (!config) return;
+    const { apiKey, sheetId, erankUserKey, authorization, erankKey, range } = config;
+
     // Google Sheets ve eRank işlemleri için aynı kodları kullandım.
-    const fetchColumnData = async (config) => {
-        const { apiKey, sheetId, range } = config;
+    const fetchColumnData = async () => {
+        if (ids) return ids;
+
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
 
         try {
             const response = await fetch(url);
             if (!response.ok) throw new Error("Failed to fetch Google Sheets data.");
             const data = await response.json();
-            return data.values.map(row => ({
-                id: row[row.length - 1],
-                dnoValue: row[0],
+            const values = data.values; // Tüm satırları alıyoruz
+            const processedData = data.values.map(row => ({
+                id: row[row.length - 1], // AD sütunu (son sütun)
+                dnoValue: row[0], // E sütunu (ilk sütun)
             }));
+            sessionStorage.setItem('cachedData', JSON.stringify(processedData));
+            return { processedData };
         } catch (error) {
             console.error("Google Sheets API error:", error);
         }
     };
 
-    const getErankData = async (id, authorization, erankKey) => {
-        const cachedeData = await GM.getValue(`erank_${id}`, null);
+    const findEValueById = (id) => {
+        const cachedData = JSON.parse(sessionStorage.getItem('cachedData')) || [];
+        const match = cachedData.find(row => row.id === id);
+        return match ? match.dnoValue : null;
+    };
+
+    const getErankData = async (id) => {
+        const cachedeData = JSON.parse(sessionStorage.getItem(`erank_${id}`));
         if (cachedeData) return cachedeData;
 
         const url = `https://beta.erank.com/api/ext/listing/${id}`;
@@ -103,7 +123,7 @@
                 url,
                 headers: {
                     accept: "application/json, text/plain, */*",
-                    authorization,
+                    authorization: `${erankUserKey}|${authorization}`,
                     "x-erank-key": erankKey,
                     "x-user-agent": "erank-bx/1.0",
                 },
@@ -115,15 +135,14 @@
                 age: response.data.stats.listing_age,
             };
 
-            await GM.setValue(`erank_${id}`, erankData);
+            sessionStorage.setItem(`erank_${id}`, JSON.stringify(erankData));
             return erankData;
         } catch (error) {
             console.error("eRank data fetch error:", error);
         }
     };
 
-    const createOverlayOnElement = async (element, id, config) => {
-        const { authorization, erankKey } = config;
+    const createOverlayOnElement = async (element, id) => {
         const overlay = document.createElement("div");
         overlay.className = "wt-display-flex-xs wt-text-title-01";
         overlay.style.gap = "1rem";
@@ -133,24 +152,50 @@
         loadingEl.textContent = "Erank verileri yükleniyor...";
         overlay.appendChild(loadingEl);
 
-        const { sales, age } = await getErankData(id, authorization, erankKey);
+        const { sales, age } = await getErankData(id);
+
+        const isFavorite = ids && ids.some(data => data.id === id);
+        const result = isFavorite ? "❤️" : "🤍";
+        const dnoValue = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
+        const tooltipText = dnoValue ? `Dizayn NO: ${dnoValue}` : "";
 
         loadingEl.remove();
 
+        // Kalp sarmalayıcı
         const heartWrapper = document.createElement("div");
-        heartWrapper.style.position = "relative";
+        heartWrapper.style.position = "relative"; // Konumlandırma için relative
         heartWrapper.style.display = "inline-block";
 
+        // Kalp elementi
         const resultEl = document.createElement("div");
-        resultEl.textContent = "❤️";
+        resultEl.textContent = result;
+        resultEl.title = tooltipText;
         resultEl.style.cursor = "pointer";
         resultEl.style.marginLeft = "5px";
         resultEl.style.fontSize = "1.5rem";
-        resultEl.style.color = "red";
+        resultEl.style.color = isFavorite ? "red" : "black";
 
+        // Rozet elementi (sadece değer varsa ekle)
+        if (dnoValue) {
+            const badgeEl = document.createElement("span");
+            badgeEl.textContent = dnoValue;
+            badgeEl.style.position = "absolute";
+            badgeEl.style.top = "-10px"; // Daha yukarı taşı
+            badgeEl.style.right = "-14px"; // Daha sola taşı
+            badgeEl.style.backgroundColor = "gold";
+            badgeEl.style.color = "black";
+            badgeEl.style.borderRadius = "50%";
+            badgeEl.style.padding = "2px 5px";
+            badgeEl.style.fontSize = "0.8rem";
+            badgeEl.style.fontWeight = "bold";
+            heartWrapper.appendChild(badgeEl);
+        }
+
+        // Kalp ve overlay düzenlemeleri
         heartWrapper.appendChild(resultEl);
         overlay.appendChild(heartWrapper);
 
+        // Satış ve yaş elementleri
         const salesEl = document.createElement("div");
         salesEl.textContent = `Satış: ${sales}`;
         if (Number(sales) / 1.5 > Number(age)) salesEl.style.backgroundColor = "green";
@@ -165,33 +210,27 @@
         overlay.appendChild(ageEl);
     };
 
-    const handleListingPage = async () => {
-        const config = await getApiConfig();
-        if (!config) return;
 
+    const handleListingPage = async () => {
         const urlParts = window.location.pathname.split('/');
         const id = urlParts[urlParts.indexOf('listing') + 1];
         const titleElement = document.querySelector('#listing-page-cart > div.wt-mb-xs-1 > h1');
 
         if (titleElement && id) {
-            await createOverlayOnElement(titleElement, id, config);
+            await createOverlayOnElement(titleElement, id);
         }
     };
 
     const initOverlay = async () => {
-        const config = await getApiConfig();
-        if (!config) return;
-
         const listingCards = document.querySelectorAll("[data-listing-id][data-listing-card-v2]");
-        listingCards.forEach(async (el) => {
+        await Promise.all([...listingCards].map(async (el) => {
             const id = el.dataset.listingId;
             const infoEl = el.querySelector(".search-half-unit-mt") || el;
-            await createOverlayOnElement(infoEl, id, config);
-        });
+            await createOverlayOnElement(infoEl, id);
+        }));
     };
 
     window.addEventListener("load", () => {
-        setApiConfigMenu();
         if (window.location.href.includes("/listing/")) {
             handleListingPage();
         } else {
@@ -213,5 +252,6 @@
         }).observe(document, { subtree: true, childList: true });
     };
 
+    await fetchColumnData();
     observeUrlChanges();
 })();
