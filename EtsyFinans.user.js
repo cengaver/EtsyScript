@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Finans
-// @description  Etsy
+// @description  Etsy TL olan mağzada dolara çevirir ve yüzedeleri verir
 // @version      1.1
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
