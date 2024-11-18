@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.1
+// @version      1.2
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
