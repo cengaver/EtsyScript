@@ -4,7 +4,7 @@
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
-// @match        https://www.etsy.com/your/orders/sold/completed?completed_status=delivered*
+// @match        https://www.etsy.com/your/orders/sold/completed*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.getValue
 // @grant        GM.setValue
