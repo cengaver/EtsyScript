@@ -83,7 +83,7 @@
                     // Get the element where you want to insert the result
                     const resultElement = document.querySelector('#order-detail-container > div:nth-child(6) > div > div > h4 > span > h2');
                     if (resultElement) {
-                        resultElement.innerText = `${daysDifference} gün : (${labelDeliveryDate(deliveryDateText.innerText)}) `;
+                        resultElement.innerText = `${daysDifference} day : (${labelDeliveryDate(deliveryDateText.innerText)}) `;
                     }
                 } else {
                     console.log("Tarihler geçerli değil.");
