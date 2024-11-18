@@ -10,6 +10,8 @@
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.registerMenuCommand
+// @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/OrderSearchGdrive.user.js
+// @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/OrderSearchGdrive.user.js
 // ==/UserScript==
 
 (function() {
