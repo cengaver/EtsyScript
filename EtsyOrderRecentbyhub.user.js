@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      0.1
+// @version      0.2
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
 // @grant        GM_addStyle
-// @icon         https://v4.customhub.io/Modernize/assets/images/logos/favicon.png
+// @icon         https://dashboard.k8s.customhub.io/Modernize/assets/images/logos/favicon.png
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // ==/UserScript==
