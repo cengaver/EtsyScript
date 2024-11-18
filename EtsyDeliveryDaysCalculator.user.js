@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Etsy Delivery Days Calculator
-// @version      1.1
+// @version      1.2
 // @description  Calculate the number of days between order and delivery
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
-// @match        https://www.etsy.com/your/orders/sold/completed?completed_status=delivered*
+// @match        https://www.etsy.com/your/orders/sold/completed*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        none
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyDeliveryDaysCalculator.user.js
