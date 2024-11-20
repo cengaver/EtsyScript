@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Erank On Etsy
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      1.72
+// @version      1.73
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
 // @match        https://www.etsy.com/shop/*
 // @match        https://www.etsy.com/listing/*
+// @match        https://www.etsy.com/people/*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
 // @grant        GM.getValue
