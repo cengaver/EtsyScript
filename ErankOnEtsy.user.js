@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Erank On Etsy
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      1.71
+// @version      1.72
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -87,8 +87,21 @@
 
     // Google Sheets ve eRank işlemleri için aynı kodları kullandım.
     const fetchColumnData = async () => {
-        if (ids) return ids;
+        const cacheKey = 'cachedData';
+        const cacheTimestampKey = `${cacheKey}_timestamp`;
+        const now = Date.now();
 
+        const cachedData = JSON.parse(localStorage.getItem(cacheKey));
+        const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
+
+        if (cachedData && cacheTimestamp && now - parseInt(cacheTimestamp) < 1 * 60 * 60 * 1000) {
+            return cachedData;
+        }
+
+        const config = await getApiConfig();
+        if (!config) return;
+
+        const { apiKey, sheetId, range } = config;
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
 
         try {
@@ -100,7 +113,8 @@
                 id: row[row.length - 1], // AD sütunu (son sütun)
                 dnoValue: row[0], // E sütunu (ilk sütun)
             }));
-            sessionStorage.setItem('cachedData', JSON.stringify(processedData));
+            localStorage.setItem(cacheKey, JSON.stringify(processedData));
+            localStorage.setItem(cacheTimestampKey, now.toString());
             return { processedData };
         } catch (error) {
             console.error("Google Sheets API error:", error);
@@ -108,16 +122,26 @@
     };
 
     const findEValueById = (id) => {
-        const cachedData = JSON.parse(sessionStorage.getItem('cachedData')) || [];
+        const cachedData = JSON.parse(localStorage.getItem('cachedData')) || [];
         const match = cachedData.find(row => row.id === id);
         return match ? match.dnoValue : null;
     };
 
     const getErankData = async (id) => {
-        const cachedeData = JSON.parse(sessionStorage.getItem(`erank_${id}`));
-        if (cachedeData) return cachedeData;
+        const cacheKey = `erank_${id}`;
+        const now = Date.now();
+        const cachedData = JSON.parse(localStorage.getItem(cacheKey));
 
+        if (cachedData && now - parseInt(cachedData.timestamp) < 24 * 60 * 60 * 1000) {
+            return cachedData;
+        }
+
+        const config = await getApiConfig();
+        if (!config) return;
+
+        const { erankUserKey, authorization, erankKey } = config;
         const url = `https://beta.erank.com/api/ext/listing/${id}`;
+
         try {
             const { response } = await GM.xmlHttpRequest({
                 url,
@@ -133,9 +157,10 @@
             const erankData = {
                 sales: response.data.stats.est_sales.label,
                 age: response.data.stats.listing_age,
+                timestamp : now.toString(),
             };
 
-            sessionStorage.setItem(`erank_${id}`, JSON.stringify(erankData));
+            localStorage.setItem(cacheKey, JSON.stringify(erankData));
             return erankData;
         } catch (error) {
             console.error("eRank data fetch error:", error);
@@ -154,9 +179,8 @@
 
         const { sales, age } = await getErankData(id);
 
-        const isFavorite = ids && ids.some(data => data.id === id);
-        const result = isFavorite ? "❤️" : "🤍";
         const dnoValue = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
+        const result = dnoValue ? "❤️" : "🤍";
         const tooltipText = dnoValue ? `Dizayn NO: ${dnoValue}` : "";
 
         loadingEl.remove();
@@ -173,7 +197,7 @@
         resultEl.style.cursor = "pointer";
         resultEl.style.marginLeft = "5px";
         resultEl.style.fontSize = "1.5rem";
-        resultEl.style.color = isFavorite ? "red" : "black";
+        resultEl.style.color = dnoValue ? "red" : "black";
 
         // Rozet elementi (sadece değer varsa ekle)
         if (dnoValue) {
@@ -209,7 +233,6 @@
         else if (age >= 301 && age <= 7000) ageEl.style.backgroundColor = "#EF9A9A";
         overlay.appendChild(ageEl);
     };
-
 
     const handleListingPage = async () => {
         const urlParts = window.location.pathname.split('/');
