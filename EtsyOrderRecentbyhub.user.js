@@ -45,12 +45,12 @@
 
     function insertEarningContent(earningNode, costText, priceText, shirtText, quantity, shipText) {
         const storeNode = document.querySelector(store);
-        const Discount =  0.7 ;
+        const Discount = 0.7 ;
         const DiscountPuan = (1-Discount) * 100;
         const remainingDiscount = priceText * Discount;
         const remainingFee = remainingDiscount * 0.56;
         const remaining = remainingFee - costText;
-        const shipCross = shirtText.includes("Hoodie") ? 5 : 5;
+        const shipCross = shirtText.includes("Hoodie") ? 9 : 5;
         const shipTotal = shipText ? shipCross - shipText : 0;
         const Net = remaining + shipTotal;
 
