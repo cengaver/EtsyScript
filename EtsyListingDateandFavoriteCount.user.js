@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Date and Favorite Count
 // @namespace    https://github.com/cengaver
-// @version      0.212
+// @version      0.22
 // @description  Displays the listing date and favorite count of a product on Etsy.
 // @author       Cengaver
 // @match        https://www.etsy.com/listing/*
@@ -187,11 +187,11 @@
             const offerCount = jsonData.offers.offerCount;
             console.log("Eligible Quantity:", eligibleQuantity);
             console.log("Offer Count:", offerCount);
-            let stock ="";
+            /*let stock ="";
             const in_stockValue = Etsy.Context.data?.granify?.product?.in_stock;
             if (in_stockValue!== undefined){
-                stock = '<p style="margin: 0;">Stk : '+in_stockValue+' </p>'
-                console.log("Stock Count: " + in_stockValue);
+                  stock = '<p style="margin: 0;">Stk : '+in_stockValue+' </p>'
+                  console.log("Stock Count: " + in_stockValue);
             }
             // "Etsy.Context.data" nesnesinden "carters" değerini al
             const cartersValue = Etsy.Context.data?.granify?.product?.carters;
@@ -202,8 +202,7 @@
                 console.log("Carters Value:", cartersValue);
             } else {
                 console.log("Carters Value not found!");
-            }
-
+            }*/
 
             const balloonDiv = document.createElement("div");
             balloonDiv.setAttribute("id", "etsyInfoBalloon");
@@ -211,8 +210,6 @@
                 <div style="position: fixed; top: 60px; left: 90%; transform: translateX(-50%); background-color: yellow; border: 1px solid #ccc; border-radius: 5px; padding: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); z-index: 9999;">
                      ${bestseller}
                      ${review}
-                     ${sales}
-                     ${stock}
                     <p style="margin: 0;">Fav : ${favoriteCount}</p>
                     <p style="margin: 0;">${listingDate}</p>
                     <p style="margin: 0;">Days Ago : ${daysAgoFromDate(listingDate)}</p>
