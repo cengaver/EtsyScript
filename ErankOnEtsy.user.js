@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Erank On Etsy
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      1.74
+// @version      1.75
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -178,9 +178,9 @@
         loadingEl.textContent = "Erank verileri yükleniyor...";
         overlay.appendChild(loadingEl);
 
-        //const { sales, age } = await getErankData(id); //server hatası
-        const sales ="!";
-        const age   ="!";
+        const { sales, age } = await getErankData(id); //server hatası
+        //const sales ="!";
+        //const age ="!";
 
         const dnoValue = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
         const result = dnoValue ? "❤️" : "🤍";
