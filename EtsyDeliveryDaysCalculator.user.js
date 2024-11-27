@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Delivery Days Calculator
-// @version      1.2
+// @version      1.3
 // @description  Calculate the number of days between order and delivery
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -69,20 +69,25 @@
             lastOrderId = orderId; // Update the last processed order_id
             //console.log("lastOrderId2 : " + lastOrderId);
             const orderDateText = document.querySelector('#order-detail-container > div.col-group.mt-xs-4.mb-xs-2 > div.col-xs-12.mb-xs-2 > div > div.flag-img.flag-img-right.text-right.vertical-align-top.hide-xs.hide-sm > div.text-body-smaller.mt-xs-1'); // Locate the element for order date
-
             const deliveryDateText = document.querySelector('#order-detail-container > div.col-group.pb-xs-2 > div > div > div > div > div > div:nth-child(1) > div:nth-child(2) > div > div > div > div:nth-child(1) > div.col-group.col-flush.mt-xs-2.text-body-smaller > div.col-xs-9.wt-wrap > div > ol > div:nth-child(1) > div > div > div.col-xs-5.text-gray-lightest.text-right'); // Locate the element for delivery date
+            const resultElement = document.querySelector("#order-detail-container > div.col-group.mt-xs-4.mb-xs-2 > div:nth-child(2) > span > span.wt-pl-xs-0.wt-pr-xs-0.order-states-dropdown > span > span:nth-child(2) > h4");
 
             if (orderDateText && deliveryDateText) {
                 const orderDate = parseOrderDate(orderDateText.innerText);
                 const deliveryDate = parseDeliveryDate(deliveryDateText.innerText);
 
                 if (orderDate && deliveryDate) {
-                    const daysDifference = calculateDaysBetweenDates(orderDate, deliveryDate);
+                    let daysDifference = calculateDaysBetweenDates(orderDate, deliveryDate);
                     console.log(`Geçen gün sayısı: ${daysDifference}`);
 
                     // Get the element where you want to insert the result
-                    const resultElement = document.querySelector('#order-detail-container > div:nth-child(6) > div > div > h4 > span > h2');
+                    //const resultElement = document.querySelector('#order-detail-container > div:nth-child(6) > div > div > h4 > span > h2');
                     if (resultElement) {
+                        if(daysDifference<7){
+                            daysDifference+="✅";
+                        }else{
+                            daysDifference+="❌";
+                        }
                         resultElement.innerText = `${daysDifference} gün : (${labelDeliveryDate(deliveryDateText.innerText)}) `;
                     }
                 } else {
@@ -103,7 +108,7 @@
             const interval = setInterval(() => {
                 processOrderDates(); // Process the order dates when order_id is available
                 clearInterval(interval); // Stop checking after the order_id is found
-            }, 2000);
+            }, 1000);
         }
     });
 
