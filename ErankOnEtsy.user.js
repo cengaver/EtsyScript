@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Erank On Etsy
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      2.01
+// @version      2.02
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -50,8 +50,8 @@
             `eRank API Key: ${currentConfig.erankKey}\n` +
             `Range (e.g., Liste!E:AD): ${currentConfig.range}\n\n` +
             `Range Link: ${currentConfig.rangeLink}\n\n` +
-            `PrivateKey : ${currentConfig.privateKey}\n\n` +
-            `ClientEmail: ${currentConfig.clientEmail}\n\n` +
+            //`PrivateKey : ${currentConfig.privateKey}\n\n` +
+            //`ClientEmail: ${currentConfig.clientEmail}\n\n` +
             `Format: apiKey|sheetId|erankUserKeyauthorization|erankKey|range|rangeLink|privateKey|clientEmail`,
             `${currentConfig.apiKey}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}|${currentConfig.rangeLink}|${currentConfig.privateKey}|${currentConfig.clientEmail}`
             );
@@ -92,7 +92,7 @@
         return { apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail };
     };
 
-    let ids = JSON.parse(localStorage.getItem('cachedData')) || null;
+    //let ids = JSON.parse(localStorage.getItem('cachedData')) || null;
     const config = await getApiConfig();
     if (!config) return;
     const { apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail } = config;
@@ -258,7 +258,7 @@
                     const body2 = {
                         range: `Liste!J${newRow}:K${newRow}`,
                         majorDimension: "ROWS",
-                        values: [["SL", "AL"]] // J sütununa "SL", K sütununa "AL"
+                        values: [["Selim", ""]] // J sütununa "SL", K sütununa "AL"
                     };
 
                     GM.xmlHttpRequest({
@@ -303,6 +303,7 @@
         if (cachedData && cacheTimestamp && now - parseInt(cacheTimestamp) < 1 * 60 * 60 * 1000) {
             return cachedData;
         }
+        if (cachedData) { localStorage.removeItem(cacheKey) }
 
         const config = await getApiConfig();
         if (!config) return;
@@ -341,10 +342,12 @@
         if (
             cachedData &&
             now - parseInt(cachedData.timestamp) < 24 * 60 * 60 * 1000 &&
-            "tags" in cachedData
+            "tags" in cachedData &&
+            "title" in cachedData
         ) {
             return cachedData;
         }
+        if (cachedData) { localStorage.removeItem(cacheKey) }
 
         const config = await getApiConfig();
         if (!config) return;
@@ -363,10 +366,11 @@
                 },
                 responseType: "json",
             });
-            let est_sales = response.data.stats.est_sales.label;
+
             const erankData = {
-                sales: est_sales,
+                sales: response.data.stats.est_sales.label,
                 age: response.data.stats.listing_age,
+                title : response.data.title,
                 timestamp : now.toString(),
                 tags: Object.keys(response.data.tags)
             };
@@ -392,6 +396,18 @@
         }
     }
 
+    const keywords = ['Sweatshirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png'];
+
+    function extractFirstParts(text, keywords) {
+        for (let keyword of keywords) {
+            const position = text.indexOf(keyword);
+            if (position !== -1) {
+                return text.substring(0, position).trim(); // İlk bulunan anahtar kelimeden önceki kısmı al
+            }
+        }
+        return null; // Hiçbir anahtar kelime bulunmazsa
+    }
+
     const createOverlayOnElement = async (element, id) => {
         const overlay = document.createElement("div");
         overlay.className = "wt-display-flex-xs wt-text-title-01";
@@ -403,8 +419,7 @@
         loadingEl.textContent = "Erank verileri yükleniyor...";
         overlay.appendChild(loadingEl);
 
-        const { sales, age, tags } = await getErankData(id);
-
+        const { sales, age, title, tags } = await getErankData(id);
         // Etsy ürün linkini al
         const linkEl = element.querySelector("a.listing-link")
         const url = linkEl?.href ?? window.location.href
@@ -483,8 +498,19 @@
 
         const buttonEl = document.createElement("button")
         buttonEl.textContent = "S"
+        buttonEl.title = "Tag copy erank"
+        buttonEl.style = "cursor: grab"
         buttonEl.onclick = () => copyTextToClipboard(tags.join(", "))
         overlay.appendChild(buttonEl);
+        let trade = extractFirstParts(title, keywords)
+        if (trade) {
+            const buttonElTrade = document.createElement("button")
+            buttonElTrade.title = "Trade Mark Kontrol et"
+            buttonElTrade.style = "cursor: help"
+            buttonElTrade.textContent = "T"
+            buttonElTrade.onclick = () => window.open(`https://www.trademarkia.com/search/trademarks?q=${trade}&country=us&codes=025&status=registered`, '_blank')
+            overlay.appendChild(buttonElTrade);
+        }
     };
 
     const handleListingPage = async () => {
