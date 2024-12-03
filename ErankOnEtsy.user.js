@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Erank On Etsy
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      2.02
+// @version      2.12
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -26,6 +26,8 @@
 (async function () {
     "use strict";
 
+    const team ="SL"
+    const manager =""
     // Tüm ayarları topluca düzenleyecek menü
     GM_registerMenuCommand("Update API Configurations", async () => {
         const currentConfig = {
@@ -194,10 +196,10 @@
     }
 
     // Google Sheets'e link ekle
-    async function saveToGoogleSheet(link) {
+    async function saveToGoogleSheet(link, title, img, sales, age, tag) {
         //const rangeLink = "Liste!F:F"; // Eklenecek sütun
         const accessToken = await getAccessToken();
-
+        const tags = tag.join(", ");
         // 1. Mevcut son dolu satırı bul
         let linkAlreadyExists = false;
         let lastRow = 0;
@@ -237,10 +239,25 @@
         // 2. Linki en son satırın altına ekle
         const newRow = lastRow + 1;
         const body = {
-            range: `Liste!F${newRow}:F${newRow}`,
+            range: `Liste!F${newRow}:P${newRow}`,
             majorDimension: "ROWS",
-            values: [[link]]
+            values: [
+                [
+                    link,
+                    img,
+                    title,
+                    "",
+                    team,
+                    manager,
+                    tags,
+                    "",
+                    "",
+                    Number(sales),// sales'i sayı olarak gönder
+                    Number(age) // age'i sayı olarak gönder
+                ]
+            ]
         };
+
 
         await GM.xmlHttpRequest({
             method: "PUT",
@@ -255,10 +272,10 @@
                     console.log("Başarıyla eklendi:", link);
 
                     // 3. J ve K sütunlarına "SL" ve "AL" ekle
-                    const body2 = {
-                        range: `Liste!J${newRow}:K${newRow}`,
+                    /*const body2 = {
+                        range: `Liste!J${newRow}:P${newRow}`,
                         majorDimension: "ROWS",
-                        values: [["Selim", ""]] // J sütununa "SL", K sütununa "AL"
+                        values: [["Selim", "", "", "", "", "", ""]] // J sütununa "SL", K sütununa "AL"
                     };
 
                     GM.xmlHttpRequest({
@@ -279,7 +296,7 @@
                         onerror: function(error) {
                             console.error("J ve K sütunlarına yazma hatası:", error);
                         }
-                    });
+                    });*/
 
                 } else {
                     console.error("Ekleme hatası:", response.responseText);
@@ -356,14 +373,16 @@
         const url = `https://beta.erank.com/api/ext/listing/${id}`;
 
         try {
+            const headers = {
+                accept: "application/json, text/plain, */*",
+                authorization: `${erankUserKey}|${authorization}`,
+                "x-erank-key": erankKey,
+                "x-user-agent": "erank-bx/1.0",
+            }
+
             const { response } = await GM.xmlHttpRequest({
                 url,
-                headers: {
-                    accept: "application/json, text/plain, */*",
-                    authorization: `${erankUserKey}|${authorization}`,
-                    "x-erank-key": erankKey,
-                    "x-user-agent": "erank-bx/1.0",
-                },
+                headers,
                 responseType: "json",
             });
 
@@ -424,7 +443,9 @@
         const linkEl = element.querySelector("a.listing-link")
         const url = linkEl?.href ?? window.location.href
         const currentUrl = simplifyEtsyUrl(url);//**
-
+        const imgEl = element.querySelector("img")
+        const img = imgEl ? imgEl.src : null;
+        //console.log(img)
         const dnoValue = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
         const result = dnoValue ? "❤️" : "🤍";
         const tooltipText = dnoValue ? `Dizayn NO: ${dnoValue}` : `Listeye EKLE!`;
@@ -449,7 +470,7 @@
             resultEl.href = "#";
             heartWrapper.addEventListener("click", async function() {
                 resultEl.style.backgroundColor = "orange"
-                await saveToGoogleSheet(currentUrl);
+                await saveToGoogleSheet(currentUrl, title, img, sales, age, tags);
                 resultEl.textContent = "❤️"
                 resultEl.style.backgroundColor = null
             });
