@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.2
+// @version      1.3
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -64,6 +64,65 @@ Hello {{userName}},
     }
 
     GM.registerMenuCommand("Mesajı Ayarla", setMessage);
+    window.addEventListener("load", async () => {
+        // İlk sorguda butonları seç ve tab sırasını ekle
+        const messageButtons = document.querySelectorAll("#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div > div:nth-child(2) > span > button");
+
+        messageButtons.forEach((button, index) => {
+            let parentElement = button; // Başlangıç noktası olarak buton
+            let skip = false;
+
+            // 4 üst seviyeyi dolaşarak `data-icon="star"` kontrolü yap
+            for (let i = 0; i < 5; i++) {
+                if (!parentElement) break; // Eğer parent kalmazsa döngüyü kır
+                parentElement = parentElement.parentElement; // Bir üst seviyeye çık
+
+                if (parentElement && parentElement.querySelector('[data-icon="star"]')) {
+                    skip = true; // Eğer `data-icon="star"` bulunursa atla
+                    break;
+                }
+            }
+
+            if (skip) return; // Atla
+
+            // Tab sırasını yaz
+            button.tabIndex = index + 1;
+            //button.innerText = `Tab Sırası: ${index + 1}`;
+        });
+
+    })
+
+    let isTriggered = false;
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Control') isTriggered = false; // Tekrar basmaya izin verir.
+        if (event.ctrlKey && event.key === 'ArrowRight' && !isTriggered) {
+            isTriggered = true;
+
+            // 1. Sayfayı geri götür
+            window.history.back();
+
+            // 2. 1 saniye sonra bir sonraki tabindex öğesine tıkla
+            setTimeout(() => clickNextTabIndex(), 1000);
+        }
+    });
+
+    function clickNextTabIndex() {
+        const focusableElements = Array.from(document.querySelectorAll('[tabindex]'))
+        .filter(el => !isNaN(el.getAttribute('tabindex')))
+        .sort((a, b) => parseInt(a.getAttribute('tabindex')) - parseInt(b.getAttribute('tabindex')));
+
+        const activeElement = document.activeElement;
+        const currentIndex = focusableElements.indexOf(activeElement);
+
+        const nextElement = focusableElements[currentIndex + 1] || focusableElements[0]; // Döngüsel olsun
+        if (nextElement) {
+            nextElement.focus();
+            nextElement.click();
+            console.log('Clicked on element with tabindex:', nextElement.getAttribute('tabindex'));
+        }
+    }
+
 
     // Ctrl + Space ile sadece doldurma
     document.addEventListener("keydown", (event) => {
