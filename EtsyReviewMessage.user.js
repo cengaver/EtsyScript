@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.3
+// @version      1.5
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -11,13 +11,11 @@
 // @grant        GM.registerMenuCommand
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewMessage.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewMessage.user.js
+// @run-at       document-en
 // ==/UserScript==
 
 (async function () {
-    const defaultMessage = `
-Hello {{userName}},
- 🙏
-`;
+    const defaultMessage = `Hello {{userName}}, 🙏`;
 
     async function setMessage() {
         const currentMessage = await GM.getValue("reviewMessage", defaultMessage);
@@ -31,6 +29,7 @@ Hello {{userName}},
             alert("Mesaj kaydedildi!");
         }
     }
+    GM.registerMenuCommand("Mesajı Ayarla", setMessage);
 
     async function main(send = false) {
         const orderName = document.querySelector("#order-details-header-text > span")?.innerText;
@@ -63,12 +62,10 @@ Hello {{userName}},
         }
     }
 
-    GM.registerMenuCommand("Mesajı Ayarla", setMessage);
-    window.addEventListener("load", async () => {
-        // İlk sorguda butonları seç ve tab sırasını ekle
-        const messageButtons = document.querySelectorAll("#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div > div:nth-child(2) > span > button");
-
-        messageButtons.forEach((button, index) => {
+    async function butonsAll(el){
+        //console.log("Betik başlatıldı.");
+        // Butonlara tab sırası ekle
+        el.forEach((button, index) => {
             let parentElement = button; // Başlangıç noktası olarak buton
             let skip = false;
 
@@ -85,44 +82,43 @@ Hello {{userName}},
 
             if (skip) return; // Atla
 
-            // Tab sırasını yaz
+            // Tab sırasını ekle ve yaz
             button.tabIndex = index + 1;
-            //button.innerText = `Tab Sırası: ${index + 1}`;
+            button.innerText = `...`;
         });
 
-    })
+        let isTriggered = false;
 
-    let isTriggered = false;
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Control') isTriggered = false; // Tekrar basmaya izin verir.
+            if (event.ctrlKey && event.key === 'ArrowRight' && !isTriggered) {
+                isTriggered = true;
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Control') isTriggered = false; // Tekrar basmaya izin verir.
-        if (event.ctrlKey && event.key === 'ArrowRight' && !isTriggered) {
-            isTriggered = true;
+                // 1. Sayfayı geri götür
+                window.history.back();
 
-            // 1. Sayfayı geri götür
-            window.history.back();
+                // 2. 1 saniye sonra bir sonraki tabindex öğesine tıkla
+                setTimeout(() => clickNextTabIndex(), 1000);
+            }
+        });
 
-            // 2. 1 saniye sonra bir sonraki tabindex öğesine tıkla
-            setTimeout(() => clickNextTabIndex(), 1000);
+        function clickNextTabIndex() {
+            const focusableElements = Array.from(document.querySelectorAll('[tabindex]'))
+            .filter(el => !isNaN(el.getAttribute('tabindex')))
+            .sort((a, b) => parseInt(a.getAttribute('tabindex')) - parseInt(b.getAttribute('tabindex')));
+
+            const activeElement = document.activeElement;
+            const currentIndex = focusableElements.indexOf(activeElement);
+
+            const nextElement = focusableElements[currentIndex + 1] || focusableElements[0]; // Döngüsel olsun
+            if (nextElement) {
+                nextElement.focus();
+                nextElement.click();
+                console.log('Clicked on element with tabindex:', nextElement.getAttribute('tabindex'));
+            }
         }
-    });
 
-    function clickNextTabIndex() {
-        const focusableElements = Array.from(document.querySelectorAll('[tabindex]'))
-        .filter(el => !isNaN(el.getAttribute('tabindex')))
-        .sort((a, b) => parseInt(a.getAttribute('tabindex')) - parseInt(b.getAttribute('tabindex')));
-
-        const activeElement = document.activeElement;
-        const currentIndex = focusableElements.indexOf(activeElement);
-
-        const nextElement = focusableElements[currentIndex + 1] || focusableElements[0]; // Döngüsel olsun
-        if (nextElement) {
-            nextElement.focus();
-            nextElement.click();
-            console.log('Clicked on element with tabindex:', nextElement.getAttribute('tabindex'));
-        }
     }
-
 
     // Ctrl + Space ile sadece doldurma
     document.addEventListener("keydown", (event) => {
@@ -148,4 +144,24 @@ Hello {{userName}},
             main(true); // Doldur ve gönder
         }
     });
+    //console.log("Betik yüklendi.");
+
+    const observer = new MutationObserver(() => {
+                // Butonları seç
+        const messageButtonsEL =
+              "#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div >";
+        const buttons = document.querySelectorAll(
+            messageButtonsEL+" div > span > button"
+        );
+        //const buttons = document.querySelectorAll('button.wt-btn--transparent.wt-tooltip__trigger');
+        //console.log(buttons);
+        if (buttons.length > 0) {
+            butonsAll(buttons)
+            //console.log("Butonlar bulundu:", buttons);
+            observer.disconnect(); // Gözlemlemeyi durdur
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
 })();
