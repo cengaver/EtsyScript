@@ -151,7 +151,7 @@
         const messageButtonsEL =
               "#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div >";
         const buttons = document.querySelectorAll(
-            messageButtonsEL+" div > span > button"
+            messageButtonsEL+" div:nth-child(2) > span > button"
         );
         //const buttons = document.querySelectorAll('button.wt-btn--transparent.wt-tooltip__trigger');
         //console.log(buttons);
