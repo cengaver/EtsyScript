@@ -26,7 +26,7 @@
 (async function () {
     "use strict";
 
-    const team ="SL"
+    const team ="AA"
     const manager =""
     // Tüm ayarları topluca düzenleyecek menü
     GM_registerMenuCommand("Update API Configurations", async () => {
