@@ -291,34 +291,6 @@
             onload: function(response) {
                 if (response.status === 200 || response.status === 201) {
                     console.log("Başarıyla eklendi:", link);
-
-                    // 3. J ve K sütunlarına "SL" ve "AL" ekle
-                    /*const body2 = {
-                        range: `Liste!J${newRow}:P${newRow}`,
-                        majorDimension: "ROWS",
-                        values: [["Selim", "", "", "", "", "", ""]] // J sütununa "SL", K sütununa "AL"
-                    };
-
-                    GM.xmlHttpRequest({
-                        method: "PUT",
-                        url: `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${body2.range}?valueInputOption=RAW`,
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${accessToken}`
-                        },
-                        data: JSON.stringify(body2),
-                        onload: function(response2) {
-                            if (response2.status === 200 || response2.status === 201) {
-                                console.log("SL ve AL başarıyla eklendi.");
-                            } else {
-                                console.error("SL ve AL ekleme hatası:", response2.responseText);
-                            }
-                        },
-                        onerror: function(error) {
-                            console.error("J ve K sütunlarına yazma hatası:", error);
-                        }
-                    });*/
-
                 } else {
                     console.error("Ekleme hatası:", response.responseText);
                 }
