@@ -26,8 +26,6 @@
 (async function () {
     "use strict";
 
-    const team ="AA"
-    const manager =""
     // Tüm ayarları topluca düzenleyecek menü
     GM_registerMenuCommand("Update API Configurations", async () => {
         const currentConfig = {
@@ -40,6 +38,8 @@
             rangeLink: await GM.getValue('rangeLink', 'Liste!F:F'),
             privateKey: await GM.getValue('privateKey', ''),
             clientEmail: await GM.getValue('clientEmail', ''),
+            team: await GM.getValue('team', ''),
+            manager: await GM.getValue('manager', ''),
         };
 
         const input = prompt(
@@ -52,14 +52,16 @@
             `eRank API Key: ${currentConfig.erankKey}\n` +
             `Range (e.g., Liste!E:AD): ${currentConfig.range}\n\n` +
             `Range Link: ${currentConfig.rangeLink}\n\n` +
-            //`PrivateKey : ${currentConfig.privateKey}\n\n` +
-            //`ClientEmail: ${currentConfig.clientEmail}\n\n` +
-            `Format: apiKey|sheetId|erankUserKeyauthorization|erankKey|range|rangeLink|privateKey|clientEmail`,
-            `${currentConfig.apiKey}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}|${currentConfig.rangeLink}|${currentConfig.privateKey}|${currentConfig.clientEmail}`
+            `PrivateKey : ${currentConfig.privateKey}\n\n` +
+            `ClientEmail: ${currentConfig.clientEmail}\n\n` +
+            `team: ${currentConfig.team}\n\n` +
+            `manager: ${currentConfig.manager}\n\n` +
+            `Format: apiKey|sheetId|erankUserKeyauthorization|erankKey|range|rangeLink|privateKey|clientEmail|team|manager`,
+            `${currentConfig.apiKey}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}|${currentConfig.rangeLink}|${currentConfig.privateKey}|${currentConfig.clientEmail}|${currentConfig.team}|${currentConfig.manager}`
             );
 
         if (input) {
-            const [apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail] = input.split('|');
+            const [apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail,team,manager] = input.split('|');
             if (apiKey) await GM.setValue('apiKey', apiKey.trim());
             if (sheetId) await GM.setValue('sheetId', sheetId.trim());
             if (erankUserKey) await GM.setValue('erankUserKey', erankUserKey.trim());
@@ -67,8 +69,10 @@
             if (erankKey) await GM.setValue('erankKey', erankKey.trim());
             if (range) await GM.setValue('range', range.trim());
             if (rangeLink) await GM.setValue('rangeLink', rangeLink.trim());
-            if (privateKey) await GM.setValue('privateKey', privateKey.trim());
+            if (privateKey) await GM.setValue('privateKey', btoa(privateKey).trim());
             if (clientEmail) await GM.setValue('clientEmail', clientEmail.trim());
+            if (team) await GM.setValue('team', team.trim());
+            if (manager) await GM.setValue('manager', manager.trim());
             alert("Configuration updated successfully.");
         } else {
             alert("No changes made.");
@@ -83,21 +87,23 @@
         const erankKey = await GM.getValue('erankKey', '');
         const range = await GM.getValue('range', 'Liste!E:AD');
         const rangeLink = await GM.getValue('rangeLink', 'Liste!F:F');
-        const privateKey = await GM.getValue('privateKey', '');
+        let encodedKey = await GM.getValue('privateKey', '');
+        const privateKey = atob(encodedKey);
         const clientEmail = await GM.getValue('clientEmail', '');
-
-        if (!apiKey || !sheetId || !erankUserKey|| !authorization || !erankKey || !range || !rangeLink || !privateKey || !clientEmail) {
+        const team = await GM.getValue('team', '');
+        const manager = await GM.getValue('manager', '');
+        if (!apiKey || !sheetId || !erankUserKey|| !authorization || !erankKey || !range || !rangeLink || !privateKey || !clientEmail || !team || !manager) {
             alert("API Configurations are not set. Please configure it using the menu.");
             return null;
         }
 
-        return { apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail };
+        return { apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager };
     };
 
     //let ids = JSON.parse(localStorage.getItem('cachedData')) || null;
     const config = await getApiConfig();
     if (!config) return;
-    const { apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail } = config;
+    const { apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager } = config;
     const tokenUri = "https://oauth2.googleapis.com/token";
 
     // Step 1: Generate JWT Token
@@ -195,6 +201,21 @@
         return data.access_token;
     }
 
+    function convertToNumber(age) {
+        // Virgülü kaldırıp noktaya çeviriyoruz
+        let cleanedAge = age.replace(',', '');
+        // Number ile dönüştürüyoruz
+        let numericAge = Number(cleanedAge);
+
+        // Sayı değilse bir hata mesajı verebiliriz
+        if (isNaN(numericAge)) {
+            console.error("Geçerli bir sayı değil:", age);
+            return null;
+        }
+
+        return numericAge;
+    }
+
     // Google Sheets'e link ekle
     async function saveToGoogleSheet(link, title, img, sales, age, tag) {
         //const rangeLink = "Liste!F:F"; // Eklenecek sütun
@@ -252,8 +273,8 @@
                     tags,
                     "",
                     "",
-                    Number(sales),// sales'i sayı olarak gönder
-                    Number(age) // age'i sayı olarak gönder
+                    convertToNumber(sales),// sales'i sayı olarak gönder
+                    convertToNumber(age) // age'i sayı olarak gönder
                 ]
             ]
         };
