@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Order search gdrive
 // @namespace    https://github.com/cengaver
-// @version      0.3
+// @version      0.5
 // @description  Order Search Gdrive
 // @author       Cengaver
 // @match        https://www.etsy.com/your/orders/sold/*
@@ -32,7 +32,8 @@
     }
 
     async function addIconNextToOrderNo() {
-        const orderNoElement = document.querySelector('#order-detail-container > div.pt-xs-2.pb-xs-4 > div > div > div.col-group.col-flush > h4');
+        const orderNoElement = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div.mt-xs-6 > div.col-group.col-flush > h4")
+        //const orderNoElement = document.querySelector('#order-detail-container > div.pt-xs-2.pb-xs-4 > div > div > div.col-group.col-flush > h4');
         if (orderNoElement) {
             const orderNo = orderNoElement.textContent.trim().replace("Receipt #", "");
             if (orderNo && !document.querySelector('.gdrive-icon')) {
@@ -66,7 +67,8 @@
     }
 
     async function addIconNextToSkuNo() {
-        const rows = document.querySelectorAll('#order-detail-container > div.pt-xs-2.pb-xs-4 > div > div > div.panel.mb-xs-0.text-smaller.p-xs-4 > table > tbody > tr.col-group.pl-xs-0.pt-xs-3.pr-xs-0.pb-xs-3.bb-xs-1');
+        const rows = document.querySelectorAll("#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div.mt-xs-6 > div.panel.mb-xs-0.text-smaller.p-xs-4 > table > tbody > tr")
+        //const rows = document.querySelectorAll('#order-detail-container > div.pt-xs-2.pb-xs-4 > div > div > div.panel.mb-xs-0.text-smaller.p-xs-4 > table > tbody > tr.col-group.pl-xs-0.pt-xs-3.pr-xs-0.pb-xs-3.bb-xs-1');
          const filePath = await GM.getValue("filePath", defaultPath);
         rows.forEach(addIcon)
         function addIcon(rowEl) {
@@ -75,7 +77,7 @@
             if (skuNoElement) {
                 const skuNo = skuNoElement.textContent.trim();
 
-                const gdriveSearchUrl = `https://drive.google.com/drive/search?q=${skuNo}`;
+                const gdriveSearchUrl = `https://www.etsy.com/your/orders/sold/new?search_query=${skuNo}&expand_convo=true&order_id=${skuNo}`;
                 const folderUrl = `${filePath}${skuNo}`;
                 const linkElement = document.createElement('a');
                 const linkElement2 = document.createElement('a');
