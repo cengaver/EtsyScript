@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      1.0
+// @version      1.1
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
