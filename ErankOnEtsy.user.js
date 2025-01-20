@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Erank On Etsy
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      2.12
+// @version      2.22
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
+// @match        https://www.etsy.com/market/*
 // @match        https://www.etsy.com/shop/*
 // @match        https://www.etsy.com/listing/*
 // @match        https://www.etsy.com/people/*
@@ -34,8 +35,8 @@
             erankUserKey: await GM.getValue('erankUserKey', ''),
             authorization: await GM.getValue('authorization', ''),
             erankKey: await GM.getValue('erankKey', ''),
-            range: await GM.getValue('range', 'Liste!E:AD'),
-            rangeLink: await GM.getValue('rangeLink', 'Liste!F:F'),
+            range: await GM.getValue('range', ''),
+            rangeLink: await GM.getValue('rangeLink', ''),
             privateKey: await GM.getValue('privateKey', ''),
             clientEmail: await GM.getValue('clientEmail', ''),
             team: await GM.getValue('team', ''),
@@ -52,12 +53,12 @@
             `eRank API Key: ${currentConfig.erankKey}\n` +
             `Range (e.g., Liste!E:AD): ${currentConfig.range}\n\n` +
             `Range Link: ${currentConfig.rangeLink}\n\n` +
-            `PrivateKey : ${currentConfig.privateKey}\n\n` +
+            //`PrivateKey : ${btoa(currentConfig.privateKey)}\n\n` +
             `ClientEmail: ${currentConfig.clientEmail}\n\n` +
             `team: ${currentConfig.team}\n\n` +
             `manager: ${currentConfig.manager}\n\n` +
             `Format: apiKey|sheetId|erankUserKeyauthorization|erankKey|range|rangeLink|privateKey|clientEmail|team|manager`,
-            `${currentConfig.apiKey}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}|${currentConfig.rangeLink}|${currentConfig.privateKey}|${currentConfig.clientEmail}|${currentConfig.team}|${currentConfig.manager}`
+            `${currentConfig.apiKey}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}|${currentConfig.rangeLink}|${btoa(currentConfig.privateKey)}|${currentConfig.clientEmail}|${currentConfig.team}|${currentConfig.manager}`
             );
 
         if (input) {
@@ -69,7 +70,7 @@
             if (erankKey) await GM.setValue('erankKey', erankKey.trim());
             if (range) await GM.setValue('range', range.trim());
             if (rangeLink) await GM.setValue('rangeLink', rangeLink.trim());
-            if (privateKey) await GM.setValue('privateKey', btoa(privateKey).trim());
+            if (privateKey) await GM.setValue('privateKey', atob(privateKey).trim());
             if (clientEmail) await GM.setValue('clientEmail', clientEmail.trim());
             if (team) await GM.setValue('team', team.trim());
             if (manager) await GM.setValue('manager', manager.trim());
@@ -86,9 +87,10 @@
         const authorization = await GM.getValue('authorization', '');
         const erankKey = await GM.getValue('erankKey', '');
         const range = await GM.getValue('range', 'Liste!E:AD');
-        const rangeLink = await GM.getValue('rangeLink', 'Liste!F:F');
-        let encodedKey = await GM.getValue('privateKey', '');
-        const privateKey = atob(encodedKey);
+        const rangeLink = await GM.getValue('rangeLink', '');
+        //let encodedKey = await GM.getValue('privateKey', '');
+        //const privateKey = atob(encodedKey);
+        const privateKey = await GM.getValue('privateKey', '');
         const clientEmail = await GM.getValue('clientEmail', '');
         const team = await GM.getValue('team', '');
         const manager = await GM.getValue('manager', '');
@@ -178,7 +180,7 @@
     }
 
     // Step 2: Exchange JWT for OAuth Access Token
-    async function getAccessToken() {
+    async function getAccessToken(e) {
         let AccToken = JSON.parse(sessionStorage.getItem('AccessToken')) || null;
         if(AccToken){
             return AccToken
@@ -247,6 +249,7 @@
                 }
             },
             onerror: function(error) {
+                sessionStorage.removeItem('AccessToken');
                 console.error("GET isteği hatası:", error);
             }
         });
@@ -256,29 +259,48 @@
             alert("Bu link zaten eklenmiş.");
             return; // İşlem sonlanır, link eklenmez
         }
-
         // 2. Linki en son satırın altına ekle
         const newRow = lastRow + 1;
-        const body = {
-            range: `Liste!F${newRow}:P${newRow}`,
-            majorDimension: "ROWS",
-            values: [
-                [
-                    link,
-                    img,
-                    title,
-                    "",
-                    team,
-                    manager,
-                    tags,
-                    "",
-                    "",
-                    convertToNumber(sales),// sales'i sayı olarak gönder
-                    convertToNumber(age) // age'i sayı olarak gönder
-                ]
-            ]
-        };
 
+        let body;
+
+        if (rangeLink == "Liste!D:D") {
+            body = {
+                range: `Liste!D${newRow}:J${newRow}`,
+                majorDimension: "ROWS",
+                values: [
+                    [
+                        link,
+                        img,
+                        title,
+                        null,
+                        tags,
+                        sales,
+                        age
+                    ]
+                ]
+            };
+        } else {
+            body = {
+                range: `Liste!F${newRow}:P${newRow}`,
+                majorDimension: "ROWS",
+                values: [
+                    [
+                        link,
+                        img,
+                        title,
+                        null,
+                        team,
+                        manager,
+                        tags,
+                        null,
+                        null,
+                        sales,
+                        age
+                    ]
+                ]
+            };
+        }
 
         await GM.xmlHttpRequest({
             method: "PUT",
@@ -291,6 +313,7 @@
             onload: function(response) {
                 if (response.status === 200 || response.status === 201) {
                     console.log("Başarıyla eklendi:", link);
+                    console.log("Başarıyla resim eklendi:", img);
                 } else {
                     console.error("Ekleme hatası:", response.responseText);
                 }
@@ -318,24 +341,34 @@
         const config = await getApiConfig();
         if (!config) return;
 
-        const { apiKey, sheetId, range } = config;
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
+        const { sheetId, range } = config;
 
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error("Failed to fetch Google Sheets data.");
-            const data = await response.json();
-            const values = data.values; // Tüm satırları alıyoruz
-            const processedData = data.values.map(row => ({
-                id: row[row.length - 1], // AD sütunu (son sütun)
-                dnoValue: row[0], // E sütunu (ilk sütun)
-            }));
-            localStorage.setItem(cacheKey, JSON.stringify(processedData));
-            localStorage.setItem(cacheTimestampKey, now.toString());
-            return { processedData };
-        } catch (error) {
-            console.error("Google Sheets API error:", error);
-        }
+        const accessToken = await getAccessToken();
+
+        await GM.xmlHttpRequest({
+            method: "GET",
+            url: `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`,
+            headers: {
+                "Authorization": `Bearer ${accessToken}`
+            },
+            onload: function(response) {
+                if (response.status === 200) {
+                    const data = JSON.parse(response.responseText);
+                    const processedData = data.values.map(row => ({
+                        id: row[row.length - 1], // AD sütunu (son sütun)
+                        dnoValue: row[0], // E sütunu (ilk sütun)
+                    }));
+                    localStorage.setItem(cacheKey, JSON.stringify(processedData));
+                    localStorage.setItem(cacheTimestampKey, now.toString());
+                    return { processedData };
+                } else {
+                    console.error("Veri alınırken hata oluştu:", response.responseText);
+                }
+            },
+            onerror: function(error) {
+                console.error("GET isteği hatası:", error);
+            }
+        });
     };
 
     const findEValueById = (id) => {
@@ -380,14 +413,14 @@
             });
 
             const erankData = {
-                sales: response.data.stats.est_sales.label,
-                age: response.data.stats.listing_age,
+                sales:  convertToNumber(response.data.stats.est_sales.label),
+                age: convertToNumber(response.data.stats.listing_age),
                 title : response.data.title,
                 timestamp : now.toString(),
                 tags: Object.keys(response.data.tags)
             };
-
-            localStorage.setItem(cacheKey, JSON.stringify(erankData));
+            safeSetItem(cacheKey, JSON.stringify(erankData));
+            //localStorage.setItem(cacheKey, JSON.stringify(erankData));
             return erankData;
         } catch (error) {
             console.error("eRank data fetch error:", error);
@@ -407,6 +440,36 @@
             return null;
         }
     }
+
+    function handleLocalStorageQuota() {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('erank')) {
+                localStorage.removeItem(key);
+                i--; // Silme sonrası indeks kaymasını önlemek için azalt
+            }
+        }
+        console.log("LocalStorage doldu, 'erank' ile başlayan tüm anahtarlar silindi.");
+    }
+
+    function safeSetItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            if (e.name === 'QuotaExceededError' || e.code === 22) {
+                console.warn("LocalStorage dolu! 'erank' anahtarlarını temizliyorum...");
+                handleLocalStorageQuota();
+                try {
+                    localStorage.setItem(key, value); // Tekrar dene
+                } catch (error) {
+                    console.error("Yeterli alan açılamadı. LocalStorage işlemi başarısız.", error);
+                }
+            } else {
+                console.error("LocalStorage hatası:", e);
+            }
+        }
+    }
+
 
     const keywords = ['Sweatshirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png'];
 
