@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Erank On Etsy
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      2.22
+// @version      2.23
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -94,7 +94,7 @@
         const clientEmail = await GM.getValue('clientEmail', '');
         const team = await GM.getValue('team', '');
         const manager = await GM.getValue('manager', '');
-        if (!apiKey || !sheetId || !erankUserKey|| !authorization || !erankKey || !range || !rangeLink || !privateKey || !clientEmail || !team || !manager) {
+        if (!sheetId || !erankUserKey|| !authorization || !erankKey || !range || !rangeLink || !privateKey || !clientEmail || !team || !manager) {
             alert("API Configurations are not set. Please configure it using the menu.");
             return null;
         }
@@ -471,7 +471,7 @@
     }
 
 
-    const keywords = ['Sweatshirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png'];
+    const keywords = ['Sweatshirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png','Svg'];
 
     function extractFirstParts(text, keywords) {
         for (let keyword of keywords) {
@@ -483,7 +483,7 @@
         return null; // Hiçbir anahtar kelime bulunmazsa
     }
 
-    const createOverlayOnElement = async (element, id) => {
+    const createOverlayOnElement = async (element, id,imgElement) => {
         const overlay = document.createElement("div");
         overlay.className = "wt-display-flex-xs wt-text-title-01";
         overlay.style.gap = "1rem";
@@ -500,7 +500,8 @@
         const url = linkEl?.href ?? window.location.href
         const currentUrl = simplifyEtsyUrl(url);//**
         const imgEl = element.querySelector("img")
-        const img = imgEl ? imgEl.src : null;
+        let img;
+        img = imgEl ? imgEl.src : imgElement.src;
         //console.log(img)
         const dnoValue = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
         const result = dnoValue ? "❤️" : "🤍";
@@ -594,9 +595,9 @@
         const urlParts = window.location.pathname.split('/');
         const id = urlParts[urlParts.indexOf('listing') + 1];
         const titleElement = document.querySelector('#listing-page-cart > div.wt-mb-xs-1 > h1');
-
+        const imgElement = document.querySelector("#photos > div > div > ul > li > img")
         if (titleElement && id) {
-            await createOverlayOnElement(titleElement, id);
+            await createOverlayOnElement(titleElement, id,imgElement);
         }
     };
 
@@ -605,7 +606,7 @@
         await Promise.all([...listingCards].map(async (el) => {
             const id = el.dataset.listingId;
             const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
-            await createOverlayOnElement(infoEl, id);
+            await createOverlayOnElement(infoEl, id,null);
         }));
     };
 
