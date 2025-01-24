@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      1.1
+// @version      1.2
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -43,6 +43,12 @@
 
     const sku =
            "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > div > div.mud-paper.mud-elevation-0.p-1.relative.card > div.mud-tabs.mud-tabs-rounded > div.mud-tabs-panels.p-0 > div > div > div > div > div.mud-grid-item.mud-grid-item-xs-12.mud-grid-item-md-6.pl-1.pr-1.m-0.cus-prd-c > div > div.mud-paper.mud-elevation-0.note-has-grid.row > div > div > p > div";
+
+    const skuCut =
+           "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > dxbl-grid > dxbl-scroll-viewer > div > table > tbody > tr > td:nth-child(3) > div > div > div.d-flex.flex-row.gap-3.col-md-12.single-note-item.all-category.note-important > div > p > a";
+
+    const orderCut =
+           "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > dxbl-grid > dxbl-scroll-viewer > div > table > tbody > tr > td:nth-child(3) > div > div > div.d-flex.flex-row.gap-3.col-md-12.single-note-item.all-category.note-business > div > h6 > a";
 
     const observerOptions = { childList: true, subtree: true };
 
@@ -149,12 +155,55 @@
         });
     }
 
+    function convertsNode() {
+        const sNodes = document.querySelectorAll(skuCut);
+        const oNodes = document.querySelectorAll(orderCut);
+         oNodes.forEach((oNode, index) => {
+            if (!oNode.dataset.contentInserted) {
+                const orderCutText = oNodes[index].textContent;
+                const copyOButton = document.createElement('button');
+                copyOButton.textContent = 'Kopyala';
+                copyOButton.style.marginLeft = '10px'; // Space between SKU and icon
+                copyOButton.className = 'copy-icon'; // Aynı simgenin tekrar eklenmemesi için
+                oNode.parentNode.appendChild(copyOButton);
+                copyOButton.addEventListener('click', function(e) {
+                    navigator.clipboard.writeText(orderCutText).then(() => {
+                        e.target.style.backgroundColor = "aqua"
+                        //alert('skuCText kopyalandı: ' + skuCText);
+                    });
+                });
+                oNode.dataset.contentInserted = "true";
+            }
+        });
+
+        sNodes.forEach((sNode, index) => {
+            if (!sNode.dataset.contentInserted) {
+                const skuCText = sNodes[index].textContent;
+                const copyCButton = document.createElement('button');
+                copyCButton.textContent = 'Kopyala';
+                copyCButton.style.marginLeft = '10px'; // Space between SKU and icon
+                copyCButton.className = 'copy-icon'; // Aynı simgenin tekrar eklenmemesi için
+                sNode.parentNode.appendChild(copyCButton);
+                copyCButton.addEventListener('click', function(e) {
+                    navigator.clipboard.writeText(skuCText).then(() => {
+                        e.target.style.backgroundColor = "aqua"
+                        //alert('skuCText kopyalandı: ' + skuCText);
+                    });
+                });
+                sNode.dataset.contentInserted = "true";
+            }
+        });
+    }
+
+
     function handleMutation(mutationsList) {
         mutationsList.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     const pNode = node.querySelector(selector);
+                    const sNode = node.querySelector(skuCut);
                     if (pNode && !pNode.dataset.processed) convertNode(pNode);
+                    if (sNode && !sNode.dataset.processed) convertsNode();
                     checkAndInsertEarningContent();
                 }
             });
