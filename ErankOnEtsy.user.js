@@ -94,7 +94,7 @@
         const clientEmail = await GM.getValue('clientEmail', '');
         const team = await GM.getValue('team', '');
         const manager = await GM.getValue('manager', '');
-        if (!sheetId || !erankUserKey|| !authorization || !erankKey || !range || !rangeLink || !privateKey || !clientEmail || !team || !manager) {
+        if (!sheetId || !erankUserKey|| !authorization || !erankKey || !range || !rangeLink || !privateKey || !clientEmail || !team) {
             alert("API Configurations are not set. Please configure it using the menu.");
             return null;
         }
