@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Etsy Image Hover Preview
 // @namespace    https://github.com/cengaver
-// @version      1.0
+// @version      1.1
 // @description  show large image preview on hover
 // @author       Cengaver
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
-// @match        https://www.etsy.com/your/shops/me/advertising
+// @match        https://www.etsy.com/your/shops/me/advertising*
+// @match        https://www.etsy.com/your/shops/me/dashboard*
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyImageHoverPreview.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyImageHoverPreview.user.js
 // @grant        GM_addStyle
@@ -22,8 +23,8 @@ GM_addStyle(`
     display: none;
   }
   .hover-preview img {
-    max-width: 400px;
-    max-height: 400px;
+    max-width: 200px;
+    max-height: 200px;
   }
 `);
 
@@ -51,7 +52,7 @@ GM_addStyle(`
     function handleHover(event) {
         const target = event.target;
         if (target.tagName === 'IMG') {
-            const largeImgUrl = target.src;
+            const largeImgUrl = target.src.replace('75x75', '200x200');
             showPreview(event, largeImgUrl);
         }
     }
