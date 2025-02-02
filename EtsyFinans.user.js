@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
-// @description  Etsy TL olan mağzada dolara çevirir ve yüzdeleri verir
-// @version      1.1
+// @description  Etsy
+// @version      1.2
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -32,25 +32,20 @@
     })
   })
 
-  window.addEventListener("load", async () => {
+  const processFinances = async () => {
     const unformatNumber = (str) => parseFloat(str.replace(/[^0-9.-]+/g, ""))
-
     const profitElement = document.querySelector('[data-test-id="profit-amount"]')
     const summaryElements = Array.from(document.querySelectorAll('[data-test-id="summary-module"]'))
 
-    if (!profitElement) throw new Error("Profit element not found")
-    if (summaryElements.length === 0) throw new Error("Summary elements not found")
+    if (!profitElement || summaryElements.length === 0) return
 
     const getSummaryTitle = (el) => el.querySelector('button .wt-text-title-01')?.textContent || ""
-
     const profitText = profitElement.textContent
     const salesSummaryEl = summaryElements.find(el => getSummaryTitle(el) === "Sales")
     const feesSummaryEl = summaryElements.find(el => getSummaryTitle(el) === "Fees")
     const marketingSummaryEl = summaryElements.find(el => getSummaryTitle(el) === "Marketing")
 
-    if (!salesSummaryEl) throw new Error("Sales element not found")
-    if (!feesSummaryEl) throw new Error("Fees element not found")
-    if (!marketingSummaryEl) throw new Error("Marketing element not found")
+    if (!salesSummaryEl || !feesSummaryEl || !marketingSummaryEl) return
 
     const exchangeRate = await getExchangeRate().catch((error) => {
       console.error("Exchange rate retrieval failed:", error)
@@ -63,26 +58,24 @@
     const getSummaryElValue = (el) => unformatNumber(el.querySelector('[data-test-id="accordion-total"]')?.textContent || "0")
 
     const addText = (el, text) => {
-      const span = document.createElement("span")
-      span.textContent = text
-      span.style.marginLeft = "0.5em"
-      el.querySelector('[data-test-id="accordion-total"]').appendChild(span)
+      if (!el.querySelector(".usd-conversion")) {
+        const span = document.createElement("span")
+        span.textContent = text
+        span.className = "usd-conversion"
+        span.style.marginLeft = "0.5em"
+        el.querySelector('[data-test-id="accordion-total"]').appendChild(span)
+      }
     }
 
-    const addRateInfo = (el) => {
+    summaryElements.forEach(el => {
       const number = getSummaryElValue(el)
       const usd = number / exchangeRate
       addText(el, ` | ${usd.toFixed(2)}$`)
-    }
-
-    summaryElements.forEach(addRateInfo)
+    })
 
     const profit = getProfitElValue()
     const profitInUsd = profit / exchangeRate
-    const profitSpan = document.createElement("span")
-    profitSpan.textContent = ` (${profitInUsd.toFixed(2)} USD)`
-    profitSpan.style.marginLeft = "0.5em"
-    profitElement.appendChild(profitSpan)
+    addText(profitElement, ` (${profitInUsd.toFixed(2)} USD)`)
 
     const sales = getSummaryElValue(salesSummaryEl)
     const fees = getSummaryElValue(feesSummaryEl)
@@ -93,5 +86,15 @@
 
     addText(feesSummaryEl, ` | ${feesProfit} %`)
     addText(marketingSummaryEl, ` | ${marketingProfit} %`)
+  }
+
+  const observer = new MutationObserver(() => {
+    document.querySelectorAll(".usd-conversion").forEach(el => el.remove())
+    processFinances()
+  })
+
+  window.addEventListener("load", () => {
+    processFinances()
+    observer.observe(document.body, { childList: true, subtree: true })
   })
 })()
