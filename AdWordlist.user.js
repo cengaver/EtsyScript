@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Ad Wordlist
+// @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      1.1
+// @version      1.11
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -60,6 +60,48 @@ png
 sticker
 zip
 hat
+cup
+slippers
+doll
+top
+design
+decal
+embroider
+transfer
+iron on
+pants
+earrings
+jewelry
+purse
+ornament
+headband
+bracelet
+necklace
+decor
+patch
+cardigan
+skirt
+mug
+bag
+tumbler
+dxf
+vinyl
+glitter
+cricut
+ready to press
+jacket
+=football
+=men&#39;s hoodies
+=nurse
+=shirt
+=mens sweatshirt
+=gender-neutral adult sweatshirts
+=gender-neutral adult hoodies
+=baseball
+=tshirt
+=comfort colors
+=graphic tees
+socks
 =hoody
 =hoddy
 =hoodie
@@ -83,49 +125,7 @@ hat
 =plus size hoodie
 =toddler
 =halloween
-=basketball
-cup
-slippers
-=men&#39;s hoodies
-doll
-top
-design
-=nurse
-=shirt
-decal
-embroider
-transfer
-iron on
-pants
-earrings
-jewelry
-purse
-ornament
-headband
-bracelet
-necklace
-decor
-patch
-cardigan
-skirt
-mug
-bag
-tumbler
-=football
-dxf
-=mens sweatshirt
-=gender-neutral adult sweatshirts
-=gender-neutral adult hoodies
-vinyl
-glitter
-cricut
-=baseball
-jacket
-=tshirt
-=comfort colors
-=graphic tees
-socks
-ready to press`
+=basketball`
       )
       return await getFilteredRows()
     }
