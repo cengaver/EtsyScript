@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Erank On Etsy
+// @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      2.23
+// @version      2.24
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -354,7 +354,9 @@
             onload: function(response) {
                 if (response.status === 200) {
                     const data = JSON.parse(response.responseText);
-                    const processedData = data.values.map(row => ({
+                    const processedData = data.values
+                    .filter(row => row[0] != null && row[0] !== '') // row[0] boş değilse devam et
+                    .map(row => ({
                         id: row[row.length - 1], // AD sütunu (son sütun)
                         dnoValue: row[0], // E sütunu (ilk sütun)
                     }));
