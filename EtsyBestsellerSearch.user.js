@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Bestseller search
-// @version      2024-11-15
+// @version      1.0
 // @description  Best seller search for Etsy
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -8,7 +8,7 @@
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        none
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyBestsellerSearch.user.js
-// @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyBestsellerSearch.user.js    
+// @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyBestsellerSearch.user.js
 // ==/UserScript==
 
 (function() {
@@ -33,10 +33,5 @@
         `;
 
         targetDiv.appendChild(newDiv);
-
-        // URL'ye is_best_seller=true parametresini ekle
-        //urlParams.set('is_best_seller', 'true');
-        //const newUrl = `${window.location.origin}${window.location.pathname}?${urlParams.toString()}`;
-        //window.history.replaceState({}, '', newUrl);
     }
 })();
