@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Etsy Image Hover Preview
 // @namespace    https://github.com/cengaver
-// @version      1.1
-// @description  show large image preview on hover
+// @version      1.2
+// @description  Show large image preview on hover, supports lazy loading
 // @author       Cengaver
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @match        https://www.etsy.com/your/shops/me/advertising*
 // @match        https://www.etsy.com/your/shops/me/dashboard*
+// @match        https://ehunt.ai/etsy-product-research
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyImageHoverPreview.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyImageHoverPreview.user.js
 // @grant        GM_addStyle
@@ -23,8 +24,8 @@ GM_addStyle(`
     display: none;
   }
   .hover-preview img {
-    max-width: 200px;
-    max-height: 200px;
+    max-width: 300px;
+    max-height: 300px;
   }
 `);
 
@@ -41,8 +42,8 @@ GM_addStyle(`
         if (!previewDiv) createPreview();
         previewDiv.innerHTML = `<img src="${imgUrl}" alt="Preview">`;
         previewDiv.style.display = 'block';
-        previewDiv.style.left = `${event.pageX + 10}px`;
-        previewDiv.style.top = `${event.pageY + 10}px`;
+        previewDiv.style.left = `${event.pageX + 15}px`;
+        previewDiv.style.top = `${event.pageY + 15}px`;
     }
 
     function hidePreview() {
@@ -52,17 +53,45 @@ GM_addStyle(`
     function handleHover(event) {
         const target = event.target;
         if (target.tagName === 'IMG') {
-            const largeImgUrl = target.src.replace('75x75', '200x200');
-            showPreview(event, largeImgUrl);
+            // Use data-src if available (for lazy loading), otherwise use src
+            let imgUrl = target.getAttribute('data-src') || target.src;
+            if (imgUrl) {
+                let largeImgUrl = imgUrl.replace('75x75', '200x200');
+                console.log(largeImgUrl)
+                largeImgUrl = largeImgUrl.replace(/il_\d+xN/, 'il_200xN');
+                showPreview(event, largeImgUrl);
+            }
         }
     }
 
-    document.addEventListener('mouseover', handleHover);
-    document.addEventListener('mousemove', (e) => {
-        if (previewDiv && previewDiv.style.display === 'block') {
-            previewDiv.style.left = `${e.pageX + 10}px`;
-            previewDiv.style.top = `${e.pageY + 10}px`;
-        }
-    });
-    document.addEventListener('mouseout', hidePreview);
+    function attachHoverListeners() {
+        document.addEventListener('mouseover', handleHover);
+        document.addEventListener('mousemove', (e) => {
+            if (previewDiv && previewDiv.style.display === 'block') {
+                previewDiv.style.left = `${e.pageX + 15}px`;
+                previewDiv.style.top = `${e.pageY + 15}px`;
+            }
+        });
+        document.addEventListener('mouseout', hidePreview);
+    }
+
+    // Initial attachment of listeners
+    attachHoverListeners();
+
+    // Observe dynamic content changes (for lazy loading)
+    const observeDynamicContent = () => {
+        new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    // Re-attach listeners when new content is added
+                    attachHoverListeners();
+                }
+            });
+        }).observe(document.body, { subtree: true, childList: true });
+    };
+
+    if (window.location.href.includes("ehunt.ai")) {
+        observeDynamicContent();
+    }
+
 })();
