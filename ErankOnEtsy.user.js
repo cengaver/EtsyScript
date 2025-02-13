@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      2.24
+// @version      2.3
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -83,6 +83,7 @@
     const getApiConfig = async () => {
         const apiKey = await GM.getValue('apiKey', '');
         const sheetId = await GM.getValue('sheetId', '');
+        const sheetId2 = await GM.getValue('sheetId2', '');
         const erankUserKey = await GM.getValue('erankUserKey', '');
         const authorization = await GM.getValue('authorization', '');
         const erankKey = await GM.getValue('erankKey', '');
@@ -99,13 +100,13 @@
             return null;
         }
 
-        return { apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager };
+        return { apiKey, sheetId, sheetId2, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager };
     };
 
     //let ids = JSON.parse(localStorage.getItem('cachedData')) || null;
     const config = await getApiConfig();
     if (!config) return;
-    const { apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager } = config;
+    const { apiKey, sheetId, sheetId2, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager } = config;
     const tokenUri = "https://oauth2.googleapis.com/token";
 
     // Step 1: Generate JWT Token
@@ -219,8 +220,7 @@
     }
 
     // Google Sheets'e link ekle
-    async function saveToGoogleSheet(link, title, img, sales, age, tag) {
-        //const rangeLink = "Liste!F:F"; // Eklenecek sütun
+    async function saveToGoogleSheet(sheet, link, title, img, sales, age, tag) {
         const accessToken = await getAccessToken();
         const tags = tag.join(", ");
         // 1. Mevcut son dolu satırı bul
@@ -228,7 +228,7 @@
         let lastRow = 0;
         await GM.xmlHttpRequest({
             method: "GET",
-            url: `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${rangeLink}?majorDimension=COLUMNS`,
+            url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${rangeLink}?majorDimension=COLUMNS`,
             headers: {
                 "Authorization": `Bearer ${accessToken}`
             },
@@ -304,7 +304,7 @@
 
         await GM.xmlHttpRequest({
             method: "PUT",
-            url: `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${body.range}?valueInputOption=RAW`,
+            url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${body.range}?valueInputOption=RAW`,
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${accessToken}`
@@ -325,11 +325,23 @@
     }
 
     // Google Sheets ve eRank işlemleri için aynı kodları kullandım.
-    const fetchColumnData = async () => {
-        const cacheKey = 'cachedData';
+    const fetchColumnData = async (sID=null) => {
+        const config = await getApiConfig();
+        if (!config) return;
+
+        const { sheetId, sheetId2, range } = config;
+        let cacheKey;
+        let sheet;
+        if(sID && sheetId2){
+            cacheKey = 'cachedData2';
+            sheet = sheetId2;
+        }else{
+            cacheKey = 'cachedData';
+            sheet = sheetId;
+        }
         const cacheTimestampKey = `${cacheKey}_timestamp`;
         const now = Date.now();
-
+        console.log("cacheKeyFetch",cacheKey);
         const cachedData = JSON.parse(localStorage.getItem(cacheKey));
         const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
 
@@ -338,16 +350,11 @@
         }
         if (cachedData) { localStorage.removeItem(cacheKey) }
 
-        const config = await getApiConfig();
-        if (!config) return;
-
-        const { sheetId, range } = config;
-
         const accessToken = await getAccessToken();
 
         await GM.xmlHttpRequest({
             method: "GET",
-            url: `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`,
+            url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${range}`,
             headers: {
                 "Authorization": `Bearer ${accessToken}`
             },
@@ -359,6 +366,7 @@
                     .map(row => ({
                         id: row[row.length - 1], // AD sütunu (son sütun)
                         dnoValue: row[0], // E sütunu (ilk sütun)
+                        gDrive: row[row.length - 3], // AB gDrive serach
                     }));
                     localStorage.setItem(cacheKey, JSON.stringify(processedData));
                     localStorage.setItem(cacheTimestampKey, now.toString());
@@ -373,10 +381,19 @@
         });
     };
 
-    const findEValueById = (id) => {
-        const cachedData = JSON.parse(localStorage.getItem('cachedData')) || [];
+    const findEValueById = (id,sID=null) => {
+        let cacheKey;
+        if(sID){
+            cacheKey = 'cachedData2';
+        }else{
+            cacheKey = 'cachedData';
+        }
+        console.log("cacheKeyFind",cacheKey);
+        const cachedData = JSON.parse(localStorage.getItem(cacheKey)) || [];
         const match = cachedData.find(row => row.id === id);
-        return match ? match.dnoValue : null;
+        const dnoValue = match ? match.dnoValue : null;
+        const gDrive = match ? match.gDrive : null;
+        return {dnoValue, gDrive};
     };
 
     const getErankData = async (id) => {
@@ -473,7 +490,7 @@
     }
 
 
-    const keywords = ['Sweatshirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png','Svg'];
+    const keywords = ['Sweatshirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png', 'Svg'];
 
     function extractFirstParts(text, keywords) {
         for (let keyword of keywords) {
@@ -505,7 +522,7 @@
         let img;
         img = imgEl ? imgEl.src : imgElement.src;
         //console.log(img)
-        const dnoValue = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
+        const {dnoValue, gDrive} = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
         const result = dnoValue ? "❤️" : "🤍";
         const tooltipText = dnoValue ? `Dizayn NO: ${dnoValue}` : `Listeye EKLE!`;
 
@@ -529,13 +546,17 @@
             resultEl.href = "#";
             heartWrapper.addEventListener("click", async function() {
                 resultEl.style.backgroundColor = "orange"
-                await saveToGoogleSheet(currentUrl, title, img, sales, age, tags);
+                await saveToGoogleSheet(sheetId,currentUrl, title, img, sales, age, tags);
                 resultEl.textContent = "❤️"
                 resultEl.style.backgroundColor = null
             });
         }else{
+            heartWrapper.addEventListener("click", async function() {
+                window.open(gDrive, "_blank");
+            });
             // Rozet elementi (sadece değer varsa ekle)
             const badgeEl = document.createElement("span");
+            resultEl.style.cursor = "hand";
             badgeEl.textContent = dnoValue;
             badgeEl.style.position = "absolute";
             badgeEl.style.top = "-4px"; // Daha yukarı taşı
@@ -591,6 +612,31 @@
             buttonElTrade.onclick = () => window.open(`https://www.trademarkia.com/search/trademarks?q=${trade}&country=us&codes=025&status=registered`, '_blank')
             overlay.appendChild(buttonElTrade);
         }
+
+        if(sheetId2!==""){
+            // Kalp2 elementi
+             const {dnoValue2, gDrive2} = findEValueById(id,2) || ""; // Eğer değer bulunmazsa boş string
+            const result2 = dnoValue2 ? "✅" : "⭐";
+            const tooltipText2 = dnoValue2 ? `Dizayn NO: ${dnoValue2}` : `Listeye EKLE!`;
+            const resultEl2 = document.createElement("div");
+            resultEl2.textContent = result2;
+            resultEl2.title = tooltipText2;
+            resultEl2.style.marginLeft = "5px";
+            resultEl2.style.fontSize = "1.5rem";
+            resultEl2.style.cursor = "cell";
+            if (!dnoValue2) {
+                resultEl2.href = "#";
+                resultEl2.addEventListener("click", async function() {
+                    resultEl2.style.backgroundColor = "orange"
+                    await saveToGoogleSheet(sheetId2, currentUrl, title, img, sales, age, tags);
+                    resultEl2.textContent = "✅"
+                    resultEl2.style.backgroundColor = null
+                });
+            }else{
+                resultEl2.href = gDrive2;
+            }
+            overlay.appendChild(resultEl2);
+        }
     };
 
     const handleListingPage = async () => {
@@ -635,5 +681,8 @@
     };
 
     await fetchColumnData();
+    if(sheetId2!==""){
+        await fetchColumnData(2);
+    }
     observeUrlChanges();
 })();
