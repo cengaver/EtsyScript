@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         Etsy Image Hover Preview
 // @namespace    https://github.com/cengaver
-// @version      1.4
+// @version      1.41
 // @description  Show large image preview on hover, supports lazy loading
 // @author       Cengaver
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @match        https://www.etsy.com/your/shops/me/advertising*
 // @match        https://www.etsy.com/your/shops/me/dashboard*
-// @match        https://ehunt.ai/etsy-product-research
+// @match        https://www.etsy.com/people/*
+// @match        https://ehunt.ai/*
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyImageHoverPreview.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyImageHoverPreview.user.js
 // @grant        GM_addStyle
