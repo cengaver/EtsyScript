@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
-// @namespace    http://tampermonkey.net/
-// @version      1.5
+// @namespace    https://github.com/cengaver/EtsyScript/
+// @version      1.72
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -158,34 +158,56 @@
         });
     };
 
-    const getShipData = async () => {
-        const store_ids = Object.keys(storeIds);
-        const requests = store_ids.map(store => {
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    const getShipData = async (pod = null) => {
+        let use_storeIds = {};
+
+        if (pod == 1) {
+            const stores = await getStores();
+            stores.forEach(store => {
+                use_storeIds[store.storeId] = store.storeName.replace("CUSTOMHUB ", "");
+            });
+        } else {
+            use_storeIds = storeIds;
+        }
+
+        const store_ids = Object.keys(use_storeIds);
+        const results = [];
+
+        for (let i = 0; i < store_ids.length; i++) {
+            const store = store_ids[i];
             const url = `https://ssapi.shipstation.com/stores/refreshstore?storeId=${store}`;
-            return fetch(url, {
-                method: "POST",
-                headers: { 'Authorization': `Basic ${authHeader(apiKey, apiSecret)}` },
-            }).then(response => {
+
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { 'Authorization': `Basic ${authHeader(apiKey, apiSecret)}` },
+                });
+
                 if (!response.ok) {
                     console.error(`Error refreshing store ${store}: ${response.status}`);
-                    return response.status;
+                    results.push(response.status);
+                } else {
+                    results.push(200);
                 }
-                return 200;
-            });
-        });
+            } catch (error) {
+                console.error(`Error refreshing store ${store}:`, error);
+                results.push(null);
+            }
 
-        try {
-            const results = await Promise.all(requests);
-            console.log("All stores refreshed successfully:", results);
-            return results.every(status => status === 200) ? 200 : null;
-        } catch (error) {
-            console.error("Error refreshing stores:", error);
-            return null;
+            // Her istek arasında 1 saniye bekleyin (1000 milisaniye)
+            if (i < store_ids.length - 1) {
+                await delay(3000);
+            }
         }
+
+        console.log("All stores refreshed successfully:", results);
+        return results.every(status => status === 200) ? 200 : null;
     };
 
     async function getStores() {
-        const response = await fetch(apiBaseUrl+"/stores", {
+        const response = await fetch(apiBaseUrl + "/stores", {
             method: "GET",
             headers: { 'Authorization': `Basic ${authHeader(apiKey, apiSecret)}` },
         });
@@ -196,9 +218,23 @@
         }
 
         const stores = await response.json();
-        stores.forEach(store => {
-            console.log(`ID: ${store.storeId} - Name: ${store.storeName}`);
+
+        // stores dizisinin yapısını kontrol et
+        //console.log("Original Stores:", stores);
+
+        // 307646 ID'li öğeyi sil (storeId'nin türünü kontrol et)
+        const updatedStores = stores.filter(store => {
+            // storeId'yi number olarak karşılaştır
+            return store.storeId !== 307646;
         });
+
+        // Güncellenmiş stores dizisini kontrol et
+        /*console.log("Updated Stores:");
+        updatedStores.forEach(store => {
+            console.log(`ID: ${store.storeId} - Name: ${store.storeName}`);
+        });*/
+
+        return updatedStores;
     }
 
     const initOverlay = async () => {
@@ -239,7 +275,8 @@
 
             El.addEventListener("click", async function() {
                 El.style.backgroundColor = "orange";
-                const status = await getShipData();
+                const pod = document.getElementById('pod-checkbox').checked ? 1 : 0 ;
+                const status = await getShipData(pod);
                 if (status == 200) {
                     El.textContent = "❤️";
                 } else {
@@ -352,15 +389,25 @@
         fetchPage();
     };
 
-    const getSalesData = (startDate, endDate, callback) => {
+    const getSalesData = async (startDate, endDate, callback, pod) => {
         const salesData = [];
         let processed = 0;
+        let use_storeIds = {};
 
-        for (const [storeId, storeName] of Object.entries(storeIds)) {
+        if (pod == 1) {
+            const stores = await getStores();
+            stores.forEach(store => {
+                use_storeIds[store.storeId] = store.storeName.replace("CUSTOMHUB ","");
+            });
+        } else {
+            use_storeIds = storeIds;
+        }
+
+        for (const [storeId, storeName] of Object.entries(use_storeIds)) {
             fetchSales(startDate, endDate, storeId, storeName, data => {
                 salesData.push({ storeId, storeName, orders: data });
                 processed++;
-                if (processed === Object.keys(storeIds).length) {
+                if (processed === Object.keys(use_storeIds).length) {
                     callback(salesData);
                 }
             });
@@ -368,41 +415,55 @@
     };
 
     const displaySalesTable = (salesData) => {
+        // Satış Ücretine göre azalan şekilde sırala
+        salesData.sort((a, b) => {
+            const totalSalesA = a.orders.reduce((sum, order) => sum + parseFloat(order.amountPaid || 0), 0);
+            const totalSalesB = b.orders.reduce((sum, order) => sum + parseFloat(order.amountPaid || 0), 0);
+            return totalSalesB - totalSalesA;
+        });
+
         const tableContainer = document.getElementById('sales-report-container');
         tableContainer.innerHTML = '<canvas id="salesChart"></canvas>';
 
         const table = document.createElement('table');
         table.id = 'sales-report-table';
         table.innerHTML = `
-            <tr>
-                <th>Mağaza Adı</th>
-                <th>Satış Sayısı</th>
-                <th>Satış Ücreti</th>
-            </tr>
-        `;
+        <tr>
+            <th>Mağaza Adı</th>
+            <th>Satış Sayısı</th>
+            <th>Satış Ücreti</th>
+            <th>Satış Oranı</th>
+        </tr>
+    `;
+
         let GtotalOrders = 0;
         let GtotalSales = 0;
+        let GpercSales =0;
+
         salesData.forEach(({ storeName, orders }) => {
             const totalOrders = orders.length;
             const totalSales = orders.reduce((sum, order) => sum + parseFloat(order.amountPaid || 0), 0).toFixed(2);
+            const percSales = totalOrders > 0 ? Math.ceil(totalSales/totalOrders) : 0 ;
             GtotalOrders += totalOrders;
             GtotalSales += parseFloat(totalSales);
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${storeName}</td>
-                <td>${totalOrders}</td>
-                <td>${totalSales}</td>
-            `;
+            <td>${storeName}</td>
+            <td>${totalOrders}</td>
+            <td>${totalSales}</td>
+            <td>${percSales}</td>
+        `;
             table.appendChild(row);
         });
 
         const rows = document.createElement('tr');
         rows.innerHTML = `
-                <th>Toplam</th>
-                <th>${GtotalOrders}</th>
-                <th>${GtotalSales.toFixed(2)}</th>
-        `;
+        <th>Toplam</th>
+        <th>${GtotalOrders}</th>
+        <th>${GtotalSales.toFixed(2)}</th>
+        <th>${Math.ceil(GtotalSales/GtotalOrders)}</th>
+    `;
         table.appendChild(rows);
         tableContainer.appendChild(table);
         tableContainer.style.display = 'block';
@@ -434,6 +495,7 @@
         const menu = document.createElement('div');
         menu.id = 'sales-dropdown-menu';
         menu.innerHTML = `
+         <input type="checkbox" id="pod-checkbox" name="pod" value="1">
         <select id="date-range-select">
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
@@ -454,6 +516,7 @@
 
         document.getElementById('fetch-sales-button').addEventListener('click', () => {
             const dateRange = document.getElementById('date-range-select').value;
+            const pod = document.getElementById('pod-checkbox').checked ? 1 : 0 ;
             GM.setValue('selectedDateRange', dateRange);
             const today = new Date();
             let startDate, endDate;
@@ -475,10 +538,10 @@
                 today.setDate(today.getDate() - 30);
                 startDate = today.toISOString().split('T')[0];
             }
-            console.log("startDate:",startDate)
-            console.log("endDate:",endDate)
+            //console.log("startDate:",startDate)
+            //console.log("endDate:",endDate)
             showLoading();
-            getSalesData(startDate, endDate, displaySalesTable);
+            getSalesData(startDate, endDate, displaySalesTable, pod);
         });
     };
 
