@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      1.11
+// @version      1.3
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -11,11 +11,22 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_addElement
 // @grant        GM_getResourceText
+// @grant        GM_addStyle
 // @require      https://cdn.jsdelivr.net/npm/notyf@3.0.0/notyf.min.js
 // @resource     notyf-css https://cdn.jsdelivr.net/npm/notyf@3.0.0/notyf.min.css
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/AdWordlist.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/AdWordlist.user.js
 // ==/UserScript==
+
+GM_addStyle(`
+.wt-table__row__cell.wt-no-wrap.wt-pl-xs-2.wt-width-auto-lg.wt-width-full-xs {
+    max-width: 500px; /* Genişliği ihtiyaca göre ayarla */
+    white-space: nowrap; /* Metnin satırları taşmasın */
+    overflow: hidden; /* Taşan metni gizle */
+    text-overflow: ellipsis; /* Taşan metnin sonuna "..." ekle */
+}
+
+`);
 
 ;(function () {
   "use strict"
@@ -182,6 +193,12 @@ socks
 
   window.addEventListener("load", async () => {
     const filteredRows = await getFilteredRows()
+    /*document.querySelectorAll('div[data-clg-id="WtTable"]').forEach(el => {
+        let maxLength = 50;
+        if (el.textContent.length > maxLength) {
+            el.textContent = el.textContent.slice(0, maxLength) + '...';
+        }
+    });*/
 
     for (const rowEl of filteredRows) {
       rowEl.style.backgroundColor = "#ffa59e"
