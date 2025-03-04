@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      1.3
+// @version      1.31
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -193,13 +193,6 @@ socks
 
   window.addEventListener("load", async () => {
     const filteredRows = await getFilteredRows()
-    /*document.querySelectorAll('div[data-clg-id="WtTable"]').forEach(el => {
-        let maxLength = 50;
-        if (el.textContent.length > maxLength) {
-            el.textContent = el.textContent.slice(0, maxLength) + '...';
-        }
-    });*/
-
     for (const rowEl of filteredRows) {
       rowEl.style.backgroundColor = "#ffa59e"
     }
