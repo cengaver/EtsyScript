@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Sum Purchases
 // @namespace    https://github.com/cengaver
-// @version      0.1
+// @version      0.2
 // @description  Etsy Sum Sales Purchases
 // @author       Cengaver
 // @match        https://www.etsy.com/your/purchases*
@@ -30,11 +30,11 @@
         if (sumPurchasesElement) {
             let purchaseslabel = document.getElementById('etsy-sales-sum');
             if (purchaseslabel) {
-                purchaseslabel.innerHTML = `<span class="text-gray-lighter">${sumPurchases} $</span>`;
+                purchaseslabel.innerHTML = `<span class="text-gray-lighter">${sumPurchases.toFixed(2)} $</span>`;
             } else {
                 purchaseslabel = document.createElement('div');
                 purchaseslabel.id = 'etsy-sales-sum';
-                purchaseslabel.innerHTML = `<span class="text-gray-lighter">${sumPurchases} $</span>`;
+                purchaseslabel.innerHTML = `<span class="text-gray-lighter">${sumPurchases.toFixed(2)} $</span>`;
                 sumPurchasesElement.appendChild(purchaseslabel);
             }
         }
