@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Add Drive Search to SKU in Listings
+// @name         Etsy Add Drive Search to SKU in Listings
 // @namespace    https://github.com/cengaver
-// @version      0.1
+// @version      0.2a
 // @description  Add a Google Drive search link using SKU in Etsy Listings
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -19,9 +19,7 @@
 
         items.forEach(item => {
             const skuElement = item.querySelector('.card-meta-row-item.card-meta-row-sku.selected-color.wt-text-gray span');
-            //const targetElement = item.querySelector('.wt-display-flex-xs.wt-align-items-center:nth-of-type(3)'); // div.card-actions.card-actions-3 > div
-            const targetElement = item.querySelectorAll('.wt-display-flex-xs.wt-align-items-center')[1];
-
+            const targetElement = item.querySelector("div > div.card-actions.card-actions-3 > div")
             if (skuElement && targetElement && !item.querySelector('[data-button="drive"]')) {
                 const sku = skuElement.textContent.trim();
                 const driveSearchUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(sku)}`;
@@ -40,7 +38,7 @@
                         </a>
                     </div>
                 `;
-                targetElement.parentNode.insertBefore(driveButton, targetElement.nextSibling);
+                targetElement.append(driveButton);
             }
         });
     }
