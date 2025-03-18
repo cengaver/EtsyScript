@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Add Drive Search to SKU in Listings
 // @namespace    https://github.com/cengaver
-// @version      0.2a
+// @version      0.2
 // @description  Add a Google Drive search link using SKU in Etsy Listings
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
