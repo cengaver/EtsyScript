@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      1.31
+// @version      1.34
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -20,7 +20,7 @@
 
 GM_addStyle(`
 .wt-table__row__cell.wt-no-wrap.wt-pl-xs-2.wt-width-auto-lg.wt-width-full-xs {
-    max-width: 500px; /* Genişliği ihtiyaca göre ayarla */
+    max-width: 700px; /* Genişliği ihtiyaca göre ayarla */
     white-space: nowrap; /* Metnin satırları taşmasın */
     overflow: hidden; /* Taşan metni gizle */
     text-overflow: ellipsis; /* Taşan metnin sonuna "..." ekle */
@@ -171,7 +171,7 @@ socks
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
   /** @param {bool} targetState */
-  const toggleRows = async (targetState) => {
+  const toggleRows = async (targetState,closeSection) => {
     const filteredRows = await getFilteredRows()
 
     let affectedCount = 0
@@ -189,6 +189,7 @@ socks
     }
 
     getToast().success(`Toplam ${affectedCount} kelime ${actionName}.`)
+      if (closeSection) window.close();
   }
 
   window.addEventListener("load", async () => {
@@ -261,14 +262,16 @@ socks
     `
 
     scriptTag.addEventListener("load", () => {
-      popup.document.body.appendChild(scriptTag2)
+        popup.document.body.appendChild(scriptTag2)
     })
 
-    popup.document.body.appendChild(scriptTag)
+      popup.document.body.appendChild(scriptTag)
   })
-  document.addEventListener("keydown", (event) => {
-     if (event.ctrlKey && event.code === "Space") {
-        toggleRows(false)
-     }
-  })
+    document.addEventListener("keydown", (event) => {
+        if (event.ctrlKey && event.code === "Space") {
+            toggleRows(false)
+        }else if(event.ctrlKey && event.altKey){
+            toggleRows(false,true)
+        }
+    })
 })()
