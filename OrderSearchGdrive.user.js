@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Order search gdrive
+// @name         Etsy Order search gdrive
 // @namespace    https://github.com/cengaver
-// @version      1.5
+// @version      1.6
 // @description  Order Search Gdrive
 // @author       Cengaver
 // @match        https://www.etsy.com/your/orders/sold/*
@@ -77,7 +77,7 @@
             if (skuNoElement) {
                 const skuNo = skuNoElement.textContent.trim();
 
-                const gdriveSearchUrl = `https://www.etsy.com/your/orders/sold/new?search_query=${skuNo}&expand_convo=true&order_id=${skuNo}`;
+                const gdriveSearchUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(skuNo)}`;
                 const folderUrl = `${filePath}${skuNo}`;
                 const linkElement = document.createElement('a');
                 const linkElement2 = document.createElement('a');
