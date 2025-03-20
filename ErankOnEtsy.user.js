@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      2.3
+// @version      2.36
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -9,6 +9,7 @@
 // @match        https://www.etsy.com/shop/*
 // @match        https://www.etsy.com/listing/*
 // @match        https://www.etsy.com/people/*
+// @match        https://www.etsy.com/c/*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
 // @grant        GM.getValue
@@ -20,6 +21,7 @@
 // @connect      beta.erank.com
 // @connect      sheets.googleapis.com
 // @connect      erank.com
+// @connect      developer.uspto.gov
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
 // ==/UserScript==
@@ -30,7 +32,7 @@
     // Tüm ayarları topluca düzenleyecek menü
     GM_registerMenuCommand("Update API Configurations", async () => {
         const currentConfig = {
-            apiKey: await GM.getValue('apiKey', ''),
+            apiKeyUspto: await GM.getValue('apiKeyUspto', ''),
             sheetId: await GM.getValue('sheetId', ''),
             erankUserKey: await GM.getValue('erankUserKey', ''),
             authorization: await GM.getValue('authorization', ''),
@@ -46,7 +48,7 @@
         const input = prompt(
             `Update Configuration:\n` +
             `Enter values in the format below (keep empty to retain current values):\n\n` +
-            `Google Sheets API Key: ${currentConfig.apiKey}\n` +
+            `USPTO API Key: ${currentConfig.apiKeyUspto}\n` +
             `Google Sheets Sheet ID: ${currentConfig.sheetId}\n` +
             `eRank User Key: ${currentConfig.erankUserKey}\n` +
             `Authorization Token: ${currentConfig.authorization}\n` +
@@ -57,13 +59,13 @@
             `ClientEmail: ${currentConfig.clientEmail}\n\n` +
             `team: ${currentConfig.team}\n\n` +
             `manager: ${currentConfig.manager}\n\n` +
-            `Format: apiKey|sheetId|erankUserKeyauthorization|erankKey|range|rangeLink|privateKey|clientEmail|team|manager`,
-            `${currentConfig.apiKey}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}|${currentConfig.rangeLink}|${btoa(currentConfig.privateKey)}|${currentConfig.clientEmail}|${currentConfig.team}|${currentConfig.manager}`
-            );
+            `Format: apiKeyUspto|sheetId|erankUserKeyauthorization|erankKey|range|rangeLink|privateKey|clientEmail|team|manager`,
+            `${currentConfig.apiKeyUspto}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}|${currentConfig.rangeLink}|${btoa(currentConfig.privateKey)}|${currentConfig.clientEmail}|${currentConfig.team}|${currentConfig.manager}`
+        );
 
         if (input) {
-            const [apiKey, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail,team,manager] = input.split('|');
-            if (apiKey) await GM.setValue('apiKey', apiKey.trim());
+            const [apiKeyUspto, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail,team,manager] = input.split('|');
+            if (apiKeyUspto) await GM.setValue('apiKeyUspto', apiKeyUspto.trim());
             if (sheetId) await GM.setValue('sheetId', sheetId.trim());
             if (erankUserKey) await GM.setValue('erankUserKey', erankUserKey.trim());
             if (authorization) await GM.setValue('authorization', authorization.trim());
@@ -81,7 +83,7 @@
     });
 
     const getApiConfig = async () => {
-        const apiKey = await GM.getValue('apiKey', '');
+        const apiKeyUspto = await GM.getValue('apiKeyUspto', '');
         const sheetId = await GM.getValue('sheetId', '');
         const sheetId2 = await GM.getValue('sheetId2', '');
         const erankUserKey = await GM.getValue('erankUserKey', '');
@@ -100,13 +102,13 @@
             return null;
         }
 
-        return { apiKey, sheetId, sheetId2, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager };
+        return { apiKeyUspto, sheetId, sheetId2, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager };
     };
 
     //let ids = JSON.parse(localStorage.getItem('cachedData')) || null;
     const config = await getApiConfig();
     if (!config) return;
-    const { apiKey, sheetId, sheetId2, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager } = config;
+    const { apiKeyUspto, sheetId, sheetId2, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager } = config;
     const tokenUri = "https://oauth2.googleapis.com/token";
 
     // Step 1: Generate JWT Token
@@ -245,6 +247,7 @@
                         lastRow = data.values[0].length; // En son dolu satır sayısını al
                     }
                 } else {
+                    sessionStorage.removeItem('AccessToken');
                     console.error("Veri alınırken hata oluştu:", response.responseText);
                 }
             },
@@ -341,7 +344,7 @@
         }
         const cacheTimestampKey = `${cacheKey}_timestamp`;
         const now = Date.now();
-        console.log("cacheKeyFetch",cacheKey);
+        //console.log("cacheKeyFetch",cacheKey);
         const cachedData = JSON.parse(localStorage.getItem(cacheKey));
         const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
 
@@ -388,7 +391,7 @@
         }else{
             cacheKey = 'cachedData';
         }
-        console.log("cacheKeyFind",cacheKey);
+        //console.log("cacheKeyFind",cacheKey);
         const cachedData = JSON.parse(localStorage.getItem(cacheKey)) || [];
         const match = cachedData.find(row => row.id === id);
         const dnoValue = match ? match.dnoValue : null;
@@ -489,17 +492,65 @@
         }
     }
 
+    const keywords = ['Sweatshirt', 'T Shirt', 'T-Shirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png', 'Svg', 'Tee'].map(k => k.toLowerCase());
 
-    const keywords = ['Sweatshirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png', 'Svg'];
+    function extractFirstParts(text) {
+        const lowerText = text.toLowerCase();
+        let minPosition = Infinity;
+        let closestKeyword = '';
 
-    function extractFirstParts(text, keywords) {
         for (let keyword of keywords) {
-            const position = text.indexOf(keyword);
-            if (position !== -1) {
-                return text.substring(0, position).trim(); // İlk bulunan anahtar kelimeden önceki kısmı al
+            const position = lowerText.indexOf(keyword);
+            if (position !== -1 && position < minPosition) {
+                minPosition = position;
+                closestKeyword = keyword;
             }
         }
-        return null; // Hiçbir anahtar kelime bulunmazsa
+
+        let result = closestKeyword !== ''
+        ? lowerText.substring(0, minPosition).trim().replace(/comfort colors /i, "")
+        : lowerText;
+
+        return result
+            .replace("&#39;", "'")
+            .replace(/'/g, "'")
+            .replace(/\b\w/g, char => char.toUpperCase())
+    }
+
+    async function checkTrademark(term) {
+        const classCode = '025'; // Filtrelenecek sınıf kodu
+        const url = `https://developer.uspto.gov/trademark/v1/trademarks?searchText=${encodeURIComponent(term)}&fields=markIdentification,goodsAndServicesClassification`;
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'X-Api-Key': apiKeyUspto, // API anahtarını header'a ekleyin
+                },
+            });
+
+            // Yanıtı kontrol et
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            // Sınıf kodu ile filtreleme
+            const filteredResults = data.results.filter(result => {
+                // goodsAndServicesClassification alanını kontrol et
+                return result.goodsAndServicesClassification && result.goodsAndServicesClassification.includes(classCode);
+            });
+
+            if (filteredResults.length > 0) {
+                console.log(`'${term}' kelimesi 025 sınıfında zaten kayıtlı.`);
+                console.log(filteredResults);
+            } else {
+                console.log(`'${term}' kelimesi 025 sınıfında kayıtlı değil.`);
+            }
+        } catch (error) {
+            console.error('Hata oluştu:', error);
+        }
     }
 
     const createOverlayOnElement = async (element, id,imgElement) => {
@@ -522,7 +573,7 @@
         let img;
         img = imgEl ? imgEl.src : imgElement.src;
         //console.log(img)
-        const {dnoValue, gDrive} = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
+        let {dnoValue, gDrive} = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
         const result = dnoValue ? "❤️" : "🤍";
         const tooltipText = dnoValue ? `Dizayn NO: ${dnoValue}` : `Listeye EKLE!`;
 
@@ -551,9 +602,11 @@
                 resultEl.style.backgroundColor = null
             });
         }else{
-            heartWrapper.addEventListener("click", async function() {
-                window.open(gDrive, "_blank");
-            });
+            if (gDrive) {
+                heartWrapper.addEventListener("click", async function() {
+                    window.open(gDrive, "_blank");
+                });
+            }
             // Rozet elementi (sadece değer varsa ekle)
             const badgeEl = document.createElement("span");
             resultEl.style.cursor = "hand";
@@ -605,26 +658,39 @@
         overlay.appendChild(buttonEl);
         let trade = extractFirstParts(title, keywords)
         if (trade) {
-            const buttonElTrade = document.createElement("button")
-            buttonElTrade.title = "Trade Mark Kontrol et"
-            buttonElTrade.style = "cursor: help"
-            buttonElTrade.textContent = "T"
-            buttonElTrade.onclick = () => window.open(`https://www.trademarkia.com/search/trademarks?q=${trade}&country=us&codes=025&status=registered`, '_blank')
-            overlay.appendChild(buttonElTrade);
-        }
+            let uspto;
+            if(apiKeyUspto){
+                //uspto = checkTrademark(trade);
+            }
+            if(uspto){
+                const buttonElTrade = document.createElement("button")
+                buttonElTrade.title = "Trade Mark Var"
+                buttonElTrade.style = "cursor: no-drop"
+                buttonElTrade.textContent = "🚨"
+                //buttonElTrade.onclick = () => window.open(`https://www.trademarkia.com/search/trademarks?q=${trade}&country=us&codes=025&status=registered`, '_blank')
+                overlay.appendChild(buttonElTrade);
+            }else{
+                const buttonElTrade = document.createElement("button")
+                buttonElTrade.title = "Trade Mark Kontrol et"
+                buttonElTrade.style = "cursor: help"
+                buttonElTrade.textContent = "T"
+                buttonElTrade.onclick = () => window.open(`https://www.trademarkia.com/search/trademarks?q=${trade}&country=us&codes=025&status=registered`, '_blank')
+                overlay.appendChild(buttonElTrade);
+            }}
 
         if(sheetId2!==""){
             // Kalp2 elementi
-             const {dnoValue2, gDrive2} = findEValueById(id,2) || ""; // Eğer değer bulunmazsa boş string
-            const result2 = dnoValue2 ? "✅" : "⭐";
-            const tooltipText2 = dnoValue2 ? `Dizayn NO: ${dnoValue2}` : `Listeye EKLE!`;
+            let {dnoValue, gDrive} = findEValueById(id,2) || ""; // Eğer değer bulunmazsa boş string
+            const result2 = dnoValue ? "✅" : "⭐";
+            const tooltipText2 = dnoValue ? `Dizayn NO: ${dnoValue}` : `İsteğe EKLE!`;
             const resultEl2 = document.createElement("div");
             resultEl2.textContent = result2;
             resultEl2.title = tooltipText2;
             resultEl2.style.marginLeft = "5px";
             resultEl2.style.fontSize = "1.5rem";
-            resultEl2.style.cursor = "cell";
-            if (!dnoValue2) {
+
+            if (!dnoValue) {
+                resultEl2.style.cursor = "cell";
                 resultEl2.href = "#";
                 resultEl2.addEventListener("click", async function() {
                     resultEl2.style.backgroundColor = "orange"
@@ -633,7 +699,11 @@
                     resultEl2.style.backgroundColor = null
                 });
             }else{
-                resultEl2.href = gDrive2;
+                if (gDrive) {
+                    resultEl2.addEventListener("click", async function() {
+                        window.open(gDrive, "_blank");
+                    });
+                }
             }
             overlay.appendChild(resultEl2);
         }
