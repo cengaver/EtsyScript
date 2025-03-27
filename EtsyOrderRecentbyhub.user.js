@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      1.2
+// @version      1.4
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
 // @grant        GM_addStyle
+// @grant        GM.xmlHttpRequest
+// @connect      www.tcmb.gov.tr
 // @icon         https://dashboard.k8s.customhub.io/Modernize/assets/images/logos/favicon.png
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
@@ -50,15 +52,19 @@
     const orderCut =
            "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > dxbl-grid > dxbl-scroll-viewer > div > table > tbody > tr > td:nth-child(3) > div > div > div.d-flex.flex-row.gap-3.col-md-12.single-note-item.all-category.note-business > div > h6 > a";
 
+    const creditEl =
+           "#main-wrapper > div > div > div > div > div > div > div.mud-card-content.cus-main.overflow-hidden > div > div > dxbl-grid > div.dxbl-grid-toolbar-container > div > div:nth-child(1) > div > div > h3";
+
+     const balanceEl =
+           "#main-wrapper > div > div > div > div > div > div > div.mud-card-content.cus-main.overflow-hidden > div > div > dxbl-grid > div.dxbl-grid-toolbar-container > div > div:nth-child(3) > div > div > h3";
+
     const observerOptions = { childList: true, subtree: true };
 
     function insertEarningContent(earningNode, costText, priceText, shirtText, quantity, miktar, shipText,skuText) {
         const storeNode = document.querySelector(store);
-        let Discount = 0.65 ;
-        if (storeNode.textContent.trim() === "XX")
+        let Discount = 0.70 ;
+        if (storeNode.textContent.trim() === "Tees")
         {
-            Discount = 0.70 ;
-        }else{
             Discount = 0.65 ;
         }
         const DiscountPuan = (1-Discount) * 100;
@@ -142,7 +148,7 @@
             if (!storeNode) return;
             //copy order no!!!
             const orderId = pNode.textContent.replace("#", "");
-            if (storeNode.textContent.trim() !== "XX")
+            if ( storeNode.textContent.trim().includes("Colections") || orderId.includes('_') )
             {
                 navigator.clipboard.writeText(orderId).then(() => {
                     //e.target.style.backgroundColor = "red"
@@ -195,8 +201,85 @@
         });
     }
 
+    let isProcessing = false; // Flag to prevent multiple executions
+
+    const getExchangeRate = () => new Promise((resolve, reject) => {
+        GM.xmlHttpRequest({
+            method: "GET",
+            url: "https://www.tcmb.gov.tr/kurlar/today.xml",
+            onload: (response) => {
+                if (response.status === 200) {
+                    const xmlDoc = new DOMParser().parseFromString(response.responseText, "text/xml")
+                    const rateEl = xmlDoc.querySelector(`Currency[CurrencyCode="USD"] BanknoteSelling`)
+                    if (rateEl) {
+                        resolve(Number(rateEl.textContent))
+                    } else {
+                        reject("Kur bilgisi alınamadı")
+                    }
+                } else {
+                    reject(`Hata: ${response.statusText}`)
+                }
+            },
+            onerror: (error) => reject(error),
+        })
+    })
+
+    const unformatNumber = (str) => parseFloat(str.replace(/[^0-9,-]+/g, ""))
+
+    const processPage = async () => {
+        if (isProcessing) return; // If already processing, exit
+        isProcessing = true; // Set flag to true
+        const creditElement = document.querySelector(creditEl);
+        const balanceElement = document.querySelector(balanceEl);
+
+        if (!creditElement || !balanceElement) {
+            isProcessing = false; // Reset flag if elements are not found
+            return;
+        }
+
+        const exchangeRate = await getExchangeRate().catch((error) => {
+            console.error("Kur bilgisi alınamadı:", error)
+            isProcessing = false; // Reset flag if exchange rate fetch fails
+            return null
+        })
+
+        if (!exchangeRate) {
+            isProcessing = false; // Reset flag if exchange rate is not available
+            return;
+        }
+
+        const getcreditElValue = () => unformatNumber(creditElement.textContent)
+        const getbalanceElValue = () => unformatNumber(balanceElement.textContent)
+
+        const addText = (el, eclass, text) => {
+            if (!el) return
+
+            // Check if the span with the specified class already exists
+            let span = el.querySelector(`span.${eclass}`)
+            if (!span) {
+                // If it doesn't exist, create a new span
+                span = document.createElement("span")
+                span.classList.add(eclass)
+                span.style.marginLeft = "0.5em"
+                el.appendChild(span)
+            }
+            // Update the text content of the span
+            span.textContent = text
+        }
+
+        const credit = getcreditElValue();
+        const creditInTl = credit * exchangeRate
+        const balance = getbalanceElValue();
+        const balanceInTl = balance * exchangeRate
+        addText(creditElement, "tl-info", ` (${Math.round(creditInTl)} ₺)`)
+
+        addText(balanceElement, "tl-info", ` (${Math.round(balanceInTl)} ₺)`)
+
+        isProcessing = false; // Reset flag after processing is complete
+    }
 
     function handleMutation(mutationsList) {
+        if (window.location.href.includes('customhub.io/drop-ship/approval-pending')) processPage();
         mutationsList.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
