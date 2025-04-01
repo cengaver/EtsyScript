@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      2.47
+// @version      3.0
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -23,6 +23,7 @@
 // @connect      beta.erank.com
 // @connect      sheets.googleapis.com
 // @connect      erank.com
+// @connect      script.google.com
 // @connect      developer.uspto.gov
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
@@ -485,7 +486,7 @@
             return { dnoValue, gDrive, teamname };
         };
 
-        const getErankData = async (id) => {
+        const getErankData = async (id,imgUrl=null,link=null) => {
             const cacheKey = `erank_${id}`;
             const now = Date.now();
             const cachedData = JSON.parse(localStorage.getItem(cacheKey));
@@ -526,15 +527,35 @@
                         error: response.error.code == 404 ? "Not found" : "Error",
                     }
                 }
-
+                const age = convertToNumber(response.data.stats.listing_age);
+                const sales = convertToNumber(response.data.stats.est_sales.label);
                 const erankData = {
-                    sales: convertToNumber(response.data.stats.est_sales.label),
-                    age: convertToNumber(response.data.stats.listing_age),
+                    sales: sales,
+                    age: age,
                     title: response.data.title,
                     timestamp: now.toString(),
                     tags: Object.keys(response.data.tags)
                 };
+                const erankLogData = {
+                    id: id,
+                    link: link,
+                    img: imgUrl,
+                    title: response.data.title,
+                    tag: Object.keys(response.data.tags),
+                    sls: sales,
+                    day: age,
+                    quantity: convertToNumber(response.data.stats.quantity),
+                    views: convertToNumber(response.data.stats.views),
+                    favorers: convertToNumber(response.data.stats.favorers),
+                    est_conversion_rate: response.data.stats.est_conversion_rate.value
+                };
                 safeSetItem(cacheKey, JSON.stringify(erankData));
+                if ((age >= 1 && age <= 50) && ( sales / 1.5 > age) ){
+                    //console.log("age",age);
+                    //console.log("sales",age);
+                    logToGoogleSheets(erankLogData);
+                }
+                //console.log(erankLogData);
                 //localStorage.setItem(cacheKey, JSON.stringify(erankData));
                 return erankData;
             } catch (error) {
@@ -549,6 +570,7 @@
                 if (pathParts.length > 3) {
                     return `https://www.etsy.com/listing/${pathParts[2]}/${pathParts[3]}`;
                 }
+                console.error('format beklenmedik', url);
                 return url; // Eğer format beklenmedikse orijinal URL'yi döndür
             } catch (error) {
                 console.error('Geçersiz URL:', error);
@@ -586,7 +608,7 @@
             }
         }
 
-        const keywords = ['Sweatshirt', 'T Shirt', 'T-Shirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png', 'Svg', 'Tee'].map(k => k.toLowerCase());
+        const keywords = ['Sweatshirt', 'T Shirt', 'T-Shirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png', 'Svg', 'Tee','DTF'].map(k => k.toLowerCase());
 
         function extractFirstParts(text) {
             const lowerText = text.toLowerCase();
@@ -647,6 +669,32 @@
             }
         }
 
+        function logToGoogleSheets(data) {
+            let sheetUrl = "https://script.google.com/macros/s/AKfycbxuh_lJRDY4ZCVY3js2JVlIdusGmb3RtDd4IlH82hisewmwR13PUogxW9pUuX8h0C-e/exec"; // Buraya Apps Script'in Web URL'sini yapıştır
+            fetch(sheetUrl, {
+                method: "POST",
+                mode: 'no-cors', // CORS engelini devre dışı bırakır ama yanıt okunamaz
+                body: JSON.stringify({
+                    id:data.id,
+                    link:data.link,
+                    img:data.img,
+                    title:data.title,
+                    tag:data.tag,
+                    sls:data.sls,
+                    day:data.day,
+                    quantity:data.quantity,
+                    views:data.views,
+                    favorers:data.favorers,
+                    est_conversion_rate:data.est_conversion_rate,
+                    team:team
+                }),
+                headers: { "Content-Type": "application/json" }
+            })
+                .then(response => response.text())
+                .then(result => console.log("Log kaydedildi:", result))
+                .catch(error => console.error("Log hatası:", error));
+        }
+
         function showToast(message, type = null) {
             const toast = window.document.createElement('div');
             if (type == 'error') {
@@ -684,7 +732,12 @@
             loadingEl.textContent = "Erank verileri yükleniyor...";
             overlay.appendChild(loadingEl);
 
-            const erankData = await getErankData(id);
+            // Etsy ürün linkini al
+            url ??= element.querySelector("a.listing-link")?.href ?? window.location.href
+            const currentUrl = simplifyEtsyUrl(url);//**
+            const img = imgUrl ?? element.querySelector("img")?.src;
+
+            const erankData = await getErankData(id,img,currentUrl);
             if (erankData.error) {
                 if (erankData.error === "Not found") {
                     loadingEl.textContent = "Erank verileri bulunamadı.";
@@ -696,10 +749,6 @@
 
             const { sales, age, title, tags } = erankData;
 
-            // Etsy ürün linkini al
-            url ??= element.querySelector("a.listing-link")?.href ?? window.location.href
-            const currentUrl = simplifyEtsyUrl(url);//**
-            const img = imgUrl ?? element.querySelector("img")?.src;
             //console.log(img)
             let { dnoValue, gDrive, teamname } = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
             const result = dnoValue ? "❤️" : "🤍";
@@ -857,6 +906,7 @@
 
         const initOverlay = async () => {
             const addOverlay = async (el) => {
+                //console.log(el);
                 const id = el.dataset.listingId;
                 const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
                 await createOverlayOnElement({
