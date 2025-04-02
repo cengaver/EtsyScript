@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      1.0
+// @version      1.11
 // @description  Open all matching links with a 1-second delay
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -14,14 +14,24 @@
 (function() {
     'use strict';
 
+    function colorRoas() {
+        const roassEl = document.querySelectorAll("#manage_advertised_listings_wt_tab_panel > div > table > tbody > tr");
+        roassEl.forEach((roas, index) => {
+            setTimeout(() => {
+                const roasValue = Number(roas.querySelector("td:nth-child(10) > span")?.textContent.trim() || 0);
+                if (roasValue < 2) roas.style.backgroundColor = "#ffa59e";
+                console.log(roas);
+            }, index * 500);
+        });
+    }
+
     function openLinks() {
         const links = document.querySelectorAll("#manage_advertised_listings_wt_tab_panel > div > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-no-wrap > div.wt-pt-xs-1.wt-display-flex-xs > div > a");
-
         links.forEach((link, index) => {
             setTimeout(() => {
-                //console.log(link.href)
+                console.log(link.href)
                 window.open(link.href, '_blank');
-            }, index * 1000);
+            }, index * 3000);
         });
     }
 
@@ -31,6 +41,11 @@
             console.log("yeni sekmeler çalıştı")
         }
     });
+
+    window.addEventListener("load", async () => {
+        colorRoas();
+    })
+
     const observer = new MutationObserver(() => {
         console.log("DOM changed, rechecking links...");
     });
