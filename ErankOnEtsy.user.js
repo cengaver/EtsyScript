@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.0
+// @version      3.2
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -10,8 +10,8 @@
 // @match        https://www.etsy.com/listing/*
 // @match        https://www.etsy.com/people/*
 // @match        https://www.etsy.com/c/*
-// @match        https://ehunt.ai/etsy-product-research
 // @match        https://ehunt.ai/product-detail/*
+// @match        https://ehunt.ai/etsy-product-research*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
 // @grant        GM.getValue
@@ -21,6 +21,7 @@
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
 // @connect      beta.erank.com
+// @connect      ehunt.ai
 // @connect      sheets.googleapis.com
 // @connect      erank.com
 // @connect      script.google.com
@@ -74,11 +75,31 @@
            opacity: 1;
        }`);
 
-    // Tüm ayarları topluca düzenleyecek menü
-    GM_registerMenuCommand("Update API Configurations", async () => {
+     // Config yapısı
+    const DEFAULT_CONFIG = {
+            apiKeyUspto: "",
+            sheetId: "",
+            sheetId2: "",
+            erankUserKey: "",
+            authorization:"",
+            erankKey: "",
+            range:"",
+            rangeLink: "",
+            privateKey:"",
+            clientEmail: "",
+            team: "",
+            manager: "",
+    };
+
+    // Global değişkenler
+    let config = {...DEFAULT_CONFIG};
+
+    // Config yönetimi
+    async function loadConfig() {
         const currentConfig = {
             apiKeyUspto: await GM.getValue('apiKeyUspto', ''),
             sheetId: await GM.getValue('sheetId', ''),
+            sheetId2: await GM.getValue('sheetId2', ''),
             erankUserKey: await GM.getValue('erankUserKey', ''),
             authorization: await GM.getValue('authorization', ''),
             erankKey: await GM.getValue('erankKey', ''),
@@ -90,42 +111,109 @@
             manager: await GM.getValue('manager', ''),
         };
 
-        const input = prompt(
-            `Update Configuration:\n` +
-            `Enter values in the format below (keep empty to retain current values):\n\n` +
-            `USPTO API Key: ${currentConfig.apiKeyUspto}\n` +
-            `Google Sheets Sheet ID: ${currentConfig.sheetId}\n` +
-            `eRank User Key: ${currentConfig.erankUserKey}\n` +
-            `Authorization Token: ${currentConfig.authorization}\n` +
-            `eRank API Key: ${currentConfig.erankKey}\n` +
-            `Range (e.g., Liste!E:AD): ${currentConfig.range}\n\n` +
-            `Range Link: ${currentConfig.rangeLink}\n\n` +
-            //`PrivateKey : ${btoa(currentConfig.privateKey)}\n\n` +
-            `ClientEmail: ${currentConfig.clientEmail}\n\n` +
-            `team: ${currentConfig.team}\n\n` +
-            `manager: ${currentConfig.manager}\n\n` +
-            `Format: apiKeyUspto|sheetId|erankUserKeyauthorization|erankKey|range|rangeLink|privateKey|clientEmail|team|manager`,
-            `${currentConfig.apiKeyUspto}|${currentConfig.sheetId}|${currentConfig.erankUserKey}|${currentConfig.authorization}|${currentConfig.erankKey}|${currentConfig.range}|${currentConfig.rangeLink}|${btoa(currentConfig.privateKey)}|${currentConfig.clientEmail}|${currentConfig.team}|${currentConfig.manager}`
-        );
-
-        if (input) {
-            const [apiKeyUspto, sheetId, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager] = input.split('|');
-            if (apiKeyUspto) await GM.setValue('apiKeyUspto', apiKeyUspto.trim());
-            if (sheetId) await GM.setValue('sheetId', sheetId.trim());
-            if (erankUserKey) await GM.setValue('erankUserKey', erankUserKey.trim());
-            if (authorization) await GM.setValue('authorization', authorization.trim());
-            if (erankKey) await GM.setValue('erankKey', erankKey.trim());
-            if (range) await GM.setValue('range', range.trim());
-            if (rangeLink) await GM.setValue('rangeLink', rangeLink.trim());
-            if (privateKey) await GM.setValue('privateKey', atob(privateKey).trim());
-            if (clientEmail) await GM.setValue('clientEmail', clientEmail.trim());
-            if (team) await GM.setValue('team', team.trim());
-            if (manager) await GM.setValue('manager', manager.trim());
-            alert("Configuration updated successfully.");
-        } else {
-            alert("No changes made.");
+        if (currentConfig) {
+            config = {...DEFAULT_CONFIG, ...currentConfig};
         }
-    });
+    }
+
+    async function saveConfig() {
+        if (config.apiKeyUspto) await GM.setValue('apiKeyUspto', config.apiKeyUspto.trim());
+        if (config.sheetId) await GM.setValue('sheetId', config.sheetId.trim());
+        if (config.sheetId2) await GM.setValue('sheetId2', config.sheetId2.trim());
+        if (config.erankUserKey) await GM.setValue('erankUserKey', config.erankUserKey.trim());
+        if (config.authorization) await GM.setValue('authorization', config.authorization.trim());
+        if (config.erankKey) await GM.setValue('erankKey', config.erankKey.trim());
+        if (config.range) await GM.setValue('range', config.range.trim());
+        if (config.rangeLink) await GM.setValue('rangeLink', config.rangeLink.trim());
+        if (config.privateKey) await GM.setValue('privateKey', config.privateKey.trim());
+        if (config.clientEmail) await GM.setValue('clientEmail', config.clientEmail.trim());
+        if (config.team) await GM.setValue('team', config.team.trim());
+        if (config.manager) await GM.setValue('manager', config.manager.trim());
+    }
+
+    function isConfigured() {
+        return config.erankUserKey && config.erankKey && config.authorization
+    }
+
+    function showConfigMenu() {
+        GM_registerMenuCommand('⚙️ Ayarlar', function() {
+            const html = `
+                <div style="padding:20px;font-family:Arial,sans-serif;max-width:500px;">
+                    <h2 style="margin-top:0;">Ayarlar</h2>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">apiKeyUspto</label>
+                        <input type="text" id="apiKeyUspto" value="${config.apiKeyUspto}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">sheetId</label>
+                        <input type="text" id="sheetId" value="${config.sheetId}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">sheetId2</label>
+                        <input type="text" id="sheetId2" value="${config.sheetId2}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">erankUserKey</label>
+                        <input type="text" id="erankUserKey" value="${config.erankUserKey}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">authorization</label>
+                        <input type="text" id="authorization" value="${config.authorization}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">erankKey</label>
+                        <input type="text" id="erankKey" value="${config.erankKey}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">range</label>
+                        <input type="text" id="range" value="${config.range}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">rangeLink</label>
+                        <input type="text" id="rangeLink" value="${config.rangeLink}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">privateKey</label>
+                        <input type="text" id="privateKey" value="${config.privateKey}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">clientEmail</label>
+                        <input type="text" id="clientEmail" value="${config.clientEmail}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">team</label>
+                        <input type="text" id="team" value="${config.team}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">manager</label>
+                        <input type="text" id="manager" value="${config.manager}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    <button id="saveConfigBtn" style="padding:10px 15px;background:#4285f4;color:white;border:none;border-radius:4px;cursor:pointer;">Kaydet</button>
+                </div>
+            `;
+
+            const win = window.open("", "ErankConfig", "width=600,height=600");
+            win.document.body.innerHTML = html;
+
+            win.document.getElementById('saveConfigBtn').addEventListener('click', function() {
+                config.apiKeyUspto = win.document.getElementById('apiKeyUspto').value;
+                config.sheetId = win.document.getElementById('sheetId').value;
+                config.sheetId2 = win.document.getElementById('sheetId2').value;
+                config.erankUserKey = win.document.getElementById('erankUserKey').value;
+                config.authorization = win.document.getElementById('authorization').value;
+                config.erankKey = win.document.getElementById('erankKey').value;
+                config.range = win.document.getElementById('range').value;
+                config.rangeLink = win.document.getElementById('rangeLink').value;
+                config.privateKey = win.document.getElementById('privateKey').value;
+                config.clientEmail = win.document.getElementById('clientEmail').value;
+                config.team = win.document.getElementById('team').value;
+                config.manager = win.document.getElementById('manager').value;
+                saveConfig();
+                win.alert("Ayarlar kaydedildi! Sayfayı yenileyin.");
+                win.close();
+            });
+        });
+    }
 
     function observeElements(selector, callback, document) {
         const observedElements = new WeakSet();
@@ -162,38 +250,10 @@
     async function doTheThing(window) {
         const document = null; // use window.document instead!
         const location = null; // use window.location instead!
-
-        const getApiConfig = async () => {
-            const apiKeyUspto = await GM.getValue('apiKeyUspto', '');
-            const sheetId = await GM.getValue('sheetId', '');
-            const sheetId2 = await GM.getValue('sheetId2', '');
-            const erankUserKey = await GM.getValue('erankUserKey', '');
-            const authorization = await GM.getValue('authorization', '');
-            const erankKey = await GM.getValue('erankKey', '');
-            const range = await GM.getValue('range', 'Liste!E:AD');
-            const rangeLink = await GM.getValue('rangeLink', '');
-            //let encodedKey = await GM.getValue('privateKey', '');
-            //const privateKey = atob(encodedKey);
-            const privateKey = await GM.getValue('privateKey', '');
-            const clientEmail = await GM.getValue('clientEmail', '');
-            const team = await GM.getValue('team', '');
-            const manager = await GM.getValue('manager', '');
-            if (!sheetId || !erankUserKey || !authorization || !erankKey || !range || !rangeLink || !privateKey || !clientEmail || !team) {
-                alert("API Configurations are not set. Please configure it using the menu.");
-                return null;
-            }
-
-            return { apiKeyUspto, sheetId, sheetId2, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager };
-        };
-
-        //let ids = JSON.parse(localStorage.getItem('cachedData')) || null;
-        const config = await getApiConfig();
-        if (!config) return;
-        const { apiKeyUspto, sheetId, sheetId2, erankUserKey, authorization, erankKey, range, rangeLink, privateKey, clientEmail, team, manager } = config;
         const tokenUri = "https://oauth2.googleapis.com/token";
 
         // Step 1: Generate JWT Token
-        async function createJwtToken(clientEmail, privateKey) {
+        async function createJwtToken() {
             const header = {
                 alg: "RS256",
                 typ: "JWT",
@@ -201,7 +261,7 @@
 
             const now = Math.floor(Date.now() / 1000);
             const payload = {
-                iss: clientEmail,
+                iss: config.clientEmail,
                 scope: "https://www.googleapis.com/auth/spreadsheets", // Adjust scope as needed
                 aud: tokenUri,
                 exp: now + 3600, // 1 hour expiration
@@ -221,19 +281,19 @@
 
             // Sign the token using the private key
             const toSign = `${encodedHeader}.${encodedPayload}`;
-            const signature = await signWithPrivateKey(toSign, privateKey);
+            const signature = await signWithPrivateKey(toSign, config.privateKey);
 
             return `${toSign}.${signature}`;
         }
 
         // Helper: Sign the JWT using the private key (RS256)
-        async function signWithPrivateKey(data, privateKey) {
+        async function signWithPrivateKey(data) {
             const crypto = window.crypto.subtle || window.crypto.webkitSubtle;
 
             // Convert private key into a format compatible with Web Crypto API
             const importKeyPromise = crypto.importKey(
                 "pkcs8",
-                pemToArrayBuffer(privateKey),
+                pemToArrayBuffer(config.privateKey),
                 { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
                 false,
                 ["sign"]
@@ -269,7 +329,7 @@
             if (AccToken) {
                 return AccToken
             }
-            const jwt = await createJwtToken(clientEmail, privateKey);
+            const jwt = await createJwtToken(config.clientEmail, config.privateKey);
 
             const response = await fetch(tokenUri, {
                 method: "POST",
@@ -311,7 +371,7 @@
             let lastRow = 0;
             await GM.xmlHttpRequest({
                 method: "GET",
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${rangeLink}?majorDimension=COLUMNS`,
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${config.rangeLink}?majorDimension=COLUMNS`,
                 headers: {
                     "Authorization": `Bearer ${accessToken}`
                 },
@@ -351,7 +411,7 @@
 
             let body;
 
-            if (rangeLink == "Liste!D:D") {
+            if (config.rangeLink == "Liste!D:D") {
                 body = {
                     range: `Liste!D${newRow}:J${newRow}`,
                     majorDimension: "ROWS",
@@ -377,8 +437,8 @@
                             img,
                             title,
                             null,
-                            team,
-                            manager,
+                            config.team,
+                            config.manager,
                             tags,
                             null,
                             null,
@@ -414,18 +474,15 @@
 
         // Google Sheets ve eRank işlemleri için aynı kodları kullandım.
         const fetchColumnData = async (sID = null) => {
-            const config = await getApiConfig();
             if (!config) return;
-
-            const { sheetId, sheetId2, range } = config;
             let cacheKey;
             let sheet;
-            if (sID && sheetId2) {
+            if (sID && config.sheetId2) {
                 cacheKey = 'cachedData2';
-                sheet = sheetId2;
+                sheet = config.sheetId2;
             } else {
                 cacheKey = 'cachedData';
-                sheet = sheetId;
+                sheet = config.sheetId;
             }
             const cacheTimestampKey = `${cacheKey}_timestamp`;
             const now = Date.now();
@@ -442,7 +499,7 @@
 
             await GM.xmlHttpRequest({
                 method: "GET",
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${range}`,
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${config.range}`,
                 headers: {
                     "Authorization": `Bearer ${accessToken}`
                 },
@@ -500,18 +557,14 @@
                 return cachedData;
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
-
-            const config = await getApiConfig();
             if (!config) return;
-
-            const { erankUserKey, authorization, erankKey } = config;
             const url = `https://beta.erank.com/api/ext/listing/${id}`;
 
             try {
                 const headers = {
                     accept: "application/json, text/plain, */*",
-                    authorization: `${erankUserKey}|${authorization}`,
-                    "x-erank-key": erankKey,
+                    authorization: `${config.erankUserKey}|${config.authorization}`,
+                    "x-erank-key": config.erankKey,
                     "x-user-agent": "erank-bx/1.0",
                 }
 
@@ -640,7 +693,7 @@
             try {
                 const response = await fetch(url, {
                     headers: {
-                        'X-Api-Key': apiKeyUspto, // API anahtarını header'a ekleyin
+                        'X-Api-Key': config.apiKeyUspto, // API anahtarını header'a ekleyin
                     },
                 });
 
@@ -686,7 +739,7 @@
                     views:data.views,
                     favorers:data.favorers,
                     est_conversion_rate:data.est_conversion_rate,
-                    team:team
+                    team:config.team
                 }),
                 headers: { "Content-Type": "application/json" }
             })
@@ -774,7 +827,7 @@
                 resultEl.href = "#";
                 heartWrapper.addEventListener("click", async function () {
                     resultEl.style.backgroundColor = "orange"
-                    await saveToGoogleSheet(sheetId, currentUrl, title, img, sales, age, tags);
+                    await saveToGoogleSheet(config.sheetId, currentUrl, title, img, sales, age, tags);
                     resultEl.textContent = "❤️"
                     resultEl.style.backgroundColor = null
                     showToast(title + '\n listeye eklendi!');
@@ -838,7 +891,7 @@
             let trade = extractFirstParts(title, keywords)
             if (trade) {
                 let uspto;
-                if (apiKeyUspto) {
+                if (config.apiKeyUspto) {
                     //uspto = checkTrademark(trade);
                 }
                 if (uspto) {
@@ -858,7 +911,7 @@
                 }
             }
 
-            if (sheetId2 !== "") {
+            if (config.sheetId2 !== "") {
                 // Kalp2 elementi
                 let { dnoValue, gDrive, teamname } = findEValueById(id, 2) || ""; // Eğer değer bulunmazsa boş string
                 const result2 = dnoValue ? "✅" : "⭐";
@@ -874,7 +927,7 @@
                     resultEl2.href = "#";
                     resultEl2.addEventListener("click", async function () {
                         resultEl2.style.backgroundColor = "orange"
-                        await saveToGoogleSheet(sheetId2, currentUrl, title, img, sales, age, tags);
+                        await saveToGoogleSheet(config.sheetId2, currentUrl, title, img, sales, age, tags);
                         resultEl2.textContent = "✅"
                         resultEl2.style.backgroundColor = null
                         showToast(title + '\n listeye eklendi!');
@@ -934,7 +987,7 @@
         };
 
         await fetchColumnData();
-        if (sheetId2 !== "") {
+        if (config.sheetId2 !== "") {
             await fetchColumnData(2);
         }
         //observeUrlChanges();
@@ -952,7 +1005,7 @@
         }
 
         function ehuntOverlay() {
-            console.log("ehuntOverlay is working");
+            //console.log("ehuntOverlay is working");
 
             const addOverlay = async (el) => {
                 const imgEl = el.querySelector("img");
@@ -979,7 +1032,7 @@
         }
 
         const ehuntOverlayDetail = async () => {
-            console.log("ehuntOverlay Detail is working");
+            //console.log("ehuntOverlay Detail is working");
             const urlParts = window.location.pathname.split('/');
             const id = urlParts[3];
             //console.log("id :",id);
@@ -996,6 +1049,7 @@
                         element: titleElement,
                         id,
                         imgUrl: imgEl.src,
+                        //url:??
                     });
                 }
             }
@@ -1003,9 +1057,10 @@
         }
 
         async function waitForValidEHuntDocument() {
+            //console.log(window.document.location.href);
             while (
-                !(window.document.location.href.startsWith('https://ehunt.ai/iframe/etsy-product-research?token=') ||
-                  window.document.location.href.startsWith('https://ehunt.ai/iframe/product-detail/'))
+                !(window.document.location.href.startsWith('https://ehunt.ai/iframe/etsy-product-research?') ||
+                  window.document.location.href.startsWith('https://ehunt.ai/iframe/product-detail'))
                 || window.document.readyState !== "complete"
             ) {
                 await new Promise(resolve => requestAnimationFrame(resolve));
@@ -1016,19 +1071,22 @@
         if (window.location.href.includes("/listing/")) {
             handleListingPage();
         } else if (window.name == "zbaseiframe") {
+            //console.log("window.name ? zbaseiframe :", window.name);
             await waitForValidEHuntDocument();
             if(window.location.href.includes("/product-detail/")){
                 ehuntOverlayDetail();
+                //console.log("ehuntOverlayDetail");
                 showToast("Ehunt Detail");
             }else{
                 ehuntOverlay();
+                //console.log("ehuntOverlay");
                 showToast("Ehunt");
             }
 
-    } else {
-        initOverlay();
-    }
-};
+        } else {
+            initOverlay();
+        }
+    };
 
     function onLoaded(doc, fn) {
         if (doc.readyState == 'loading') {
@@ -1056,5 +1114,11 @@
     } else { // In etsy
         onLoaded(window.document, () => doTheThing(window, window.document))
     }
+
+    // Sayfa yüklendiğinde
+    window.addEventListener('load', async function() {
+        loadConfig();
+        showConfigMenu();
+    });
 
 })();
