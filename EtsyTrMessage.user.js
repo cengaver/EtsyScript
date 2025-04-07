@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.3
+// @version      1.41
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @grant        GM_registerMenuCommand
@@ -160,6 +160,8 @@
             if (!original) return;
             translateText(original, 'EN', translated => {
                 textarea.value = translated;
+                textarea.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
+                textarea.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
             });
         });
     }
@@ -184,14 +186,4 @@
     }, 1000);
 
     waitForMsgContainerThenObserve(); // yeni kontrol mekanizması
-
-    /*const interval = setInterval(() => {
-        const container = document.querySelector('.msg-list-container');
-        const textarea = document.querySelector('textarea.new-message-textarea-min-height');
-        if (container && textarea) {
-            clearInterval(interval);
-            waitForMsgContainerThenObserve();
-            injectTranslateButton();
-        }
-    }, 1000);*/
 })();
