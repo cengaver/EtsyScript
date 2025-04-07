@@ -1,21 +1,19 @@
 // ==UserScript==
-// @name         Etsy Message Translator (DeepL Hover)
+// @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.2
-// @author       Cengaver
-// @description  Etsy mesajlarının üzerine gelince DeepL ile Türkçe çeviri gösterir
+// @version      1.3
+// @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @grant        GM_registerMenuCommand
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_xmlhttpRequest
-// @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyTrMessage.user.js
-// @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyTrMessage.user.js
 // @connect      api-free.deepl.com
+// @connect      translate.googleapis.com
 // @run-at       document-end
 // ==/UserScript==
 
-(function() {
+(function () {
     GM_registerMenuCommand("🔑 DeepL API Key Ayarla", async () => {
         const key = prompt("DeepL API Key’inizi girin:");
         if (key) {
@@ -24,55 +22,81 @@
         }
     });
 
+    GM_registerMenuCommand("🌐 Çeviri Servisi Seç (DeepL / Google)", async () => {
+        const choice = prompt("Kullanmak istediğiniz servisi yazın: deepl veya google");
+        if (choice === "deepl" || choice === "google") {
+            await GM_setValue("translator", choice);
+            alert("✅ Seçilen servis: " + choice);
+        } else alert("Geçerli bir değer girin: deepl veya google");
+    });
+
+    async function getTranslator() {
+        return await GM_getValue("translator", "deepl");
+    }
+
     async function getApiKey() {
         const key = await GM_getValue("deepl_api_key", "");
-        if (!key) alert("⚠️ Lütfen kullanıcı betiği menüsünden DeepL API Key girin.");
+        if (!key) alert("⚠️ Lütfen menüden DeepL API Key girin.");
         return key;
     }
 
     function createTooltip(text, targetElement) {
-        const existing = document.getElementById('deepl-tooltip');
-        if (existing) existing.remove();
-
-        const tooltip = document.createElement('div');
-        tooltip.id = 'deepl-tooltip';
+        let tooltip = document.getElementById('deepl-tooltip');
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.id = 'deepl-tooltip';
+            Object.assign(tooltip.style, {
+                position: 'absolute',
+                background: '#fff',
+                border: '1px solid #ccc',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                fontSize: '14px',
+                maxWidth: '300px',
+                zIndex: 9999
+            });
+            document.body.appendChild(tooltip);
+        }
         tooltip.textContent = text;
-        Object.assign(tooltip.style, {
-            position: 'absolute',
-            backgroundColor: '#fff',
-            border: '1px solid #ccc',
-            padding: '6px 8px',
-            borderRadius: '8px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-            fontSize: '14px',
-            maxWidth: '300px',
-            zIndex: 9999
-        });
-
-        document.body.appendChild(tooltip);
         const rect = targetElement.getBoundingClientRect();
         tooltip.style.top = (window.scrollY + rect.top - tooltip.offsetHeight - 8) + 'px';
         tooltip.style.left = (window.scrollX + rect.left) + 'px';
     }
 
     async function translateText(text, targetLang, callback) {
-        const API_KEY = await getApiKey();
-        if (!API_KEY) return;
-
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: 'https://api-free.deepl.com/v2/translate',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            data: `auth_key=${API_KEY}&text=${encodeURIComponent(text)}&target_lang=${targetLang}`,
-            onload: res => {
-                try {
-                    const json = JSON.parse(res.responseText);
-                    callback(json.translations[0].text);
-                } catch (e) {
-                    console.error('Çeviri hatası:', e);
+        const service = await getTranslator();
+        if (service === 'google') {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`,
+                onload: res => {
+                    try {
+                        const data = JSON.parse(res.responseText);
+                        callback(data[0][0][0]);
+                    } catch (e) {
+                        console.error("Google çeviri hatası:", e);
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            const API_KEY = await getApiKey();
+            if (!API_KEY) return;
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: 'https://api-free.deepl.com/v2/translate',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                data: `auth_key=${API_KEY}&text=${encodeURIComponent(text)}&target_lang=${targetLang}`,
+                onload: res => {
+                    try {
+                        const json = JSON.parse(res.responseText);
+                        callback(json.translations[0].text);
+                    } catch (e) {
+                        console.error('DeepL çeviri hatası:', e);
+                    }
+                }
+            });
+        }
     }
 
     function observeMsgContainer() {
@@ -140,13 +164,34 @@
         });
     }
 
+    function waitForMsgContainerThenObserve() {
+        const observer = new MutationObserver((mutations, obs) => {
+            const container = document.querySelector('.msg-list-container');
+            if (container) {
+                obs.disconnect();
+                observeMsgContainer(); // esas gözlem burada başlıyor
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     const interval = setInterval(() => {
+        const textarea = document.querySelector('textarea.new-message-textarea-min-height');
+        if (textarea) {
+            clearInterval(interval);
+            injectTranslateButton();
+        }
+    }, 1000);
+
+    waitForMsgContainerThenObserve(); // yeni kontrol mekanizması
+
+    /*const interval = setInterval(() => {
         const container = document.querySelector('.msg-list-container');
         const textarea = document.querySelector('textarea.new-message-textarea-min-height');
         if (container && textarea) {
             clearInterval(interval);
-            observeMsgContainer();
+            waitForMsgContainerThenObserve();
             injectTranslateButton();
         }
-    }, 1000);
+    }, 1000);*/
 })();
