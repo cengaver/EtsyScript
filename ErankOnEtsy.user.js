@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.2
+// @version      3.21
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -75,7 +75,25 @@
            opacity: 1;
        }`);
 
-     // Config yapısı
+
+    function showToast(message, type = null) {
+        const toast = window.document.createElement('div');
+        if (type == 'error') {
+            toast.className = 'toast-error';
+        } else {
+            toast.className = 'toast';
+        }
+        toast.innerText = message;
+        window.document.body.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    }
+
+    // Config yapısı
     const DEFAULT_CONFIG = {
             apiKeyUspto: "",
             sheetId: "",
@@ -135,6 +153,15 @@
         return config.erankUserKey && config.erankKey && config.authorization
     }
 
+    function validateConfig() {
+        if (!config.clientEmail || !config.privateKey) {
+            showToast('Google Service Account credentials missing', 'error');
+            return false;
+        }
+        return true;
+    }
+
+// Then call this before attempting to create JWT
     function showConfigMenu() {
         GM_registerMenuCommand('⚙️ Ayarlar', function() {
             const html = `
@@ -252,59 +279,87 @@
         const location = null; // use window.location instead!
         const tokenUri = "https://oauth2.googleapis.com/token";
 
-        // Step 1: Generate JWT Token
+
         async function createJwtToken() {
-            const header = {
-                alg: "RS256",
-                typ: "JWT",
-            };
+            try {
+                const header = {
+                    alg: "RS256",
+                    typ: "JWT",
+                };
 
-            const now = Math.floor(Date.now() / 1000);
-            const payload = {
-                iss: config.clientEmail,
-                scope: "https://www.googleapis.com/auth/spreadsheets", // Adjust scope as needed
-                aud: tokenUri,
-                exp: now + 3600, // 1 hour expiration
-                iat: now,
-            };
+                const now = Math.floor(Date.now() / 1000);
+                const payload = {
+                    iss: config.clientEmail,
+                    scope: "https://www.googleapis.com/auth/spreadsheets", // Adjust scope as needed
+                    aud: tokenUri,
+                    exp: now + 3600, // 1 hour expiration
+                    iat: now,
+                };
 
-            // Function to base64 encode JSON strings
-            function base64Encode(obj) {
-                return btoa(JSON.stringify(obj))
-                    .replace(/=/g, "")
-                    .replace(/\+/g, "-")
-                    .replace(/\//g, "_");
+                // Function to base64 encode JSON strings
+                function base64Encode(obj) {
+                    return btoa(JSON.stringify(obj))
+                        .replace(/=/g, "")
+                        .replace(/\+/g, "-")
+                        .replace(/\//g, "_");
+                }
+
+                const encodedHeader = base64Encode(header);
+                const encodedPayload = base64Encode(payload);
+
+                // Sign the token using the private key
+                const toSign = `${encodedHeader}.${encodedPayload}`;
+                const signature = await signWithPrivateKey(toSign);
+                return `${toSign}.${signature}`;
+            } catch (error) {
+                console.error('JWT creation failed:', error);
+                return null;
             }
-
-            const encodedHeader = base64Encode(header);
-            const encodedPayload = base64Encode(payload);
-
-            // Sign the token using the private key
-            const toSign = `${encodedHeader}.${encodedPayload}`;
-            const signature = await signWithPrivateKey(toSign, config.privateKey);
-
-            return `${toSign}.${signature}`;
         }
 
-        // Helper: Sign the JWT using the private key (RS256)
         async function signWithPrivateKey(data) {
-            const crypto = window.crypto.subtle || window.crypto.webkitSubtle;
+            try {
+                const crypto = window.crypto.subtle || window.crypto.webkitSubtle;
 
-            // Convert private key into a format compatible with Web Crypto API
-            const importKeyPromise = crypto.importKey(
-                "pkcs8",
-                pemToArrayBuffer(config.privateKey),
-                { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-                false,
-                ["sign"]
-            );
+                // Clean and prepare the private key
+                const pemContents = config.privateKey
+                .replace(/-----BEGIN PRIVATE KEY-----/, '')
+                .replace(/-----END PRIVATE KEY-----/, '')
+                .replace(/\s+/g, '');
 
-            return await importKeyPromise
-                .then((key) => crypto.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(data)))
-                .then((signature) => btoa(String.fromCharCode(...new Uint8Array(signature)))
-                      .replace(/=/g, "")
-                      .replace(/\+/g, "-")
-                      .replace(/\//g, "_"));
+                // Convert from Base64 to ArrayBuffer
+                const binaryString = atob(pemContents);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                // Import the key
+                const key = await crypto.importKey(
+                    'pkcs8',
+                    bytes.buffer,
+                    { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } },
+                    false,
+                    ['sign']
+                );
+
+                // Sign the data
+                const signature = await crypto.sign(
+                    'RSASSA-PKCS1-v1_5',
+                    key,
+                    new TextEncoder().encode(data)
+                );
+
+                // Convert signature to Base64URL
+                return btoa(String.fromCharCode(...new Uint8Array(signature)))
+                    .replace(/=/g, '')
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_');
+            } catch (error) {
+                console.error('Error in signWithPrivateKey:', error);
+                showToast('JWT signing failed. Check private key format.', 'error');
+                throw error; // Re-throw to be caught by caller
+            }
         }
 
         // Helper: Convert PEM private key to ArrayBuffer
@@ -329,8 +384,11 @@
             if (AccToken) {
                 return AccToken
             }
-            const jwt = await createJwtToken(config.clientEmail, config.privateKey);
-
+            const jwt = await createJwtToken();
+            if (!jwt) {
+                showToast('Failed to create JWT token', 'error');
+                return null;
+            }
             const response = await fetch(tokenUri, {
                 method: "POST",
                 headers: {
@@ -661,9 +719,8 @@
             }
         }
 
-        const keywords = ['Sweatshirt', 'T Shirt', 'T-Shirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png', 'Svg', 'Tee','DTF'].map(k => k.toLowerCase());
-
         function extractFirstParts(text) {
+            const keywords = ['Sweatshirt', 'T Shirt', 'T-Shirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png', 'Svg', 'Tee','DTF'].map(k => k.toLowerCase());
             const lowerText = text.toLowerCase();
             let minPosition = Infinity;
             let closestKeyword = '';
@@ -746,23 +803,6 @@
                 .then(response => response.text())
                 .then(result => console.log("Log kaydedildi:", result))
                 .catch(error => console.error("Log hatası:", error));
-        }
-
-        function showToast(message, type = null) {
-            const toast = window.document.createElement('div');
-            if (type == 'error') {
-                toast.className = 'toast-error';
-            } else {
-                toast.className = 'toast';
-            }
-            toast.innerText = message;
-            window.document.body.appendChild(toast);
-
-            setTimeout(() => toast.classList.add('show'), 100);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
         }
 
         const createOverlayOnElement = async ({
@@ -888,7 +928,7 @@
             buttonEl.style = "cursor: grab"
             buttonEl.onclick = () => copyTextToClipboard(tags.join(", "))
             overlay.appendChild(buttonEl);
-            let trade = extractFirstParts(title, keywords)
+            let trade = extractFirstParts(title)
             if (trade) {
                 let uspto;
                 if (config.apiKeyUspto) {
@@ -1070,6 +1110,7 @@
 
         if (window.location.href.includes("/listing/")) {
             handleListingPage();
+            //console.log("handleListingPage");
         } else if (window.name == "zbaseiframe") {
             //console.log("window.name ? zbaseiframe :", window.name);
             await waitForValidEHuntDocument();
@@ -1084,9 +1125,10 @@
             }
 
         } else {
+            //console.log("initOverlay");
             initOverlay();
         }
-    };
+    }
 
     function onLoaded(doc, fn) {
         if (doc.readyState == 'loading') {
@@ -1113,12 +1155,14 @@
         observeElements("iframe#zbaseiframe", runInIframe, window.document)
     } else { // In etsy
         onLoaded(window.document, () => doTheThing(window, window.document))
+        //console.log("In Etsy")
     }
 
     // Sayfa yüklendiğinde
     window.addEventListener('load', async function() {
         loadConfig();
         showConfigMenu();
+        validateConfig();
     });
 
 })();
