@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.21
+// @version      3.22
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -149,11 +149,11 @@
         if (config.manager) await GM.setValue('manager', config.manager.trim());
     }
 
-    function isConfigured() {
+    async function isConfigured() {
         return config.erankUserKey && config.erankKey && config.authorization
     }
 
-    function validateConfig() {
+    async function validateConfig() {
         if (!config.clientEmail || !config.privateKey) {
             showToast('Google Service Account credentials missing', 'error');
             return false;
@@ -162,7 +162,7 @@
     }
 
 // Then call this before attempting to create JWT
-    function showConfigMenu() {
+    async function showConfigMenu() {
         GM_registerMenuCommand('⚙️ Ayarlar', function() {
             const html = `
                 <div style="padding:20px;font-family:Arial,sans-serif;max-width:500px;">
@@ -576,7 +576,7 @@
                         localStorage.setItem(cacheTimestampKey, now.toString());
                         return { processedData };
                     } else {
-                        console.error("Veri alınırken hata oluştu:", response.responseText);
+                        //console.error("Veri alınırken hata oluştu:", response.responseText);
                     }
                 },
                 onerror: function (error) {
@@ -1160,9 +1160,9 @@
 
     // Sayfa yüklendiğinde
     window.addEventListener('load', async function() {
-        loadConfig();
-        showConfigMenu();
-        validateConfig();
+        await loadConfig();
+        await showConfigMenu();
+        await validateConfig();
     });
 
 })();
