@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.6
+// @version      1.61
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -63,7 +63,7 @@
             return;
         }
 
-        const exchangeRate = await getExchangeRate().catch((error) => {
+        let exchangeRate = await getExchangeRate().catch((error) => {
             console.error("Kur bilgisi alınamadı:", error)
             isProcessing = false; // Reset flag if exchange rate fetch fails
             return null
@@ -73,6 +73,8 @@
             isProcessing = false; // Reset flag if exchange rate is not available
             return;
         }
+
+        if(salesSummaryEl.textContent.includes("$")) exchangeRate = 1;
 
         const getProfitElValue = () => unformatNumber(profitElement.textContent)
         const getSummaryElValue = (el) => {
