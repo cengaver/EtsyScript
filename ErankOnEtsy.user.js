@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.22
+// @version      3.3
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -95,43 +95,55 @@
 
     // Config yapısı
     const DEFAULT_CONFIG = {
-            apiKeyUspto: "",
-            sheetId: "",
-            sheetId2: "",
-            erankUserKey: "",
-            authorization:"",
-            erankKey: "",
-            range:"",
-            rangeLink: "",
-            privateKey:"",
-            clientEmail: "",
-            team: "",
-            manager: "",
+        apiKeyUspto: "",
+        sheetId: "",
+        sheetId2: "",
+        erankUserKey: "",
+        authorization:"",
+        erankKey: "",
+        range:"",
+        rangeLink: "",
+        privateKey:"",
+        clientEmail: "",
+        team: "",
+        manager: "",
     };
 
     // Global değişkenler
     let config = {...DEFAULT_CONFIG};
+    let configLoaded = false; // Add a flag to track if config is loaded
 
-    // Config yönetimi
+    // Config yükleme fonksiyonu
     async function loadConfig() {
-        const currentConfig = {
-            apiKeyUspto: await GM.getValue('apiKeyUspto', ''),
-            sheetId: await GM.getValue('sheetId', ''),
-            sheetId2: await GM.getValue('sheetId2', ''),
-            erankUserKey: await GM.getValue('erankUserKey', ''),
-            authorization: await GM.getValue('authorization', ''),
-            erankKey: await GM.getValue('erankKey', ''),
-            range: await GM.getValue('range', ''),
-            rangeLink: await GM.getValue('rangeLink', ''),
-            privateKey: await GM.getValue('privateKey', ''),
-            clientEmail: await GM.getValue('clientEmail', ''),
-            team: await GM.getValue('team', ''),
-            manager: await GM.getValue('manager', ''),
-        };
-
-        if (currentConfig) {
-            config = {...DEFAULT_CONFIG, ...currentConfig};
+        try {
+            config = {
+                apiKeyUspto: await GM.getValue('apiKeyUspto', ''),
+                sheetId: await GM.getValue('sheetId', ''),
+                sheetId2: await GM.getValue('sheetId2', ''),
+                erankUserKey: await GM.getValue('erankUserKey', ''),
+                authorization: await GM.getValue('authorization', ''),
+                erankKey: await GM.getValue('erankKey', ''),
+                range: await GM.getValue('range', ''),
+                rangeLink: await GM.getValue('rangeLink', ''),
+                privateKey: await GM.getValue('privateKey', ''),
+                clientEmail: await GM.getValue('clientEmail', ''),
+                team: await GM.getValue('team', ''),
+                manager: await GM.getValue('manager', ''),
+            };
+            configLoaded = true;
+            //console.log("Config yüklendi:", config);
+        } catch (error) {
+            console.error("Config yüklenirken hata:", error);
+            showToast('Config yüklenirken hata oluştu', 'error');
         }
+    }
+
+    // Config kontrol fonksiyonu
+    async function checkConfig() {
+        if (!configLoaded) {
+            await loadConfig();
+        }
+        return configLoaded;
     }
 
     async function saveConfig() {
@@ -154,6 +166,10 @@
     }
 
     async function validateConfig() {
+        if (!configLoaded) {
+            await loadConfig(); // Ensure config is loaded
+        }
+
         if (!config.clientEmail || !config.privateKey) {
             showToast('Google Service Account credentials missing', 'error');
             return false;
@@ -161,7 +177,6 @@
         return true;
     }
 
-// Then call this before attempting to create JWT
     async function showConfigMenu() {
         GM_registerMenuCommand('⚙️ Ayarlar', function() {
             const html = `
@@ -275,11 +290,17 @@
     }
 
     async function doTheThing(window) {
+        // Önce config'in yüklendiğinden emin ol
+        if (!await checkConfig()) {
+            showToast('Config yüklenemedi', 'error');
+            return;
+        }
+
         const document = null; // use window.document instead!
         const location = null; // use window.location instead!
         const tokenUri = "https://oauth2.googleapis.com/token";
 
-
+        // Then call this before attempting to create JWT
         async function createJwtToken() {
             try {
                 const header = {
@@ -378,17 +399,22 @@
             return bytes.buffer;
         }
 
-        // Step 2: Exchange JWT for OAuth Access Token
+        // Modify getAccessToken to wait for config
         async function getAccessToken(e) {
             let AccToken = JSON.parse(sessionStorage.getItem('AccessToken')) || null;
             if (AccToken) {
-                return AccToken
+                return AccToken;
             }
+
+            if (!await validateConfig()) return null;
+
+            // Rest of the function remains the same...
             const jwt = await createJwtToken();
             if (!jwt) {
                 showToast('Failed to create JWT token', 'error');
                 return null;
             }
+
             const response = await fetch(tokenUri, {
                 method: "POST",
                 headers: {
@@ -404,6 +430,7 @@
             sessionStorage.setItem('AccessToken', JSON.stringify(data.access_token));
             return data.access_token;
         }
+
 
         function convertToNumber(age) {
             // Virgülü kaldırıp noktaya çeviriyoruz
@@ -423,6 +450,8 @@
         // Google Sheets'e link ekle
         async function saveToGoogleSheet(sheet, link, title, img, sales, age, tag) {
             const accessToken = await getAccessToken();
+            if(!accessToken) return;
+
             const tags = tag.join(", ");
             // 1. Mevcut son dolu satırı bul
             let linkAlreadyExists = false;
@@ -532,7 +561,6 @@
 
         // Google Sheets ve eRank işlemleri için aynı kodları kullandım.
         const fetchColumnData = async (sID = null) => {
-            if (!config) return;
             let cacheKey;
             let sheet;
             if (sID && config.sheetId2) {
@@ -554,6 +582,7 @@
             if (cachedData) { localStorage.removeItem(cacheKey) }
 
             const accessToken = await getAccessToken();
+            if(!accessToken) return;
 
             await GM.xmlHttpRequest({
                 method: "GET",
@@ -576,7 +605,7 @@
                         localStorage.setItem(cacheTimestampKey, now.toString());
                         return { processedData };
                     } else {
-                        //console.error("Veri alınırken hata oluştu:", response.responseText);
+                        console.error("Veri alınırken hata oluştu:", response.responseText);
                     }
                 },
                 onerror: function (error) {
@@ -601,7 +630,7 @@
             return { dnoValue, gDrive, teamname };
         };
 
-        const getErankData = async (id,imgUrl=null,link=null) => {
+        const getErankData = async (id, imgUrl=null, link=null) => {
             const cacheKey = `erank_${id}`;
             const now = Date.now();
             const cachedData = JSON.parse(localStorage.getItem(cacheKey));
@@ -615,7 +644,8 @@
                 return cachedData;
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
-            if (!config) return;
+            if (!await isConfigured()) return;
+            //console.log("erankUserKey :", config.erankUserKey)
             const url = `https://beta.erank.com/api/ext/listing/${id}`;
 
             try {
@@ -664,12 +694,13 @@
                 if ((age >= 1 && age <= 50) && ( sales / 1.5 > age) ){
                     //console.log("age",age);
                     //console.log("sales",age);
-                    logToGoogleSheets(erankLogData);
+                    await logToGoogleSheets(erankLogData);
                 }
                 //console.log(erankLogData);
                 //localStorage.setItem(cacheKey, JSON.stringify(erankData));
                 return erankData;
             } catch (error) {
+                showToast('Erank Login OL', 'error');
                 console.error("eRank data fetch error:", error);
             }
         };
@@ -779,7 +810,7 @@
             }
         }
 
-        function logToGoogleSheets(data) {
+        async function logToGoogleSheets(data) {
             let sheetUrl = "https://script.google.com/macros/s/AKfycbxuh_lJRDY4ZCVY3js2JVlIdusGmb3RtDd4IlH82hisewmwR13PUogxW9pUuX8h0C-e/exec"; // Buraya Apps Script'in Web URL'sini yapıştır
             fetch(sheetUrl, {
                 method: "POST",
@@ -841,63 +872,64 @@
             }
 
             const { sales, age, title, tags } = erankData;
-
-            //console.log(img)
-            let { dnoValue, gDrive, teamname } = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
-            const result = dnoValue ? "❤️" : "🤍";
-            const tooltipText = dnoValue ? `Dizayn NO: ${dnoValue} by ${teamname}` : `Listeye EKLE!`;
-
             loadingEl.remove();
 
-            // Kalp sarmalayıcı
-            const heartWrapper = window.document.createElement("div");
-            heartWrapper.style.position = "relative"; // Konumlandırma için relative
-            heartWrapper.style.display = "inline-block";
+            //console.log(img)
+            if (config.sheetId !== "") {
+                let { dnoValue, gDrive, teamname } = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
+                const result = dnoValue ? "❤️" : "🤍";
+                const tooltipText = dnoValue ? `Dizayn NO: ${dnoValue} by ${teamname}` : `Listeye EKLE!`;
 
-            // Kalp elementi
-            const resultEl = window.document.createElement("div");
-            resultEl.textContent = result;
-            resultEl.title = tooltipText;
-            resultEl.style.marginLeft = "1px";
-            resultEl.style.fontSize = "1.6rem";
-            resultEl.style.color = dnoValue ? "red" : "black";
+                // Kalp sarmalayıcı
+                const heartWrapper = window.document.createElement("div");
+                heartWrapper.style.position = "relative"; // Konumlandırma için relative
+                heartWrapper.style.display = "inline-block";
 
-            if (!dnoValue) {
-                resultEl.style.cursor = "cell";
-                resultEl.href = "#";
-                heartWrapper.addEventListener("click", async function () {
-                    resultEl.style.backgroundColor = "orange"
-                    await saveToGoogleSheet(config.sheetId, currentUrl, title, img, sales, age, tags);
-                    resultEl.textContent = "❤️"
-                    resultEl.style.backgroundColor = null
-                    showToast(title + '\n listeye eklendi!');
-                });
-            } else {
-                if (gDrive) {
+                // Kalp elementi
+                const resultEl = window.document.createElement("div");
+                resultEl.textContent = result;
+                resultEl.title = tooltipText;
+                resultEl.style.marginLeft = "1px";
+                resultEl.style.fontSize = "1.6rem";
+                resultEl.style.color = dnoValue ? "red" : "black";
+
+                if (!dnoValue) {
+                    resultEl.style.cursor = "cell";
+                    resultEl.href = "#";
                     heartWrapper.addEventListener("click", async function () {
-                        window.open(gDrive, "_blank");
+                        resultEl.style.backgroundColor = "orange"
+                        await saveToGoogleSheet(config.sheetId, currentUrl, title, img, sales, age, tags);
+                        resultEl.textContent = "❤️"
+                        resultEl.style.backgroundColor = null
+                        showToast(title + '\n listeye eklendi!');
                     });
+                } else {
+                    if (gDrive) {
+                        heartWrapper.addEventListener("click", async function () {
+                            window.open(gDrive, "_blank");
+                        });
+                    }
+                    // Rozet elementi (sadece değer varsa ekle)
+                    const badgeEl = window.document.createElement("span");
+                    resultEl.style.cursor = "hand";
+                    badgeEl.textContent = dnoValue;
+                    badgeEl.style.position = "absolute";
+                    badgeEl.style.top = "-4px"; // Daha yukarı taşı
+                    badgeEl.style.left = "-19px"; // Daha sağa taşı
+                    badgeEl.style.backgroundColor = "gold";
+                    badgeEl.style.color = "black";
+                    badgeEl.style.borderRadius = "50%";
+                    badgeEl.style.padding = "2px 5px";
+                    badgeEl.style.fontSize = "0.8rem";
+                    badgeEl.style.fontWeight = "bold";
+                    heartWrapper.appendChild(badgeEl);
                 }
-                // Rozet elementi (sadece değer varsa ekle)
-                const badgeEl = window.document.createElement("span");
-                resultEl.style.cursor = "hand";
-                badgeEl.textContent = dnoValue;
-                badgeEl.style.position = "absolute";
-                badgeEl.style.top = "-4px"; // Daha yukarı taşı
-                badgeEl.style.left = "-19px"; // Daha sağa taşı
-                badgeEl.style.backgroundColor = "gold";
-                badgeEl.style.color = "black";
-                badgeEl.style.borderRadius = "50%";
-                badgeEl.style.padding = "2px 5px";
-                badgeEl.style.fontSize = "0.8rem";
-                badgeEl.style.fontWeight = "bold";
-                heartWrapper.appendChild(badgeEl);
+                // Kalp ve overlay düzenlemeleri
+                heartWrapper.appendChild(resultEl);
+                overlay.appendChild(heartWrapper);
+            }else{
+                showToast('Sheet Id okunamadı', 'error');
             }
-
-            // Kalp ve overlay düzenlemeleri
-            heartWrapper.appendChild(resultEl);
-            overlay.appendChild(heartWrapper);
-
             // Satış ve yaş elementleri
             const salesEl = window.document.createElement("div");
             salesEl.textContent = `Satış: ${sales}`;
@@ -920,7 +952,6 @@
                     console.error('Unable to copy text to clipboard', error);
                 });
             }
-
 
             const buttonEl = window.document.createElement("button")
             buttonEl.textContent = "S"
@@ -1046,7 +1077,6 @@
 
         function ehuntOverlay() {
             //console.log("ehuntOverlay is working");
-
             const addOverlay = async (el) => {
                 const imgEl = el.querySelector("img");
                 await waitFor(() => imgEl.dataset.src); // wait for img tag to load
@@ -1160,9 +1190,10 @@
 
     // Sayfa yüklendiğinde
     window.addEventListener('load', async function() {
-        await loadConfig();
+        await loadConfig(); // Load config first
         await showConfigMenu();
-        await validateConfig();
+
+        // Rest of your initialization code...
     });
 
 })();
