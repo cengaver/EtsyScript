@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.3
+// @version      3.32
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -16,10 +16,10 @@
 // @grant        GM.xmlHttpRequest
 // @grant        GM.getValue
 // @grant        GM.setValue
-// @grant        GM_registerMenuCommand
-// @grant        GM_addElement
-// @grant        GM_getResourceText
-// @grant        GM_addStyle
+// @grant        GM.registerMenuCommand
+// @grant        GM.addElement
+// @grant        GM.getResourceText
+// @grant        GM.addStyle
 // @connect      beta.erank.com
 // @connect      ehunt.ai
 // @connect      sheets.googleapis.com
@@ -33,7 +33,7 @@
 (async function () {
     "use strict";
 
-    GM_addStyle(`
+    GM.addStyle(`
         .toast-error {
            visibility: hidden;
            min-width: 250px;
@@ -178,7 +178,7 @@
     }
 
     async function showConfigMenu() {
-        GM_registerMenuCommand('⚙️ Ayarlar', function() {
+        GM.registerMenuCommand('⚙️ Ayarlar', function() {
             const html = `
                 <div style="padding:20px;font-family:Arial,sans-serif;max-width:500px;">
                     <h2 style="margin-top:0;">Ayarlar</h2>
@@ -216,7 +216,7 @@
                     </div>
                     <div style="margin-bottom:15px;">
                         <label style="display:block;margin-bottom:5px;font-weight:bold;">privateKey</label>
-                        <input type="text" id="privateKey" value="${config.privateKey}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                        <textarea id="privateKey" style="width:100%;height:100px;padding:8px;border:1px solid #ddd;border-radius:4px;">${config.privateKey}</textarea>
                     </div>
                     <div style="margin-bottom:15px;">
                         <label style="display:block;margin-bottom:5px;font-weight:bold;">clientEmail</label>
