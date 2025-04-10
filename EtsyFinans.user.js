@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.61
+// @version      1.62
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -74,8 +74,6 @@
             return;
         }
 
-        if(salesSummaryEl.textContent.includes("$")) exchangeRate = 1;
-
         const getProfitElValue = () => unformatNumber(profitElement.textContent)
         const getSummaryElValue = (el) => {
             const totalEl = el.querySelector('[data-test-id="accordion-total"]')
@@ -99,6 +97,10 @@
             span.textContent = text
         }
 
+        if(!salesSummaryEl.textContent.includes("TL")) {
+            exchangeRate = 1;
+            console.log("SalesE:", salesSummaryEl.textContent)
+        }
         summaryElements.forEach(el => {
             const number = getSummaryElValue(el)
             const usd = number / exchangeRate
