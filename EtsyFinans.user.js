@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.62
+// @version      1.63
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -99,27 +99,27 @@
 
         if(!salesSummaryEl.textContent.includes("TL")) {
             exchangeRate = 1;
-            console.log("SalesE:", salesSummaryEl.textContent)
+            //console.log("SalesE:", salesSummaryEl.textContent)
         }
         summaryElements.forEach(el => {
             const number = getSummaryElValue(el)
             const usd = number / exchangeRate
             addText(el, "usd-info", ` | ${usd.toFixed(2)}$`)
-            console.log("Usd:", usd.toFixed(2))
+            //console.log("Usd:", usd.toFixed(2))
         })
 
         const profit = getProfitElValue()
         const profitInUsd = profit / exchangeRate
         addText(profitElement, "usd-info", ` (${profitInUsd.toFixed(2)} USD)`)
-        console.log("Profit:", profit)
-        console.log("Profit in USD:", profitInUsd.toFixed(2))
+        //console.log("Profit:", profit)
+        //console.log("Profit in USD:", profitInUsd.toFixed(2))
 
         const sales = getSummaryElValue(salesSummaryEl)
         const fees = getSummaryElValue(feesSummaryEl)
         const marketing = getSummaryElValue(marketingSummaryEl)
-        console.log("Sales:", sales)
-        console.log("Fees:", fees)
-        console.log("Marketing:", marketing)
+        //console.log("Sales:", sales)
+        //console.log("Fees:", fees)
+        //console.log("Marketing:", marketing)
 
         if (sales !== 0) {
             const feesProfit = Math.abs(((fees / sales) * 100).toFixed(2))
