@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Discount Adjust
-// @version      0.1
+// @version      0.2
 // @description  Create daily discount
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -94,7 +94,7 @@
         discountName: "",
         mount: "",
         lastDay: 1,
-        fullYear: "2025",
+        fullYear: 2025,
     };
 
     // Global değişken
@@ -129,9 +129,9 @@
         if (config.discountName) await GM.setValue('discountName', config.discountName.trim());
         if (config.mount) await GM.setValue('mount', config.mount);
         if (config.lastDay) await GM.setValue('lastDay', config.lastDay);
-        if (config.fullYear) await GM.setValue('fullYear', config.lasfullYeartDay.trim());
+        if (config.fullYear) await GM.setValue('fullYear', config.fullYear.trim());
         showToast('Config Kaydedildi');
-        console.log("Config Kaydedildi: ",config);
+        console.log("Config Kaydedildi: ", config);
     }
 
     // Config kontrol fonksiyonu
@@ -177,9 +177,9 @@
             win.document.getElementById('saveConfigBtn').addEventListener('click', function() {
                 config.discount = parseFloat(win.document.getElementById('discount').value);
                 config.discountName = win.document.getElementById('discountName').value;
-                config.mount = win.document.getElementById('mount').value;
-                config.lastDay = parseFloat(win.document.getElementById('lastDay').value);
-                config.fullYear = win.document.getElementById('fullYear').value;
+                config.mount = parseInt(win.document.getElementById('mount').value);
+                config.lastDay = parseInt(win.document.getElementById('lastDay').value);
+                config.fullYear = parseInt(win.document.getElementById('fullYear').value);
                 saveConfig();
                 win.alert("Ayarlar kaydedildi! Sayfayı yenileyin.");
                 win.close();
@@ -195,7 +195,7 @@
 
     async function main(send = false) {
         // Inputlara tarih yaz
-        // lastDay + 1 ve geri kaydet
+        // 1. lastDay + 1 ve geri kaydet
         const lastDay = await GM.getValue("lastDay", "");
         const dateInputs = [...document.querySelectorAll('input[data-datepicker-input="true"]')];
         if (dateInputs.length >= 2) {
@@ -206,12 +206,14 @@
             dateInputs[0].dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
             dateInputs[1].dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
             dateInputs[1].dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
+            dateInputs[0].click();
+            dateInputs[1].click();
         }
 
         const lastDayStr = String(lastDay).padStart(2, '0');
         const mountStr = config.mount.padStart(2, '0');
 
-        // Select'i seçili hale getir
+        // 2. Select'i seçili hale getir
         const select = document.querySelector("#reward-percentage");
         if (select) {
             const option = [...select.options].find(opt => opt.value === String(config.discount));
@@ -229,7 +231,7 @@
 
         // 4. lastDay + 1 olarak güncelle
         await GM.setValue("lastDay", parseInt(lastDay) + 1);
-        showToast(`Tarih ayarlandı: ${config.mount}/${lastDay}/2025, Discount: ${config.discount}`, "success");
+        showToast(`Tarih ayarlandı: ${config.mount}/${lastDay}/${config.fullYear}, Discount: ${config.discount}`, "success");
         showToast("Başarıyla eklendi: "+lastDay);
         console.log("Başarıyla eklendi: ",lastDay);
 
