@@ -1,19 +1,19 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.72
+// @version      1.75
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
 // @match        *.customhub.io/*
 // @match        *.etsy.com/your/shops/me/dashboard*
 // @require      https://cdn.jsdelivr.net/npm/chart.js
+// @connect      ssapi.shipstation.com
 // @grant        GM_xmlhttpRequest
-// @grant        GM_addStyle
+// @grant        GM.addStyle
 // @grant        GM.registerMenuCommand
 // @grant        GM.getValue
 // @grant        GM.setValue
-// @connect      ssapi.shipstation.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ShipStationSalesReport.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ShipStationSalesReport.user.js
 // ==/UserScript==
@@ -21,7 +21,7 @@
 (async function() {
     'use strict';
 
-    GM_addStyle(`
+    GM.addStyle(`
     #sales-floating-button {
         position: fixed;
         bottom: 20px;
@@ -198,7 +198,7 @@
 
             // Her istek arasında 1 saniye bekleyin (1000 milisaniye)
             if (i < store_ids.length - 1) {
-                await delay(3000);
+                await delay(2200);
             }
         }
 
@@ -362,8 +362,8 @@
         let currentPage = 1;
         let allOrders = [];
 
-        const fetchPage = () => {
-            GM_xmlhttpRequest({
+        const fetchPage = async () => {
+            await GM_xmlhttpRequest({
                 method: 'GET',
                 url: `${url}&page=${currentPage}`,
                 headers: { 'Authorization': `Basic ${authHeader(apiKey, apiSecret)}` },
