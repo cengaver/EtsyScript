@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.32
+// @version      3.33
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -134,7 +134,7 @@
             //console.log("Config yüklendi:", config);
         } catch (error) {
             console.error("Config yüklenirken hata:", error);
-            showToast('Config yüklenirken hata oluştu', 'error');
+            //showToast('Config yüklenirken hata oluştu', 'error');
         }
     }
 
@@ -162,7 +162,11 @@
     }
 
     async function isConfigured() {
-        return config.erankUserKey && config.erankKey && config.authorization
+        if (!config.erankUserKey || !config.erankKey || !config.authorization) {
+            //showToast('Erank Account credentials missing', 'error');
+            return false;
+        }
+        return true;
     }
 
     async function validateConfig() {
@@ -171,7 +175,7 @@
         }
 
         if (!config.clientEmail || !config.privateKey) {
-            showToast('Google Service Account credentials missing', 'error');
+            //showToast('Google Service Account credentials missing', 'error');
             return false;
         }
         return true;
@@ -965,7 +969,7 @@
                 if (config.apiKeyUspto) {
                     //uspto = checkTrademark(trade);
                 }
-                if (uspto) {
+                if (config.apiKeyUspto && uspto) {
                     const buttonElTrade = window.document.createElement("button")
                     buttonElTrade.title = "Trade Mark Var"
                     buttonElTrade.style = "cursor: no-drop"
