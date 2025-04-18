@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.43
+// @version      1.46
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @grant        GM_registerMenuCommand
@@ -10,32 +10,35 @@
 // @grant        GM_xmlhttpRequest
 // @connect      api-free.deepl.com
 // @connect      translate.googleapis.com
+// @icon         https://www.google.com/s2/favicons?domain=deepl.com
+// @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyTrMessage.user.js
+// @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyTrMessage.user.js
 // @run-at       document-end
 // ==/UserScript==
 
 (function () {
-    GM_registerMenuCommand("🔑 DeepL API Key Ayarla", async () => {
+    GM.registerMenuCommand("🔑 DeepL API Key Ayarla", async () => {
         const key = prompt("DeepL API Key’inizi girin:");
         if (key) {
-            await GM_setValue("deepl_api_key", key.trim());
+            await GM.setValue("deepl_api_key", key.trim());
             alert("✅ Kaydedildi.");
         }
     });
 
-    GM_registerMenuCommand("🌐 Çeviri Servisi Seç (DeepL / Google)", async () => {
+    GM.registerMenuCommand("🌐 Çeviri Servisi Seç (DeepL / Google)", async () => {
         const choice = prompt("Kullanmak istediğiniz servisi yazın: deepl veya google");
         if (choice === "deepl" || choice === "google") {
-            await GM_setValue("translator", choice);
+            await GM.setValue("translator", choice);
             alert("✅ Seçilen servis: " + choice);
         } else alert("Geçerli bir değer girin: deepl veya google");
     });
 
     async function getTranslator() {
-        return await GM_getValue("translator", "deepl");
+        return await GM.getValue("translator", "deepl");
     }
 
     async function getApiKey() {
-        const key = await GM_getValue("deepl_api_key", "");
+        const key = await GM.getValue("deepl_api_key", "");
         if (!key) alert("⚠️ Lütfen menüden DeepL API Key girin.");
         return key;
     }
@@ -67,7 +70,7 @@
     async function translateText(text, targetLang, callback) {
         const service = await getTranslator();
         if (service === 'google') {
-            GM_xmlhttpRequest({
+            GM.xmlhttpRequest({
                 method: 'GET',
                 url: `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`,
                 onload: res => {
@@ -82,7 +85,7 @@
         } else {
             const API_KEY = await getApiKey();
             if (!API_KEY) return;
-            GM_xmlhttpRequest({
+            GM.xmlhttpRequest({
                 method: 'POST',
                 url: 'https://api-free.deepl.com/v2/translate',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
