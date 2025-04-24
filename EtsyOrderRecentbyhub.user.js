@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      2.0
+// @version      2.22
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -264,7 +264,7 @@
             border: 1px solid #ddd;
             border-radius: var(--border-radius);
             font-family: var(--font-family);
-            font-size: 10px;
+            font-size: 16px;
             transition: var(--transition);
         }
 
@@ -295,7 +295,7 @@
     // Config yapısı
     const DEFAULT_CONFIG = {
         discount: 25, //indirim yüzde
-        feePerc: 52, //fee yüzde
+        feePerc: 48, //fee yüzde
         shipHoodie: 8, //hoodie kargo fiyatı
         shipHoodie2: 3, //ikinci hoodie kargo fiyatı
         shipTee: 5, //tişört ve sweatshirt kargo fiyatı
@@ -331,6 +331,7 @@
         {"name": "Comfort Colors Watermelon", "ischecked": 0, "hex": "#FA6C6C"},
         {"name": "Comfort Colors White", "ischecked": 1, "hex": "#FFFFFF"},
         {"name": "Comfort Colors Yam", "ischecked": 0, "hex": "#FF8C42"},
+        {"name": "Comfort Colors Terracotta", "ischecked": 0, "hex": "#E3775E"},
         {"name": "Daisy", "ischecked": 1, "hex": "#FFD300"},
         {"name": "Dark Gray", "ischecked": 0, "hex": "#A9A9A9"},
         {"name": "Evergreen", "ischecked": 0, "hex": "#115740"},
@@ -390,7 +391,6 @@
         {"name": "Comfort Colors Wine", "ischecked": 0, "hex": "#722F37"},
         {"name": "Black", "ischecked": 0, "hex": "#000000"}
     ]
-
 
     // Config yönetimi
     async function loadConfig() {
@@ -725,7 +725,7 @@
                 });
                 return;
             }
-            const targetUrl = `https://www.etsy.com/your/orders/sold/new?order_id=${orderId}`;
+            const targetUrl = `https://www.etsy.com/your/orders/sold/new?search_query=${orderId}`;
             window.open(targetUrl, "_blank");
         });
     }
@@ -741,12 +741,12 @@
                 const shirtColorCuttext = sNode.querySelector(shirtColorCut);
                 if ( shirtColorCuttext ) {
                     const shirtColor = shirtColorCuttext.textContent.replace("(","").replace(")","").trim();
-                    console.log("shirtColor: ",shirtColor);
+                    //console.log("shirtColor: ",shirtColor);
                     const oldColorRGB = 'rgb(220, 220, 220)';
                     let newColor;
                     // Get white color's hex
                     newColor = shirtColors.find(c => c.name === shirtColor)?.hex;
-                    console.log("newColor: ",newColor);
+                    //console.log("newColor: ",newColor);
                     const interval = setInterval(() => {
                         const imgColorCutEl = sNode.querySelector(imgColorCut);
                         if (!imgColorCutEl) return;
@@ -802,8 +802,8 @@
         if (salNode && !salNode.dataset.contentInserted) {
             const subTotal = document.querySelector("div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div > div > div > div > div > div.d-flex.align-items-center.justify-content-between.mb-3.pt-2 > h6").textContent;
             const discount = salNode.textContent;
-            console.log("indirim: ",discount);
-            console.log("subTotal: ",subTotal);
+            //console.log("indirim: ",discount);
+            //console.log("subTotal: ",subTotal);
             const discountSpan = document.createElement('span');
             discountSpan.textContent = `% ${(unformatNumber(discount)*100/unformatNumber(subTotal)).toFixed(2)}`;
             salNode.parentNode.appendChild(discountSpan);
