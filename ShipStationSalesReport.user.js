@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.81
+// @version      1.82
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -1159,6 +1159,7 @@
         <select id="date-range-select">
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
+            <option value="otherday">Otherday</option>
             <option value="last7">Last 7 Days</option>
             <option value="last30">Last 30 Days</option>
         </select>
@@ -1175,7 +1176,7 @@
         document.getElementById('fetch-sales-button').addEventListener('click', () => {
             const dateRange = document.getElementById('date-range-select').value;
             const pod = document.getElementById('pod-checkbox').checked ? 1 : 0 ;
-            config.selectedDateRang = dateRange;
+            config.selectedDateRange = dateRange;
             saveConfig();
             const today = new Date();
             let startDate, endDate;
@@ -1185,6 +1186,11 @@
                 //today.setDate(today.getDate() + 1);
                 startDate = today.toISOString().split('T')[0];
             } else if (dateRange === 'yesterday') {
+                endDate = today.toISOString().split('T')[0];
+                today.setDate(today.getDate() - 1);
+                startDate = today.toISOString().split('T')[0];
+             } else if (dateRange === 'otherday') {
+                today.setDate(today.getDate() - 1);
                 endDate = today.toISOString().split('T')[0];
                 today.setDate(today.getDate() - 1);
                 startDate = today.toISOString().split('T')[0];
