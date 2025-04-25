@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.8
+// @version      1.81
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -86,464 +86,464 @@
         font-weight: bold;
         color: #333;
     }
-        :root {
-            --primary-color: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary-color: #34a853;
-            --secondary-dark: #2e7d32;
-            --danger-color: #ea4335;
-            --danger-dark: #c62828;
-            --warning-color: #fbbc05;
-            --warning-dark: #f57f17;
-            --light-color: #f8f9fa;
-            --dark-color: #202124;
-            --gray-color: #5f6368;
-            --border-radius: 4px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-        }
+    :root {
+        --primary-color: #4285f4;
+        --primary-dark: #3367d6;
+        --secondary-color: #34a853;
+        --secondary-dark: #2e7d32;
+        --danger-color: #ea4335;
+        --danger-dark: #c62828;
+        --warning-color: #fbbc05;
+        --warning-dark: #f57f17;
+        --light-color: #f8f9fa;
+        --dark-color: #202124;
+        --gray-color: #5f6368;
+        --border-radius: 4px;
+        --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        --transition: all 0.3s ease;
+        --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    }
 
-        /* Toast Notifications */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
 
-        .toast {
-            min-width: 280px;
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            font-family: var(--font-family);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
-        }
+    .toast {
+        min-width: 280px;
+        padding: 12px 16px;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        font-family: var(--font-family);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: var(--transition);
+    }
 
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
 
-        .toast-success {
-            background-color: var(--secondary-color);
-            color: white;
-        }
+    .toast-success {
+        background-color: var(--secondary-color);
+        color: white;
+    }
 
-        .toast-error {
-            background-color: var(--danger-color);
-            color: white;
-        }
+    .toast-error {
+        background-color: var(--danger-color);
+        color: white;
+    }
 
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
+    .toast-warning {
+        background-color: var(--warning-color);
+        color: var(--dark-color);
+    }
 
-        .toast-info {
-            background-color: var(--primary-color);
-            color: white;
-        }
+    .toast-info {
+        background-color: var(--primary-color);
+        color: white;
+    }
 
-        .toast-close {
-            background: none;
-            border: none;
-            color: inherit;
-            cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
-            opacity: 0.7;
-        }
+    .toast-close {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 10px;
+        opacity: 0.7;
+    }
 
-        .toast-close:hover {
-            opacity: 1;
-        }
+    .toast-close:hover {
+        opacity: 1;
+    }
 
-        /* Buttons */
-        .etsy-tool-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
+    /* Buttons */
+    .etsy-tool-btn {
+        padding: 8px 12px;
+        border: none;
+        border-radius: var(--border-radius);
+        font-family: var(--font-family);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
 
-        .etsy-tool-btn:focus {
-            outline: none;
-        }
+    .etsy-tool-btn:focus {
+        outline: none;
+    }
 
-        .etsy-tool-btn-primary {
-            background-color: var(--primary-color);
-            color: white;
-        }
+    .etsy-tool-btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+    }
 
-        .etsy-tool-btn-primary:hover {
-            background-color: var(--primary-dark);
-        }
+    .etsy-tool-btn-primary:hover {
+        background-color: var(--primary-dark);
+    }
 
-        .etsy-tool-btn-secondary {
-            background-color: var(--secondary-color);
-            color: white;
-        }
+    .etsy-tool-btn-secondary {
+        background-color: var(--secondary-color);
+        color: white;
+    }
 
-        .etsy-tool-btn-secondary:hover {
-            background-color: var(--secondary-dark);
-        }
+    .etsy-tool-btn-secondary:hover {
+        background-color: var(--secondary-dark);
+    }
 
-        .etsy-tool-btn-danger {
-            background-color: var(--danger-color);
-            color: white;
-        }
+    .etsy-tool-btn-danger {
+        background-color: var(--danger-color);
+        color: white;
+    }
 
-        .etsy-tool-btn-danger:hover {
-            background-color: var(--danger-dark);
-        }
+    .etsy-tool-btn-danger:hover {
+        background-color: var(--danger-dark);
+    }
 
-        .etsy-tool-btn-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
+    .etsy-tool-btn-warning {
+        background-color: var(--warning-color);
+        color: var(--dark-color);
+    }
 
-        .etsy-tool-btn-warning:hover {
-            background-color: var(--warning-dark);
-        }
+    .etsy-tool-btn-warning:hover {
+        background-color: var(--warning-dark);
+    }
 
-        .etsy-tool-btn-light {
-            background-color: var(--light-color);
-            color: var(--dark-color);
-            border: 1px solid #ddd;
-        }
+    .etsy-tool-btn-light {
+        background-color: var(--light-color);
+        color: var(--dark-color);
+        border: 1px solid #ddd;
+    }
 
-        .etsy-tool-btn-light:hover {
-            background-color: #e9ecef;
-        }
+    .etsy-tool-btn-light:hover {
+        background-color: #e9ecef;
+    }
 
-        .etsy-tool-btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
+    .etsy-tool-btn-sm {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
 
-        .etsy-tool-btn-lg {
-            padding: 10px 16px;
-            font-size: 16px;
-        }
+    .etsy-tool-btn-lg {
+        padding: 10px 16px;
+        font-size: 16px;
+    }
 
-        .etsy-tool-btn-icon {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            border-radius: 50%;
-        }
+    .etsy-tool-btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 50%;
+    }
 
-        /* Inputs */
-        .etsy-tool-input {
-            padding: 2px 4px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 16px;
-            transition: var(--transition);
-        }
+    /* Inputs */
+    .etsy-tool-input {
+        padding: 2px 4px;
+        border: 1px solid #ddd;
+        border-radius: var(--border-radius);
+        font-family: var(--font-family);
+        font-size: 16px;
+        transition: var(--transition);
+    }
 
-        .etsy-tool-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
+    .etsy-tool-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+    }
 
-        .etsy-tool-select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 14px;
-            background-color: white;
-            cursor: pointer;
-            transition: var(--transition);
-        }
+    .etsy-tool-select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: var(--border-radius);
+        font-family: var(--font-family);
+        font-size: 14px;
+        background-color: white;
+        cursor: pointer;
+        transition: var(--transition);
+    }
 
-        .etsy-tool-select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
+    .etsy-tool-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+    }
 
-        /* Panels */
-        .etsy-tool-panel {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            overflow: hidden;
-        }
+    /* Panels */
+    .etsy-tool-panel {
+        background-color: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        overflow: hidden;
+    }
 
-        .etsy-tool-panel-header {
-            padding: 12px 16px;
-            background-color: var(--primary-color);
-            color: white;
-            font-family: var(--font-family);
-            font-size: 16px;
-            font-weight: 500;
-            display: flex;
-            cursor: move;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .etsy-tool-panel-header {
+        padding: 12px 16px;
+        background-color: var(--primary-color);
+        color: white;
+        font-family: var(--font-family);
+        font-size: 16px;
+        font-weight: 500;
+        display: flex;
+        cursor: move;
+        align-items: center;
+        justify-content: space-between;
+    }
 
-        .etsy-tool-panel-body {
-            padding: 16px;
-        }
+    .etsy-tool-panel-body {
+        padding: 16px;
+    }
 
-        /* Main Toolbar */
+    /* Main Toolbar */
+    .etsy-tool-toolbar {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        display: flex;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        flex-direction: column;
+        gap: 10px;
+        width: 300px;
+    }
+
+    /* Image Thumbnails */
+    .etsy-tool-thumbnails {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .etsy-tool-thumbnail {
+        position: relative;
+        width: 100%;
+        padding-top: 100%; /* 1:1 Aspect Ratio */
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: var(--box-shadow);
+        transition: var(--transition);
+    }
+
+    .etsy-tool-thumbnail:hover {
+        transform: scale(1.05);
+    }
+
+    .etsy-tool-thumbnail img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .etsy-tool-thumbnail-actions {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: space-around;
+        padding: 5px;
+        opacity: 0;
+        transition: var(--transition);
+    }
+
+    .etsy-tool-thumbnail:hover .etsy-tool-thumbnail-actions {
+        opacity: 1;
+    }
+
+    /* Modal */
+    .etsy-tool-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: var(--transition);
+    }
+
+    .etsy-tool-modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .etsy-tool-modal {
+        background-color: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow: auto;
+        transform: translateY(-20px);
+        transition: var(--transition);
+    }
+
+    .etsy-tool-modal-overlay.show .etsy-tool-modal {
+        transform: translateY(0);
+    }
+
+    .etsy-tool-modal-header {
+        padding: 16px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .etsy-tool-modal-title {
+        font-family: var(--font-family);
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .etsy-tool-modal-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: var(--gray-color);
+    }
+
+    .etsy-tool-modal-body {
+        padding: 16px;
+    }
+
+    .etsy-tool-modal-footer {
+        padding: 16px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    /* Image Viewer */
+    .etsy-tool-image-viewer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .etsy-tool-image-viewer img {
+        max-width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+    }
+
+    /* PNG Filter Panel */
+    .etsy-tool-png-filter {
+        margin-top: 10px;
+    }
+
+    .etsy-tool-png-list {
+        margin-top: 10px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .etsy-tool-png-item {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .etsy-tool-png-item:hover {
+        background-color: #f5f5f5;
+    }
+
+    .etsy-tool-png-item.selected {
+        background-color: rgba(66, 133, 244, 0.1);
+    }
+
+    .etsy-tool-png-item-checkbox {
+        margin-right: 10px;
+    }
+
+    .etsy-tool-png-item-thumbnail {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        margin-right: 10px;
+    }
+
+    .etsy-tool-png-item-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .etsy-tool-png-item-info {
+        flex: 1;
+    }
+
+    .etsy-tool-png-item-title {
+        font-weight: 500;
+        margin-bottom: 2px;
+    }
+
+    .etsy-tool-png-item-sku {
+        font-size: 12px;
+        color: var(--gray-color);
+    }
+
+    /* Loading Spinner */
+    .etsy-tool-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
         .etsy-tool-toolbar {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            display: flex;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            flex-direction: column;
-            gap: 10px;
-            width: 300px;
+            width: 250px;
         }
 
-        /* Image Thumbnails */
         .etsy-tool-thumbnails {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
+            grid-template-columns: repeat(2, 1fr);
         }
-
-        .etsy-tool-thumbnail {
-            position: relative;
-            width: 100%;
-            padding-top: 100%; /* 1:1 Aspect Ratio */
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            cursor: pointer;
-            box-shadow: var(--box-shadow);
-            transition: var(--transition);
-        }
-
-        .etsy-tool-thumbnail:hover {
-            transform: scale(1.05);
-        }
-
-        .etsy-tool-thumbnail img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .etsy-tool-thumbnail-actions {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: flex;
-            justify-content: space-around;
-            padding: 5px;
-            opacity: 0;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-thumbnail:hover .etsy-tool-thumbnail-actions {
-            opacity: 1;
-        }
-
-        /* Modal */
-        .etsy-tool-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .etsy-tool-modal {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow: auto;
-            transform: translateY(-20px);
-            transition: var(--transition);
-        }
-
-        .etsy-tool-modal-overlay.show .etsy-tool-modal {
-            transform: translateY(0);
-        }
-
-        .etsy-tool-modal-header {
-            padding: 16px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .etsy-tool-modal-title {
-            font-family: var(--font-family);
-            font-size: 18px;
-            font-weight: 500;
-            margin: 0;
-        }
-
-        .etsy-tool-modal-close {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--gray-color);
-        }
-
-        .etsy-tool-modal-body {
-            padding: 16px;
-        }
-
-        .etsy-tool-modal-footer {
-            padding: 16px;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        /* Image Viewer */
-        .etsy-tool-image-viewer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .etsy-tool-image-viewer img {
-            max-width: 100%;
-            max-height: 70vh;
-            object-fit: contain;
-        }
-
-        /* PNG Filter Panel */
-        .etsy-tool-png-filter {
-            margin-top: 10px;
-        }
-
-        .etsy-tool-png-list {
-            margin-top: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .etsy-tool-png-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-png-item:hover {
-            background-color: #f5f5f5;
-        }
-
-        .etsy-tool-png-item.selected {
-            background-color: rgba(66, 133, 244, 0.1);
-        }
-
-        .etsy-tool-png-item-checkbox {
-            margin-right: 10px;
-        }
-
-        .etsy-tool-png-item-thumbnail {
-            width: 40px;
-            height: 40px;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            margin-right: 10px;
-        }
-
-        .etsy-tool-png-item-thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .etsy-tool-png-item-info {
-            flex: 1;
-        }
-
-        .etsy-tool-png-item-title {
-            font-weight: 500;
-            margin-bottom: 2px;
-        }
-
-        .etsy-tool-png-item-sku {
-            font-size: 12px;
-            color: var(--gray-color);
-        }
-
-        /* Loading Spinner */
-        .etsy-tool-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .etsy-tool-toolbar {
-                width: 250px;
-            }
-
-            .etsy-tool-thumbnails {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
+    }
     `);
 
     // Config yapısı
@@ -836,34 +836,38 @@
 
         for (let i = 0; i < store_ids.length; i++) {
             const store = store_ids[i];
-            const url = `https://ssapi.shipstation.com/stores/refreshstore?storeId=${store}`;
-
-            try {
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: { 'Authorization': `Basic ${authHeader(config.apiKey, config.apiSecret)}` },
-                });
-
-                if (!response.ok) {
-                    console.error(`Error refreshing store ${store}: ${response.status}`);
-                    results.push(response.status);
-                } else {
-                    results.push(200);
-                }
-            } catch (error) {
-                console.error(`Error refreshing store ${store}:`, error);
-                results.push(null);
-            }
-
-            // Her istek arasında 1 saniye bekleyin (1000 milisaniye)
-            if (i < store_ids.length - 1) {
-                await delay(2200);
-            }
+            const status = await refreshStore(store);
+            results.push(status);
+            if (i < store_ids.length - 1) await delay(2200);
         }
 
         console.log("All stores refreshed successfully:", results);
         return results.every(status => status === 200) ? 200 : null;
-    };
+    }
+
+    function refreshStore(storeId) {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: "POST",
+                url: `https://ssapi.shipstation.com/stores/refreshstore?storeId=${storeId}`,
+                headers: {
+                    "Authorization": `Basic ${authHeader(config.apiKey, config.apiSecret)}`,
+                    "Content-Type": "application/json"
+                },
+                onload: response => {
+                    if (response.status === 200) resolve(200);
+                    else {
+                        console.error(`Error refreshing store ${storeId}:`, response.status, response.responseText);
+                        resolve(response.status);
+                    }
+                },
+                onerror: err => {
+                    console.error(`Request failed for store ${storeId}`, err);
+                    resolve(null);
+                }
+            });
+        });
+    }
 
     async function getStores() {
         const response = await fetch(apiBaseUrl + "/stores", {
@@ -886,12 +890,6 @@
             // storeId'yi number olarak karşılaştır
             return store.storeId !== 307646;
         });
-
-        // Güncellenmiş stores dizisini kontrol et
-        /*console.log("Updated Stores:");
-        updatedStores.forEach(store => {
-            console.log(`ID: ${store.storeId} - Name: ${store.storeName}`);
-        });*/
 
         return updatedStores;
     }
