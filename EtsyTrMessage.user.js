@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.46
+// @version      1.47
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
-// @grant        GM_registerMenuCommand
-// @grant        GM_setValue
-// @grant        GM_getValue
-// @grant        GM_xmlhttpRequest
+// @grant        GM.registerMenuCommand
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        GM.xmlHttpRequest
 // @connect      api-free.deepl.com
 // @connect      translate.googleapis.com
 // @icon         https://www.google.com/s2/favicons?domain=deepl.com
@@ -70,7 +70,7 @@
     async function translateText(text, targetLang, callback) {
         const service = await getTranslator();
         if (service === 'google') {
-            GM.xmlhttpRequest({
+            GM.xmlHttpRequest({
                 method: 'GET',
                 url: `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`,
                 onload: res => {
@@ -85,7 +85,7 @@
         } else {
             const API_KEY = await getApiKey();
             if (!API_KEY) return;
-            GM.xmlhttpRequest({
+            GM.xmlHttpRequest({
                 method: 'POST',
                 url: 'https://api-free.deepl.com/v2/translate',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
