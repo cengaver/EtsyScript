@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.47
+// @version      1.48
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @grant        GM.registerMenuCommand
@@ -105,13 +105,14 @@
     function observeMsgContainer() {
         const container = document.querySelector('.msg-list-container');
         if (!container) return;
+        console.log("esas gözlem başladı");
 
-        const observer = new MutationObserver(() => {
+        const processSpans = () => {
             const spans = container.querySelectorAll('span:not(.screen-reader-only)');
             spans.forEach(span => {
                 if (!span.dataset.translatable && span.textContent.trim().length > 2) {
                     span.dataset.translatable = '1';
-                    span.addEventListener('mouseenter', () => {
+                    const debouncedMouseEnter = debounce(() => {
                         if (span.dataset.tr) {
                             createTooltip(span.dataset.tr, span);
                         } else {
@@ -120,16 +121,32 @@
                                 createTooltip(result, span);
                             });
                         }
-                    });
+                    }, 300);
+                    span.addEventListener('mouseenter', debouncedMouseEnter);
                     span.addEventListener('mouseleave', () => {
                         const tip = document.getElementById('deepl-tooltip');
                         if (tip) tip.remove();
                     });
                 }
             });
+        };
+
+        const observer = new MutationObserver(() => {
+            console.log("Mutation Observer");
+            processSpans();
         });
 
         observer.observe(container, { childList: true, subtree: true });
+
+        processSpans();
+    }
+
+    function debounce(func, delay) {
+        let timer;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
     }
 
     function injectTranslateButton() {
@@ -174,6 +191,7 @@
             const container = document.querySelector('.msg-list-container');
             if (container) {
                 obs.disconnect();
+                console.log("esas gözlem burada başlıyor")
                 observeMsgContainer(); // esas gözlem burada başlıyor
             }
         });
