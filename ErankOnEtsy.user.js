@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.38
+// @version      3.41
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -818,7 +818,8 @@
             showToast('Config yüklenemedi', 'error');
             return;
         }
-
+        const sheetName = config.rangeLink.split("!")[0];
+        console.log(sheetName);
         const document = null; // use window.document instead!
         const location = null; // use window.location instead!
         const tokenUri = "https://oauth2.googleapis.com/token";
@@ -1037,8 +1038,9 @@
                     ]
                 };
             } else {
+                const sheetName = config.rangeLink.split("!")[0];
                 body = {
-                    range: `Liste!F${newRow}:P${newRow}`,
+                    range: `${sheetName}!F${newRow}:P${newRow}`,
                     majorDimension: "ROWS",
                     values: [
                         [
@@ -1083,6 +1085,7 @@
 
         // Google Sheets ve eRank işlemleri için aynı kodları kullandım.
         const fetchColumnData = async (sID = null) => {
+            if (!config.sheetId && !config.sheetId2) return
             let cacheKey;
             let sheet;
             if (sID && config.sheetId2) {
@@ -1222,7 +1225,7 @@
                 //console.log(erankLogData);
                 return erankData;
             } catch (error) {
-                showToast('Erank Login OL', 'error');
+                //showToast('Erank Login OL', 'error');
                 console.error("eRank data fetch error:", error);
             }
         };
@@ -1579,10 +1582,9 @@
             }).observe(window.document, { subtree: true, childList: true });
         };
 
-        await fetchColumnData();
-        if (config.sheetId2 !== "") {
-            await fetchColumnData(2);
-        }
+        if (config.sheetId !== "") await fetchColumnData();
+        if (config.sheetId2 !== "") await fetchColumnData(2);
+
         //observeUrlChanges();
 
         async function waitFor(conditionFn, delay = 500, timeout = 30_000) {
