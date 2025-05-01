@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      1.37
+// @version      1.38
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -210,7 +210,7 @@ socks
               } else {
                   nextButton.click();
                   console.log("Sonraki Sayfaya Geçildi");
-                  const sleepMs = getRandomInt(1000, 2000)
+                  const sleepMs = getRandomInt(1200, 2500)
                   await sleep(sleepMs)
                   toggleRows(false,true);
               }
