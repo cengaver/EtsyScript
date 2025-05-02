@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Delivery Days Calculator
-// @version      1.5
+// @version      1.51
 // @description  Calculate the number of days between order and delivery
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
