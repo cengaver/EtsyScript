@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.82
+// @version      1.83
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -45,7 +45,7 @@
     #sales-report-container {
         position: fixed;
         top: 100px;
-        right: 50px;
+        right: 20px;
         width: 400px;
         max-height: 500px;
         background: #ffffff;
@@ -76,10 +76,10 @@
     }
     #sales-dropdown-menu select, #sales-dropdown-menu button {
         margin-right: 5px;
-        padding: 8px 10px;
+        padding: 4px 9px;
         border: 1px solid #ccc;
         border-radius: 5px;
-        font-size: 14px;
+        font-size: 13px;
     }
     #loading-indicator {
         font-size: 16px;
@@ -821,14 +821,24 @@
 
     const getShipData = async (pod = null) => {
         let use_storeIds = {};
+        const my_storeIds = JSON.parse(config.storeIds);
 
         if (pod == 1) {
             const stores = await getStores();
-            stores.forEach(store => {
-                use_storeIds[store.storeId] = store.storeName.replace("CUSTOMHUB ", "");
-            });
+            if (Array.isArray(stores) && stores.length > 0) {
+                stores.forEach(store => {
+                    use_storeIds[store.storeId] = store.storeName.replace("CUSTOMHUB ", "");
+                });
+            }
+        } else if (pod == 0) {
+            try {
+                use_storeIds = my_storeIds;
+            } catch (e) {
+                console.error("Invalid JSON in config.storeIds", e);
+                use_storeIds = {};
+            }
         } else {
-            use_storeIds = JSON.parse(config.storeIds);
+            use_storeIds = { [pod]: my_storeIds.pod };
         }
 
         const store_ids = Object.keys(use_storeIds);
@@ -903,7 +913,7 @@
             El.title = "Ship Stations Senkronize";
             El.style.marginLeft = "1px";
             El.className = "mud-button-root mud-button mud-button-text mud-button-text-default mud-button-text-size-medium mud-ripple";
-            El.style.fontSize = "1rem";
+            El.style.fontSize = "0.8rem";
             El.style.color = "black";
 
             const svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -932,7 +942,7 @@
 
             El.addEventListener("click", async function() {
                 El.style.backgroundColor = "orange";
-                const pod = document.getElementById('pod-checkbox').checked ? 1 : 0 ;
+                const pod = document.getElementById('pod-select').value ;
                 const status = await getShipData(pod);
                 if (status == 200) {
                     El.textContent = "❤️";
@@ -1049,28 +1059,46 @@
 
     const getSalesData = async (startDate, endDate, callback, pod) => {
         const salesData = [];
-        let processed = 0;
         let use_storeIds = {};
+        let processed;
+
+        let my_storeIds = {};
+        try {
+            my_storeIds = JSON.parse(config.storeIds);
+            //console.log("my_storeIds: ",my_storeIds);
+        } catch (e) {
+            console.error("Invalid JSON in config.storeIds", e);
+        }
 
         if (pod == 1) {
             const stores = await getStores();
-            stores.forEach(store => {
-                use_storeIds[store.storeId] = store.storeName.replace("CUSTOMHUB ","");
-            });
+            if (Array.isArray(stores) && stores.length > 0) {
+                stores.forEach(store => {
+                    use_storeIds[store.storeId] = store.storeName.replace("CUSTOMHUB ", "");
+                });
+            }
+            //console.log("use_storeIdsAll: ",use_storeIds);
+        } else if (pod == 0) {
+            use_storeIds = my_storeIds;
+            //console.log("use_storeIds: ",use_storeIds);
         } else {
-            use_storeIds = JSON.parse(config.storeIds);
+            use_storeIds = { [pod]: my_storeIds?.[pod] ?? 'shop' };
+            //console.log("use_storeId: ",use_storeIds);
         }
 
-        for (const [storeId, storeName] of Object.entries(use_storeIds)) {
+        await Promise.all(Object.entries(use_storeIds).map(([storeId, storeName]) =>
+          new Promise(resolve => {
             fetchSales(startDate, endDate, storeId, storeName, data => {
                 salesData.push({ storeId, storeName, orders: data });
-                processed++;
-                if (processed === Object.keys(use_storeIds).length) {
-                    callback(salesData);
-                }
+                //console.log(`storeId: ${storeId} , storeName: ${storeName}`);
+                resolve();
             });
-        }
+          })
+        ));
+
+        callback(salesData);
     };
+
 
     const displaySalesTable = (salesData) => {
         // Satış Ücretine göre azalan şekilde sırala
@@ -1150,23 +1178,37 @@
         //makeDraggable(document.querySelector('#sales-report-container'), document.querySelector('#sales-dropdown-menu'));
     };
 
-
     const createDropdownMenu = () => {
         const menu = document.createElement('div');
         menu.id = 'sales-dropdown-menu';
+
+        const use_storeIds = JSON.parse(config.storeIds); // object
+        let pod_select = ''; // Boş string ile başla
+
+        for (const store in use_storeIds) {
+            if (use_storeIds.hasOwnProperty(store)) {
+                pod_select += `<option value="${store}">${use_storeIds[store]}</option>\n`;
+            }
+        }
+
         menu.innerHTML = `
-         <input type="checkbox" id="pod-checkbox" name="pod" value="1">
-        <select id="date-range-select">
-            <option value="today">Today</option>
-            <option value="yesterday">Yesterday</option>
-            <option value="otherday">Otherday</option>
-            <option value="last7">Last 7 Days</option>
-            <option value="last30">Last 30 Days</option>
-        </select>
-        <button id="fetch-sales-button">Get Sales</button>
-        <span id= 'refresh-area'></span>
-        <p id= 'loading-area'></p>
-    `;
+         <select id="pod-select">
+           <option value="0">My</option>
+           <option value="1">Tümü</option>
+           ${pod_select}
+         </select>
+         <select id="date-range-select">
+           <option value="today">Today</option>
+           <option value="yesterday">Yesterday</option>
+           <option value="otherday">Otherday</option>
+           <option value="last7">Last 7 Days</option>
+           <option value="last30">Last 30 Days</option>
+         </select>
+         <button id="fetch-sales-button">Get Sales</button>
+         <span id="refresh-area"></span>
+         <p id="loading-area"></p>
+       `;
+
         document.getElementById('sales-report-container').appendChild(menu);
 
         if (config.selectedDateRange) {
@@ -1175,21 +1217,21 @@
 
         document.getElementById('fetch-sales-button').addEventListener('click', () => {
             const dateRange = document.getElementById('date-range-select').value;
-            const pod = document.getElementById('pod-checkbox').checked ? 1 : 0 ;
+            const pod = document.getElementById('pod-select').value;
             config.selectedDateRange = dateRange;
             saveConfig();
             const today = new Date();
             let startDate, endDate;
 
             if (dateRange === 'today') {
-                endDate = today.toISOString().split('T')[0];
-                //today.setDate(today.getDate() + 1);
                 startDate = today.toISOString().split('T')[0];
+                //today.setDate(today.getDate() + 1);
+                endDate = today.toISOString().split('T')[0];
             } else if (dateRange === 'yesterday') {
                 endDate = today.toISOString().split('T')[0];
                 today.setDate(today.getDate() - 1);
                 startDate = today.toISOString().split('T')[0];
-             } else if (dateRange === 'otherday') {
+            } else if (dateRange === 'otherday') {
                 today.setDate(today.getDate() - 1);
                 endDate = today.toISOString().split('T')[0];
                 today.setDate(today.getDate() - 1);
