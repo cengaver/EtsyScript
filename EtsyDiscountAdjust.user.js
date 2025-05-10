@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Discount Adjust
-// @version      1.0
+// @version      1.2
 // @description  Create daily discount
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -193,7 +193,7 @@
             border: 1px solid #ddd;
             border-radius: var(--border-radius);
             font-family: var(--font-family);
-            font-size: 10px;
+            font-size: 16px;
             transition: var(--transition);
         }
 
@@ -698,23 +698,46 @@
         const dateInputs = [...document.querySelectorAll('input[data-datepicker-input="true"]')];
         if (dateInputs.length >= 2) {
             const dateStr = `${mountStr}/${lastDayStr}/${config.fullYear}`;
+
+            // İlk input
             dateInputs[0].value = dateStr;
-            dateInputs[1].value = dateStr;
-            dateInputs[0].dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-            dateInputs[0].dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
-            dateInputs[1].dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-            dateInputs[1].dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
+            dateInputs[0].focus();
             dateInputs[0].click();
+            dateInputs[0].blur();
+            dateInputs[0].dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+            dateInputs[0].dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+
+            // İkinci input
+            dateInputs[1].value = dateStr;
+            dateInputs[1].focus();
             dateInputs[1].click();
+            dateInputs[1].blur();
+            dateInputs[1].dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+            dateInputs[1].dispatchEvent(new Event('change', { bubbles: true, composed: true }));
         }
 
         // 2. Select'i seçili hale getir
         const select = document.querySelector("#reward-percentage");
         if (select) {
-            const option = [...select.options].find(opt => opt.value === String(config.discount));
-            if (option) option.selected = true;
-            select.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-            select.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
+            const discount = Number(config.discount);
+            if (discount == 25 || discount == 30 || discount == 35 || discount == 40 || discount == 45 || discount == 50 ){
+            const option = [...select.options].find(opt => opt.value === String(discount));
+                if (option) option.selected = true;
+                select.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
+                select.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
+            }else{
+                select.value = 1;
+                select.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
+                select.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
+                setTimeout(() => {
+                    const custom = document.querySelector("input[type='number'], input[data-discount-input]") || document.querySelector("#wt-modal-container input[type='number']");
+                    if (custom) {
+                        custom.value = discount;
+                        custom.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
+                        custom.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
+                    }
+                }, 500); // 500ms bekleyin veya gerektiği gibi ayarlayın
+            }
         }
         // 3. Kupon ismini gir: DD + DISC + YY
         const couponInput = document.querySelector('#name-your-coupon');
