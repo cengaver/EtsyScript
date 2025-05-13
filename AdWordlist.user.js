@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      1.38
+// @version      1.39
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -242,6 +242,8 @@ socks
         for (const rowEl of filteredRows) {
             rowEl.style.backgroundColor = "#ffa59e"
         }
+        // Show welcome message
+        getToast().success("Ads Tool : CTRL + Alt");
     })
 
 
