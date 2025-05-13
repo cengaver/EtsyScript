@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Discount Adjust
-// @version      1.2
+// @version      1.23
 // @description  Create daily discount
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -42,7 +42,7 @@
         /* Toast Notifications */
         .toast-container {
             position: fixed;
-            bottom: 20px;
+            bottom: 50px;
             right: 20px;
             z-index: 9999;
             display: flex;
@@ -762,6 +762,57 @@
         }
     });
 
+    // Ctrl + Alt ile ilerle
+    document.addEventListener("keydown", (event) => {
+        if (event.ctrlKey && event.altKey) {
+            nextStep();
+        }
+    });
+
+    const getRandomInt = (start, end) =>
+    Math.floor(Math.random() * (end - start + 1)) + start
+    async function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function nextStep() {
+        const step = document.querySelector("#wt-modal-container > div.wt-overlay.wt-overlay--will-animate.wt-overlay--full-screen.wt-overlay--no-animation > div > div.wt-overlay__sticky-footer-container.wt-z-index-1.wt-shadow-elevation-3 > div");
+
+        // Step 1
+        let delayMs = getRandomInt(1200, 1800)
+        await delay(delayMs);
+        let next = step.querySelector("div.wt-overlay__footer__action > button");
+        if (next) {
+            next.click();
+            console.log("step 1");
+        }
+
+        // Step 2
+        delayMs = getRandomInt(1200, 1800)
+        await delay(delayMs);
+        next = step.querySelector("div:nth-child(3) > button");
+        if (next) {
+            next.click();
+            console.log("step 2");
+        }
+
+        // Step 3
+        delayMs = getRandomInt(1200, 1800)
+        await delay(delayMs);
+        next = step.querySelector("div:nth-child(3) > button");
+        if (next) {
+            next.click();
+            console.log("step 3");
+        }
+
+        // Close and go forward
+        delayMs = getRandomInt(800, 1000)
+        await delay(delayMs);
+        window.location.href = "https://www.etsy.com/your/shops/me/sales-discounts/step/createSale";
+        console.log("bitti");
+    }
+
+
     // Initialize
     async function initialize() {
         // Load config
@@ -771,7 +822,7 @@
         GM.registerMenuCommand("Ayarlar", showConfigMenu);
 
         // Show welcome message
-        showToast('Etsy Discount Tool yüklendi', 'info');
+        showToast('Discount Tool : CTRL + Space ve CTRL + Alt', 'info');
     }
 
     // Start the script
