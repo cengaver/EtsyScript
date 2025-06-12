@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.48
+// @version      1.50
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @grant        GM.registerMenuCommand
@@ -33,6 +33,13 @@
         } else alert("Geçerli bir değer girin: deepl veya google");
     });
 
+    GM.registerMenuCommand("⚙️ Her zaman çeviri yap (Açık/Kapalı)", async () => {
+        const current = await GM.getValue("always_translate", false);
+        const next = !current;
+        await GM.setValue("always_translate", next);
+        alert(`🔁 Her zaman çeviri yap: ${next ? "Açık" : "Kapalı"}`);
+    });
+
     async function getTranslator() {
         return await GM.getValue("translator", "deepl");
     }
@@ -41,6 +48,10 @@
         const key = await GM.getValue("deepl_api_key", "");
         if (!key) alert("⚠️ Lütfen menüden DeepL API Key girin.");
         return key;
+    }
+
+    async function getAlwaysTranslate() {
+        return await GM.getValue("always_translate", false);
     }
 
     function createTooltip(text, targetElement) {
@@ -105,23 +116,31 @@
     function observeMsgContainer() {
         const container = document.querySelector('.msg-list-container');
         if (!container) return;
-        console.log("esas gözlem başladı");
 
         const processSpans = () => {
             const spans = container.querySelectorAll('span:not(.screen-reader-only)');
             spans.forEach(span => {
                 if (!span.dataset.translatable && span.textContent.trim().length > 2) {
                     span.dataset.translatable = '1';
-                    const debouncedMouseEnter = debounce(() => {
-                        if (span.dataset.tr) {
+
+                    const debouncedMouseEnter = debounce(async () => {
+                        const alwaysTranslate = await getAlwaysTranslate();
+                        const originalText = span.textContent.trim();
+
+                        if (!alwaysTranslate && span.dataset.tr) {
                             createTooltip(span.dataset.tr, span);
+                        } else if (alwaysTranslate) {
+                            translateText(originalText, 'TR', result => {
+                                createTooltip(result, span);
+                            });
                         } else {
-                            translateText(span.textContent.trim(), 'TR', result => {
+                            translateText(originalText, 'TR', result => {
                                 span.dataset.tr = result;
                                 createTooltip(result, span);
                             });
                         }
                     }, 300);
+
                     span.addEventListener('mouseenter', debouncedMouseEnter);
                     span.addEventListener('mouseleave', () => {
                         const tip = document.getElementById('deepl-tooltip');
@@ -131,11 +150,7 @@
             });
         };
 
-        const observer = new MutationObserver(() => {
-            console.log("Mutation Observer");
-            processSpans();
-        });
-
+        const observer = new MutationObserver(() => processSpans());
         observer.observe(container, { childList: true, subtree: true });
 
         processSpans();
@@ -143,7 +158,7 @@
 
     function debounce(func, delay) {
         let timer;
-        return function(...args) {
+        return function (...args) {
             clearTimeout(timer);
             timer = setTimeout(() => func.apply(this, args), delay);
         };
@@ -180,8 +195,8 @@
             if (!original) return;
             translateText(original, 'EN', translated => {
                 textarea.value = translated;
-                textarea.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-                textarea.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                textarea.dispatchEvent(new Event('change', { bubbles: true }));
             });
         });
     }
@@ -191,8 +206,7 @@
             const container = document.querySelector('.msg-list-container');
             if (container) {
                 obs.disconnect();
-                console.log("esas gözlem burada başlıyor")
-                observeMsgContainer(); // esas gözlem burada başlıyor
+                observeMsgContainer();
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
@@ -206,5 +220,5 @@
         }
     }, 2000);
 
-    waitForMsgContainerThenObserve(); // yeni kontrol mekanizması
+    waitForMsgContainerThenObserve();
 })();
