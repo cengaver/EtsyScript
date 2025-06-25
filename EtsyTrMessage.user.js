@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.50
+// @version      1.52
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @grant        GM.registerMenuCommand
@@ -126,16 +126,23 @@
                     const debouncedMouseEnter = debounce(async () => {
                         const alwaysTranslate = await getAlwaysTranslate();
                         const originalText = span.textContent.trim();
+                        const cacheKey = `tr_${originalText}`;
 
-                        if (!alwaysTranslate && span.dataset.tr) {
-                            createTooltip(span.dataset.tr, span);
-                        } else if (alwaysTranslate) {
+                        const cached = sessionStorage.getItem(cacheKey);
+                        if (cached) {
+                            createTooltip(cached, span);
+                            return;
+                        }
+
+                        if (alwaysTranslate) {
                             translateText(originalText, 'TR', result => {
+                                sessionStorage.setItem(cacheKey, result);
                                 createTooltip(result, span);
                             });
                         } else {
                             translateText(originalText, 'TR', result => {
-                                span.dataset.tr = result;
+                                sessionStorage.setItem(cacheKey, result);
+                                cleanOldSessionStorage();
                                 createTooltip(result, span);
                             });
                         }
@@ -154,6 +161,13 @@
         observer.observe(container, { childList: true, subtree: true });
 
         processSpans();
+    }
+
+    function cleanOldSessionStorage(maxEntries = 300) {
+        const keys = Object.keys(sessionStorage).filter(k => k.startsWith('tr_'));
+        if (keys.length > maxEntries) {
+            keys.slice(0, keys.length - maxEntries).forEach(k => sessionStorage.removeItem(k));
+        }
     }
 
     function debounce(func, delay) {
