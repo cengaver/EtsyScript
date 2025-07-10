@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.52
+// @version      1.53
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @grant        GM.registerMenuCommand
@@ -67,7 +67,7 @@
                 borderRadius: '8px',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
                 fontSize: '14px',
-                maxWidth: '300px',
+                maxWidth: '500px',
                 zIndex: 9999
             });
             document.body.appendChild(tooltip);
