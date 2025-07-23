@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.53
+// @version      1.54
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @grant        GM.registerMenuCommand
@@ -179,6 +179,7 @@
     }
 
     function injectTranslateButton() {
+        const translateButton = document.querySelector("#main-content > div > div.wt-grid.wt-overflow-hidden > div.detail-view.wt-grid__item-xs-12.wt-grid__item-md-8.wt-grid__item-lg-7.wt-display-flex-xs.wt-flex-direction-column-xs.wt-br-md > div.wt-p-xs-1.wt-p-md-2.wt-z-index-1.inline-compose-container > div:nth-child(2) > div > div.wt-position-relative > div > div > div:nth-child(2)")
         const textarea = document.querySelector('textarea.new-message-textarea-min-height');
         if (!textarea || textarea.dataset.hasTranslator) return;
         textarea.dataset.hasTranslator = '1';
@@ -200,8 +201,8 @@
 
         const wrapper = document.createElement('div');
         wrapper.style.position = 'relative';
-        textarea.parentNode.insertBefore(wrapper, textarea);
-        wrapper.appendChild(textarea);
+        translateButton.parentNode.insertBefore(wrapper, translateButton);
+        wrapper.appendChild(translateButton);
         wrapper.appendChild(btn);
 
         btn.addEventListener('click', async () => {
