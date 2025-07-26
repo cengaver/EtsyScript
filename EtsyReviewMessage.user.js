@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.63
+// @version      1.64
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -535,8 +535,26 @@
         return true;
     }
 
+    function insertProgressBar(completed, total) {
+        const percent = Math.round((completed / total) * 100);
+
+        const li = document.createElement('li');
+        li.className = 'wt-tab__item';
+        li.style = 'display:flex;align-items:center;gap:5px;padding:4px 8px;';
+
+        li.innerHTML = `
+    <span style="background:#e0e0e0;width:100px;height:10px;border-radius:5px;overflow:hidden;display:inline-block;">
+      <span style="background:green;width:${percent}%;height:100%;display:block;"></span>
+    </span>
+    <span style="font-size:12px;color:#333;">${percent}% (${completed}/${total}) reviews</span>
+  `;
+
+        const ul = document.querySelector('nav.wt-tab-container ul.wt-tab');
+        if (ul) ul.appendChild(li);
+    }
+
     // Modern Toast Notification System
-    function createToastContainer() {
+    async function createToastContainer() {
         if (!toastContainer) {
             toastContainer = document.createElement('div');
             toastContainer.className = 'toast-container';
@@ -725,6 +743,7 @@
     async function butonsAll(el){
         //console.log("Betik başlatıldı.");
         // Butonlara tab sırası ekle
+        let star = 0
         el.forEach((button, index) => {
             let parentElement = button; // Başlangıç noktası olarak buton
             let skip = false;
@@ -736,6 +755,7 @@
 
                 if (parentElement && parentElement.querySelector('[data-icon="star"]')) {
                     skip = true; // Eğer `data-icon="star"` bulunursa atla
+                    star++
                     break;
                 }
             }
@@ -746,7 +766,8 @@
             button.tabIndex = index + 1;
             button.innerText = `...`;
         });
-
+        //console.log(el.length, star)
+        await insertProgressBar(star,el.length);
         let isTriggered = false;
 
         document.addEventListener('keydown', (event) => {
