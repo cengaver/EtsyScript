@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         Etsy Order search gdrive
 // @namespace    https://github.com/cengaver
-// @version      1.6
+// @version      1.72
 // @description  Order Search Gdrive
 // @author       Cengaver
 // @match        https://www.etsy.com/your/orders/sold/*
-// @grant        GM_addStyle
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.registerMenuCommand
+// @grant        GM.setClipboard
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/OrderSearchGdrive.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/OrderSearchGdrive.user.js
 // ==/UserScript==
@@ -78,7 +78,7 @@
                 const skuNo = skuNoElement.textContent.trim();
 
                 const gdriveSearchUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(skuNo)}`;
-                const folderUrl = `${filePath}${skuNo}`;
+                const folderUrl = `${filePath}${skuNo}\\main.psd`;
                 const linkElement = document.createElement('a');
                 const linkElement2 = document.createElement('a');
                 linkElement.href = gdriveSearchUrl;
@@ -100,13 +100,18 @@
                 imgElement.style.marginLeft = '10px'; // Space between SKU and icon
                 imgElement2.style.marginLeft = '10px'; // Space between Folder and icon
                 linkElement.appendChild(imgElement);
+                linkElement2.addEventListener('click', function(e) {
+                    navigator.clipboard.writeText(folderUrl).then(() => {
+                        window.open("https://www.photopea.com/?file="+folderUrl)
+                    });
+                })
                 linkElement2.appendChild(imgElement2);
                 const copyButton = document.createElement('button');
                 copyButton.textContent = 'Kopyala';
                 copyButton.addEventListener('click', function(e) {
-                    navigator.clipboard.writeText(folderUrl).then(() => {
+                    navigator.clipboard.writeText(skuNo).then(() => {
                         e.target.style.backgroundColor = "aqua"
-                        //alert('Order numarası kopyalandı: ' + folderUrl);
+                        //alert('Order numarası kopyalandı: ' + skuNo);
                     });
                 });
                 skuNoElement.parentNode.insertBefore(copyButton, skuNoElement.nextSibling);
