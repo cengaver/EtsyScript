@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.24
+// @version      4.25
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -391,7 +391,9 @@
         { "name": "Sand", "ischecked": 1, "hex": "#ECD9B0" },
         { "name": "Soft Cream", "ischecked": 1, "hex": "#FFFDD0" },
         { "name": "Heliconia", "ischecked": 0, "hex": "#FF69B4" },
-        { "name": "Black", "ischecked": 0, "hex": "#000000" }
+        { "name": "Black", "ischecked": 0, "hex": "#000000" },
+        { "name": "Comfort Colors Mustard", "ischecked": 1, "hex": "#e2bc75" },
+        { "name": "Sapphire", "ischecked": 0, "hex": "#0067A0" }
     ]
 
     // Config yönetimi
@@ -811,7 +813,7 @@
                             if (style.backgroundColor.toLowerCase() === oldColorRGB || style.backgroundColor === oldColorEmpty) {
                                 Node.style.backgroundColor = newColor;
                                 Node.style.borderColor = designColor;
-                                Node.style.borderWidth = "thick";
+                                Node.style.borderWidth = "8px";
                             }
                         });
 
@@ -837,6 +839,7 @@
 
                 const skuCText = sNode.querySelector(selectors.skuCut);
                 if (skuCText) {
+                    const skuNo =skuCText.textContent;
                     //console.log("skuCText: ",skuCText.textContent);
                     const copyCButton = document.createElement('button');
                     copyCButton.textContent = 'Kopyala';
@@ -844,11 +847,77 @@
                     copyCButton.className = 'copy-icon'; // Aynı simgenin tekrar eklenmemesi için
                     skuCText.parentNode.appendChild(copyCButton);
                     copyCButton.addEventListener('click', function (e) {
-                        navigator.clipboard.writeText(skuCText.textContent).then(() => {
+                        navigator.clipboard.writeText(skuNo).then(() => {
                             e.target.style.backgroundColor = "aqua"
-                            //alert('skuCText kopyalandı: ' + skuCText.textContent);
+                            //alert('skuCText kopyalandı: ' + skuNoskuNo);
                         });
                     });
+                    if (skuNo.includes("X")){
+                        let id = await GM.getValue(skuNo, "");
+                        if (!id) {
+                            const container = document.createElement('div');
+                            container.style.display = 'inline-block';
+                            container.style.marginLeft = '10px solid';
+
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.placeholder = 'Enter ID';
+                            input.className = 'mud-input-slot mud-input-root mud-input-root-text mud-input-root-adorned-end mud-input-root-margin-normal';
+                            //input.className='mud-input-slot';
+                            const saveButton = document.createElement('button');
+                            saveButton.textContent = 'Kaydet';
+                            saveButton.className='mud-button mud-button-filled mud-button-filled-primary mud-button-filled-size-small';
+
+                            saveButton.addEventListener('click', async () => {
+                                const newId = input.value.trim();
+                                if (newId) {
+                                    await GM.setValue(skuNo, newId);
+                                    //location.reload();
+                                }
+                            });
+
+                            container.appendChild(input);
+                            container.appendChild(saveButton);
+                            skuCText.parentNode.appendChild(container);
+                        } else {
+                            const userId = await GM.getValue("userId", 0);
+                            const folderUrl = `https://www.photopea.com/?state={\"ids\":[\"${id}\"],\"action\":\"open\",\"userId\":\"${userId}\",\"resourceKeys\":{}}`;
+                            const linkElement2 = document.createElement('a');
+                            linkElement2.href = folderUrl;
+                            linkElement2.target = "_blank";
+                            linkElement2.className = 'folder2';
+                            const imgElement2 = document.createElement('img');
+                            imgElement2.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAYNQTFRFAAAAGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSXGKSX0Onc4AAAAIF0Uk5TACOp//6hHHD791xB/Si0kfT23sbc09d8MAVFmvnv62UCGsrxuA8L8pIBFzg/Bxue6eVmXvDjDgqwmNVgyX/W9ZSD2z16Sp0TvCErioE7De4uzybnJG1jsfrLTMOGnLOMWRhUVuzRp4litYhOefy2V4Jdx7qH87uEvTa/KmnASYDOCtc5cgAAAgxJREFUeJx9k21IFHEQxp8H8+S4tEwiLkU8KKEs4SrsRSXksKTsiDxTKpEQLOqD0gtSSH1QVKIQBZUoRaIXtMgLMbUiQkwpISTBPhRlgSRCcPgSkWjN3q67a+05H/Y/O8+PmfnP7BIgCUsT4TeICM5Z62I2/qTjV0hZzE5GzS4HYCVXTy8JREnhGVPNNQwzqTHkhBxOgb5rofUmIJYcW/Rd/Ko6CQbg4kdTssQfgeC5QQc28kPw3Cz5R+RMDowvyeCIVfSkFYqYzHfibx9W4m4N2Ma3wE4OaelSBuWx540pw67XwNZVg3oLcdJj+oABpH6T/sMXxEsj54Tb+xLwvDJKZLwAMiUGD3uBrOfAvm7Y5g1g/1O1ZFaX8pbdDRzohLdLL5H9BDjcCXg7FP0I/XKf9/B16EDMJJD7GMhpB7Yk8SFw9AFwrE0vkX8POCGhQ34kOvslwAjZccF9fZLH7wCFd4G1E/A+k1Xafa3Ayc/9egnHFHCwR6AWoIhsX1A+geJmY5IKcOo24GsztnX6lmmbxU3AmZtKtEGTN3nYaALO1muAM6cuGI60BWD+HlyfNADYvWNy3bC7/s9iJbWH0hvAhVpY2bkgcP6aOoeQQKZcsey6JeBm/PiyQDTzHgEXa2TjfZZACi/NNKKsSt3x/2YvIcqrcbkiBJDmapU//8qYX0Z9tfJfleVfhkbxF6QJhTmGsYn9AAAAAElFTkSuQmCC'; // Folder icon
+                            imgElement2.alt = 'Folder';
+                            imgElement2.style.width = '24px';
+                            imgElement2.style.height = '24px';
+                            imgElement2.style.marginLeft = '10px';
+                            linkElement2.appendChild(imgElement2);
+
+                            linkElement2.addEventListener('click', function(e) {
+                                navigator.clipboard.writeText(folderUrl).then(() => {
+                                    window.open(folderUrl);
+                                });
+                            });
+
+                            skuCText.parentNode.appendChild(linkElement2);
+                        }
+                    }
+                    const gdriveSearchUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(skuNo)}`;
+                    const linkElement = document.createElement('a');
+                    linkElement.href = gdriveSearchUrl;
+                    linkElement.target = "_blank";
+                    linkElement.className = 'gdrive-icon2';
+                    const imgElement = document.createElement('img');
+                    imgElement.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAYAAAByDd+UAAAB+klEQVR4AWJwL/ChKx68ForXW7SJN1iswYb5GyxaqGqhycrgR+rTAKzUA2hoURwG8Cn3bL/wbNuIz7Y5p9kOY57NMBvZs23bPtt/dW7b4VR94ep3v6OHaJvFJSoaZldQROB+hDJValcFPBj20vB82AsEAYCVyTT1uUykaWitGAQIB1oy22WoKOhKQMCCMKa0dLypYN9dTs7HcMvg5YCAHQKAzLmwpwpYGbORBHH2LAfMY4G4JdmOaJkvBQnsMQ+DHAl5MTSeqjaMASaarvZ00SB8UATCyp1OVzMWgfBDiwLhY7J2+Nn5LScyVCkUfkoI3nLqWivAcB7j52HYSISMEJz9WIwEyyE/AAtEBJLbRLoNiBxigIcVgDO08AwFwnkpwfx4Sx1aSFrmLwAvRDz+BBtaFB6Gg9txA9sEg6d9NLNO+/5HvFz0sXXardmy567d4CFW4F5V1BuXiUgVNBa5jpdEBdz2vTRy2/cyxMtduyFpTjtMotobD1D75Yvs3LjopYDwh9v/5CNWrtsOSjGc/8bFqP/mHtRx7zyVodP7tisgZMeffB8SO6xfLYeIlllvTSkM2jH34UraQeB5VkvexoeWWsttR7bEaPu9Cz95IEZbAVw8wm461+7uuXrp4Q0L6LxxS/NKQQ+t2HpYKEKQPMhXkpkNqoYwXTEA+kphQitc/vYAAAAASUVORK5CYII=';
+                    imgElement.alt = 'Google Drive';
+                    imgElement.style.width = '24px';
+                    imgElement.style.height = '24px';
+                    imgElement.style.marginLeft = '10px';
+                    linkElement.appendChild(imgElement);
+
+                    skuCText.parentNode.appendChild(linkElement);
+                    //skuNoElement.parentNode.insertBefore(copyButton, skuNoElement.nextSibling);
                 }
 
                 const personaCutEl = getText(selectors.personaCut,sNode);
