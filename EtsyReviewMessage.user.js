@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.64
+// @version      1.67
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/orders/sold/completed*
+// @match        https://www.etsy.com/your/orders/sold/new?search_query=*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.getValue
 // @grant        GM.setValue
@@ -633,7 +634,16 @@
 
         // Form fields
         const fields = [
-            { id: 'reviewMessage', label: 'Review Message', type: 'textarea', value: config.reviewMessage }
+            { id: 'reviewMessage', label: 'Review Message', type: 'textarea', value: config.reviewMessage },
+            { id: 'printMessage', label: 'Bu Şekilde Baskıya', type: 'textarea', value: config.printMessage },
+            { id: 'cancelMessage', label: 'Sipariş İptali', type: 'textarea', value: config.cancelMessage },
+            { id: 'noreturnMessage', label: 'İade Yerine Kupon', type: 'textarea', value: config.noreturnMessage },
+            { id: 'uspserrorMessage', label: 'Adres Hatası', type: 'textarea', value: config.uspserrorMessage },
+            { id: 'priorityMessage', label: 'Hızlı Kargo Seçeneği', type: 'textarea', value: config.priorityMessage },
+            { id: 'resendMessage', label: 'Yeniden Gönderim', type: 'textarea', value: config.resendMessage },
+            { id: 'reptrackMessage', label: 'Yeni Ürün Gönderildi', type: 'textarea', value: config.reptrackMessage },
+            { id: 'repfotoMessage', label: 'Yanlış Ürün – Fotoğraf İste', type: 'textarea', value: config.repfotoMessage },
+            { id: 'wecanMessage', label: 'Kişiselleştirme Mümkün', type: 'textarea', value: config.wecanMessage },
         ];
 
         fields.forEach(field => {
@@ -709,37 +719,86 @@
         setTimeout(() => overlay.classList.add('show'), 10);
     }
 
-    async function main(send = false) {
+    async function main(messageKey) {
         const orderName = document.querySelector("#order-details-header-text > span")?.innerText;
         if (!orderName) return;
-
         const userName = orderName.replace("Order from ", "");
-        const savedMessage = `\n${config.reviewMessage}\n`;
-        const personalizedMessage = savedMessage.replace("{{userName}}", userName);
+
+        const savedMessage = config[messageKey];
+        if (!savedMessage) return;
+
+        const personalizedMessage = `\n${savedMessage.replace("{{userName}}", userName)}\n`;
 
         const textAreaEl = document.querySelector('textarea[name="message"]');
-        if (textAreaEl) {
-            if (!textAreaEl.value.includes(personalizedMessage)) {
-                textAreaEl.value += personalizedMessage; // Mevcut içeriğin sonuna ekle
-                textAreaEl.setAttribute("value", textAreaEl.value); // Value'yi açıkça ayarla
-                textAreaEl.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-                textAreaEl.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
-            }
-            textAreaEl.focus(); // Kutuyu odakla
-
-            // Eğer "send" parametresi true ise mesaj dolu mu kontrol et ve gönder
-            if (send && textAreaEl.value.trim()) {
-                const sendButton = document.querySelector('button[data-test-id="submit"]');
-                if (sendButton) {
-                    //setTimeout(() => sendButton.click(), 500); // Gönderim için zamanlama ekle
-                    //console.log("gömderildi")
-                }
-            } else if (send) {
-                alert("Mesaj kutusu boş! Mesaj doldurulmadan gönderilemez.");
-            }
+        if (textAreaEl && !textAreaEl.value.includes(personalizedMessage)) {
+            textAreaEl.value += personalizedMessage;
+            textAreaEl.setAttribute("value", textAreaEl.value);
+            textAreaEl.dispatchEvent(new Event('input', { bubbles: true }));
+            textAreaEl.dispatchEvent(new Event('change', { bubbles: true }));
+            textAreaEl.focus();
         }
     }
 
+    document.addEventListener("keydown", (event) => {
+        if (event.ctrlKey && !event.altKey) {
+            switch (event.code) {
+                case "Space": event.preventDefault(); main("reviewMessage"); break;
+                case "Digit1":event.preventDefault(); main("printMessage"); break;
+                case "Digit2":event.preventDefault(); main("cancelMessage"); break;
+                case "Digit3":event.preventDefault(); main("noreturnMessage"); break;
+                case "Digit4":event.preventDefault(); main("uspserrorMessage"); break;
+                case "Digit5":event.preventDefault(); main("priorityMessage"); break;
+                case "Digit6":event.preventDefault(); main("resendMessage"); break;
+                case "Digit7":event.preventDefault(); main("reptrackMessage"); break;
+                case "Digit8":event.preventDefault(); main("repfotoMessage"); break;
+                case "Digit9":event.preventDefault(); main("wecanMessage"); break;
+                case "Backquote":event.preventDefault(); insertShortcutTable(); break;
+            }
+        }
+    });
+
+
+
+    function insertShortcutTable() {
+        const target = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div:nth-child(4) > div");
+        if (!target) return;
+
+        const tableHTML = `
+        <div style="margin-bottom:16px; border:1px solid #ccc; padding:12px; border-radius:8px; background:#f9f9f9; font-family:sans-serif;">
+            <strong>🧷 Message Shortcuts</strong>
+            <table style="width:100%; margin-top:8px; border-collapse:collapse; font-size:14px;">
+                <thead>
+                    <tr style="text-align:left;">
+                        <th style="padding:4px 8px;">Shortcut</th>
+                        <th style="padding:4px 8px;">Message Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <tr><td style="padding:4px 8px;">Ctrl + Space</td><td style="padding:4px 8px;">Review Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 1</td><td style="padding:4px 8px;">Print Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 2</td><td style="padding:4px 8px;">Cancel Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 3</td><td style="padding:4px 8px;">Noreturn Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 4</td><td style="padding:4px 8px;">Uspserror Messageage</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 5</td><td style="padding:4px 8px;">Priority Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 6</td><td style="padding:4px 8px;">Resend Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 7</td><td style="padding:4px 8px;">Reptrack Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 8</td><td style="padding:4px 8px;">Repfoto Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 9</td><td style="padding:4px 8px;">Wecan Message</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + "</td><td style="padding:4px 8px;">Shortcut Map</td></tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+
+        const container = document.createElement("div");
+        container.innerHTML = tableHTML;
+        target.parentNode.insertBefore(container, target);
+        const protection = document.getElementById("purchase-protection-seller-onsite-under-250")
+        if(protection){
+            protection.style.display = "none";
+        }
+    }
+    insertShortcutTable();
     async function butonsAll(el){
         //console.log("Betik başlatıldı.");
         // Butonlara tab sırası ekle
@@ -801,12 +860,6 @@
 
     }
 
-    // Ctrl + Space ile sadece doldurma
-    document.addEventListener("keydown", (event) => {
-        if (event.ctrlKey && !event.altKey && event.code === "Space") {
-            main(false); // Sadece doldur
-        }
-    });
 
     // Ctrl + Alt  gönderme
     document.addEventListener("keydown", (event) => {
@@ -822,6 +875,13 @@
     // Ctrl + Alt + Space ile doldurma ve gönderme
     document.addEventListener("keydown", (event) => {
         if (event.ctrlKey && event.altKey && event.code === "Space") {
+            //main(true); // Doldur ve gönder
+        }
+    });
+
+    // Ctrl + Shift + Space ile doldurma ve gönderme
+    document.addEventListener("keydown", (event) => {
+        if (event.ctrlKey && event.shiftKey && event.code === "Space") {
             main(true); // Doldur ve gönder
         }
     });
@@ -836,9 +896,9 @@
         );
         //const buttons = document.querySelectorAll('button.wt-btn--transparent.wt-tooltip__trigger');
         //console.log(buttons);
-        if (buttons.length > 0) {
+        if ( buttons.length > 0 && !window.location.href.includes("https://www.etsy.com/your/orders/sold/new?search_query=") ) {
             butonsAll(buttons)
-            //console.log("Butonlar bulundu:", buttons);
+            console.log("Butonlar bulundu:", buttons);
             observer.disconnect(); // Gözlemlemeyi durdur
         }
     });
