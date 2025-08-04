@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.67
+// @version      1.68
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/orders/sold/completed*
-// @match        https://www.etsy.com/your/orders/sold/new?search_query=*
+// @match        https://www.etsy.com/your/orders/sold/*?order_id=*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.getValue
 // @grant        GM.setValue
