@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.25
+// @version      4.28
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -293,7 +293,9 @@
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
         }
-
+        .tl-info {
+            white-space: pre-wrap;
+        }
 `);
     // Config yapısı
     const DEFAULT_CONFIG = {
@@ -382,6 +384,7 @@
         { "name": "Navy", "ischecked": 0, "hex": "#000080" },
         { "name": "Military Green", "ischecked": 0, "hex": "#4B5320" },
         { "name": "Heather True Royal", "ischecked": 0, "hex": "#3A5DAE" },
+        { "name": "Heather Berry", "ischecked": 0, "hex": "#db689d" },
         { "name": "Maroon", "ischecked": 0, "hex": "#800000" },
         { "name": "Mauve", "ischecked": 1, "hex": "#E0B0FF" },
         { "name": "Natural", "ischecked": 1, "hex": "#F5F5DC" },
@@ -729,7 +732,7 @@
                 });
                 return;
             }
-            const targetUrl = `https://www.etsy.com/your/orders/sold/new?search_query=${orderId}`;
+            const targetUrl = `https://www.etsy.com/your/orders/sold/new?order_id=${orderId}&search_query=${orderId}&expand_convo=true`;
             window.open(targetUrl, "_blank");
         });
 
@@ -1101,10 +1104,12 @@
         const credit = getcreditElValue();
         const creditInTl = credit * exchangeRate
         const balance = getbalanceElValue();
+        const balance1 = 3750;
         const balanceInTl = balance * exchangeRate
+        const balanceInT2 = balance1* exchangeRate
         addText(creditElement, "tl-info", ` (${Math.round(creditInTl)} ₺)`)
 
-        addText(balanceElement, "tl-info", ` (${Math.round(balanceInTl)} ₺)`)
+        addText(balanceElement, "tl-info", ` (${Math.round(balanceInTl)} ₺)\n  (${Math.round(balance + balance1)} \$) (${Math.round(balanceInTl+balanceInT2)} ₺)`)
 
         isProcessing = false; // Reset flag after processing is complete
     }
