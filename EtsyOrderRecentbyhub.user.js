@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.28
+// @version      4.30
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -638,6 +638,51 @@
         return el?.textContent.trim() || null;
     }
 
+    const createApproveButton = (container) => {
+        const btnApprove = document.createElement('button');
+        btnApprove.textContent = 'App';
+        btnApprove.className = 'mud-button-root mud-button mud-button-text mud-button-text-default mud-button-text-size-medium mud-ripple';
+        btnApprove.style.cssText = 'padding: 3px 10px; font-size: 11px; border-right: 1px solid #e0e0e0; border-radius: 0; margin-right: 8px;';
+        btnApprove.addEventListener('click', () => {
+            checkCheckboxesFromLocalStorage();
+            btnApprove.style.backgroundColor = 'darkgreen';
+        });
+
+        const btnClear = document.createElement('button');
+        btnClear.textContent = 'Temizle';
+        btnClear.className = btnApprove.className;
+        btnClear.style.cssText = btnApprove.style.cssText + 'border-right: none;';
+        btnClear.addEventListener('click', () => {
+            localStorage.removeItem('orderNumbers');// sadece localStorage'ı temizle
+            btnClear.style.backgroundColor = 'darkred';
+            btnApprove.style.backgroundColor = '';
+        });
+        container.insertBefore(btnClear, container.firstChild);
+        container.insertBefore(btnApprove, container.firstChild);
+    };
+
+    function checkCheckboxesFromLocalStorage() {
+        const savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
+        document.querySelectorAll('tr').forEach(tr => {
+            const orderNoLink = tr.querySelector('td a');
+            if (orderNoLink) {
+                const orderNo = orderNoLink.textContent.trim();
+                if (savedOrders.includes(orderNo)) {
+                    const checkboxInput = tr.querySelector('input[type="checkbox"]');
+                    if (checkboxInput) {
+                        checkboxInput.checked = true;
+                        checkboxInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    const dxblCheck = tr.querySelector('dxbl-check');
+                    if (dxblCheck) {
+                        dxblCheck.setAttribute('check-state', '1');
+                        dxblCheck.dispatchEvent(new Event('click', { bubbles: true }));
+                    }
+                }
+            }
+        });
+    }
+
     const observerOptions = { childList: true, subtree: true };
 
     function insertEarningContent(earningNode, costText, priceText, shirtText, quantity, miktar, shipText, skuText) {
@@ -838,6 +883,22 @@
                             //alert('orderCutText kopyalandı: ' + orderCutText.textContent);
                         });
                     });
+                    const approveButton = document.createElement('button');
+                    approveButton.textContent = 'Gönder';
+                    approveButton.style.marginLeft = '10px';
+                    approveButton.className = 'approve-icon';
+                    orderCutText.parentNode.appendChild(approveButton);
+
+                    approveButton.addEventListener('click', function (e) {
+                        let savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
+                        const currentOrder = orderCutText.textContent.trim();
+                        if (!savedOrders.includes(currentOrder)) {
+                            savedOrders.push(currentOrder);
+                            localStorage.setItem('orderNumbers', JSON.stringify(savedOrders));
+                        }
+                        e.target.style.backgroundColor = "darkgreen";
+                    });
+
                 }
 
                 const skuCText = sNode.querySelector(selectors.skuCut);
@@ -856,7 +917,7 @@
                         });
                     });
                     if (skuNo.includes("X")){
-                        let id = await GM.getValue(skuNo, "");
+                        let id = (await getSkuSettings(skuNo))?.driveId;
                         if (!id) {
                             const container = document.createElement('div');
                             container.style.display = 'inline-block';
@@ -874,7 +935,7 @@
                             saveButton.addEventListener('click', async () => {
                                 const newId = input.value.trim();
                                 if (newId) {
-                                    await GM.setValue(skuNo, newId);
+                                    await setSkuSettings(skuNo, newId);
                                     //location.reload();
                                 }
                             });
@@ -926,6 +987,7 @@
                 const personaCutEl = getText(selectors.personaCut,sNode);
                 if (skuCText && personaCutEl) {
                     const sku = skuCText.textContent;
+                    let SkuSettings = await getSkuSettings(sku);
                     const personaText = personaCutEl.replace("Personalization ", "").trim();
                     //console.log("personaText: ", personaText);
 
@@ -938,7 +1000,7 @@
                     const noteId = generateUniqueId();
                     const inputValue = personaText.replaceAll(":", "").replace(/NUMBER/i, "").replace(/NAME/i, "").replaceAll("\n", " | ").toUpperCase();
 
-                    const makeCard = (label, inputId, btnId) => `
+                    const makeCard = (label, inputId, btnId,btnStyl) => `
                   <div class="card card-body py-0 mb-0 p-1 shadow-none mt-0">
                       <span class="side-stick"></span>
                       <p class="note-date fs-1 mb-0">${label}</p>
@@ -951,7 +1013,7 @@
                       </div>
                       <div class="generation-controls">
                           <div class="d-flex gap-1 align-items-center">
-                              <button class="mud-button mud-button-filled mud-button-filled-primary mud-button-filled-size-small"
+                              <button class="mud-button mud-button-filled mud-button-filled-${btnStyl} mud-button-filled-size-small"
                                       id="${btnId}">
                                   Oluştur ve Yükle
                               </button>
@@ -959,11 +1021,12 @@
                           <div class="status-message mt-1" id="status-${btnId}"></div>
                       </div>
                   </div>`;
-
+                    let btnFont = SkuSettings?.fontName ? 'warning':'';
+                    let btnImag = SkuSettings?.imageSet ? 'warning':'';
                     const noteHtml = `
                   <div role="group" class="d-flex flex-row gap-3 col-md-12 single-note-item all-category note-social" id="${noteId}">
-                      ${makeCard("Dizayn oluştur Font ile", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`)}
-                      ${makeCard("Dizayn oluştur Resim ile", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`)}
+                      ${makeCard("Dizayn oluştur Font ile", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`,btnFont)}
+                      ${makeCard("Dizayn oluştur Resim ile", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`,btnImag)}
                   </div>`;
 
                     targetCell.insertAdjacentHTML('beforeend', noteHtml);
@@ -1365,12 +1428,17 @@
                         <label>Rotation Angle (degrees)</label>
                         <input type="number" id="skuAngle" value="0" min="0" max="360" />
                     </div>
+                    <div>
+                        <label>Drive ID</label>
+                        <input type="text" id="skuDriveId"/>
+                    </div>
                     <button id="saveSkuBtn">Save SKU Settings</button>
                     <div id="skuSaveStatus" class="status-message"></div>
 
                     <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
                         <h3 style="margin-top: 0;">Manage SKUs</h3>
-                        <select id="skuListDropdown" style="width: 100%;"></select>
+                        <input id="skuSearchInput" list="skuList" style="width: 100%;" placeholder="Type to search...">
+                        <datalist id="skuList"></datalist>
                         <button id="deleteSkuBtn" style="margin-top: 10px;">Delete Selected SKU</button>
                         <div id="skuDeleteStatus" class="status-message"></div>
                     </div>
@@ -1384,8 +1452,8 @@
                     ]);
 
                     // Load SKU settings when selected
-                    document.getElementById('skuListDropdown').addEventListener('change', async () => {
-                        const sku = document.getElementById('skuListDropdown').value;
+                    document.getElementById('skuSearchInput').addEventListener('change', async () => {
+                        const sku = document.getElementById('skuSearchInput').value;
                         if (!sku) return;
 
                         const settings = await getSkuSettings(sku);
@@ -1402,6 +1470,7 @@
                         document.getElementById('skuImageSet').value = settings.imageSet || '';
                         document.getElementById('skuSpacing').value = settings.space || 200;
                         document.getElementById('skuAngle').value = settings.angle || 0;
+                        document.getElementById('skuDriveId').value = settings.driveId || '';
 
                         showStatus(`${sku} settings loaded`, 'success', 'skuSaveStatus');
                     });
@@ -1416,7 +1485,7 @@
                         const imageSet = document.getElementById('skuImageSet').value;
                         const space = parseInt(document.getElementById('skuSpacing').value);
                         const angle = parseInt(document.getElementById('skuAngle').value);
-
+                        const driveId = document.getElementById('skuDriveId').value;
                         if (!sku) {
                             showStatus('SKU is required', 'error', 'skuSaveStatus');
                             return;
@@ -1435,7 +1504,8 @@
                                 strokeWidth,
                                 imageSet: imageSet || null,
                                 space,
-                                angle
+                                angle,
+                                driveId
                             });
 
                             showStatus(`${sku} settings saved successfully`, 'success', 'skuSaveStatus');
@@ -1447,7 +1517,7 @@
 
                     // Delete SKU
                     document.getElementById('deleteSkuBtn').addEventListener('click', async () => {
-                        const sku = document.getElementById('skuListDropdown').value;
+                        const sku = document.getElementById('skuSearchInput').value;
                         if (!sku) {
                             showStatus('No SKU selected', 'error', 'skuDeleteStatus');
                             return;
@@ -1468,6 +1538,7 @@
                                 document.getElementById('skuImageSet').value = '';
                                 document.getElementById('skuSpacing').value = 200;
                                 document.getElementById('skuAngle').value = 0;
+                                document.getElementById('skuDriveId').value = '';
                             } catch (error) {
                                 showStatus(`Error deleting SKU: ${error.message}`, 'error', 'skuDeleteStatus');
                             }
@@ -1708,12 +1779,13 @@
         const populateSkuDropdown = async () => {
             const keys = await GM.listValues();
             const skuKeys = keys.filter(k => k.startsWith('sku_')).map(k => k.replace('sku_', ''));
-            const select = document.getElementById('skuListDropdown');
-            if (select) {
-                const currentValue = select.value;
-                select.innerHTML = skuKeys.map(k => `<option value="${k}">${k}</option>`).join('');
+            const datalist = document.getElementById('skuList');
+            const input = document.getElementById('skuSearchInput');
+            if (datalist && input) {
+                const currentValue = input.value;
+                datalist.innerHTML = skuKeys.map(k => `<option value="${k}">`).join('');
                 if (currentValue && skuKeys.includes(currentValue)) {
-                    select.value = currentValue;
+                    input.value = currentValue;
                 }
             }
         };
@@ -2326,6 +2398,15 @@
             request.onerror = () => reject(request.error);
         });
     };
+
+    // SKU Yönetim Fonksiyonları
+    const setSkuSettings = async (sku, driveId) => {
+        const old = await getSkuSettings(sku);
+        await saveSkuSettings(sku, {
+            ...old,
+            driveId
+        });
+    }
 
     // SKU Yönetim Fonksiyonları
     const saveSkuSettings = async (sku, settings) => {
@@ -2960,33 +3041,38 @@
         });
     }
 
-// Sayfa yüklendiğinde
-window.addEventListener('load', async function () {
-    loadConfig();
-    initUI();
-    if (window.location.href.includes("/drop-ship/orders")) {
-        createFloatingPanelSystem();
-    }
-});
-
-function handleMutation(mutationsList) {
-    if (window.location.href.includes('customhub.io/drop-ship/approval-pending')) processPage();
-    mutationsList.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                const pNode = node.querySelector(selectors.selector);
-                const cutNode = node.querySelector(selectors.trCut);
-                const salNode = node.querySelector(selectors.salesSummary);
-                if (pNode && !pNode.dataset.processed) convertNode(pNode);
-                if (cutNode && !cutNode.dataset.processed) convertCutNode();
-                if (salNode && !salNode.dataset.processed) convertSalNode(salNode);
-                checkAndInsertEarningContent();
+    window.addEventListener('load', async () => {
+        loadConfig();
+        initUI();
+        if (window.location.href.includes("/drop-ship/orders")) {
+            createFloatingPanelSystem();
+            try {
+                const container = await waitForElement('div.mud-paper.navbar', 5000);
+                createApproveButton(container);
+            } catch {
+                console.warn('Container element bulunamadı.');
             }
-        });
+        }
     });
-}
 
-const observer = new MutationObserver(handleMutation);
-observer.observe(document.body, observerOptions);
+    function handleMutation(mutationsList) {
+        if (window.location.href.includes('customhub.io/drop-ship/approval-pending')) processPage();
+        mutationsList.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const pNode = node.querySelector(selectors.selector);
+                    const cutNode = node.querySelector(selectors.trCut);
+                    const salNode = node.querySelector(selectors.salesSummary);
+                    if (pNode && !pNode.dataset.processed) convertNode(pNode);
+                    if (cutNode && !cutNode.dataset.processed) convertCutNode();
+                    if (salNode && !salNode.dataset.processed) convertSalNode(salNode);
+                    checkAndInsertEarningContent();
+                }
+            });
+        });
+    }
+
+    const observer = new MutationObserver(handleMutation);
+    observer.observe(document.body, observerOptions);
 
 })();
