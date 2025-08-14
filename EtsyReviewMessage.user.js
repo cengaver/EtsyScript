@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.68
+// @version      1.71
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -615,7 +615,7 @@
 
         const title = document.createElement('h3');
         title.className = 'etsy-tool-modal-title';
-        title.textContent = 'Etsy Listing Tool Ayarları';
+        title.textContent = 'Etsy Mesaj Tool Ayarları';
 
         const closeBtn = document.createElement('button');
         closeBtn.className = 'etsy-tool-modal-close';
@@ -640,10 +640,11 @@
             { id: 'noreturnMessage', label: 'İade Yerine Kupon', type: 'textarea', value: config.noreturnMessage },
             { id: 'uspserrorMessage', label: 'Adres Hatası', type: 'textarea', value: config.uspserrorMessage },
             { id: 'priorityMessage', label: 'Hızlı Kargo Seçeneği', type: 'textarea', value: config.priorityMessage },
-            { id: 'resendMessage', label: 'Yeniden Gönderim', type: 'textarea', value: config.resendMessage },
+            { id: 'resendMessage', label: 'Yanlış Ürün Yeniden(rep) Gönderiyorum', type: 'textarea', value: config.resendMessage },
             { id: 'reptrackMessage', label: 'Yeni Ürün Gönderildi', type: 'textarea', value: config.reptrackMessage },
             { id: 'repfotoMessage', label: 'Yanlış Ürün – Fotoğraf İste', type: 'textarea', value: config.repfotoMessage },
             { id: 'wecanMessage', label: 'Kişiselleştirme Mümkün', type: 'textarea', value: config.wecanMessage },
+            { id: 'doapprowMessage', label: 'Onay Bekliyorum', type: 'textarea', value: config.doapprowMessage }
         ];
 
         fields.forEach(field => {
@@ -752,6 +753,7 @@
                 case "Digit7":event.preventDefault(); main("reptrackMessage"); break;
                 case "Digit8":event.preventDefault(); main("repfotoMessage"); break;
                 case "Digit9":event.preventDefault(); main("wecanMessage"); break;
+                case "Digit0":event.preventDefault(); main("doapprowMessage"); break;
                 case "Backquote":event.preventDefault(); insertShortcutTable(); break;
             }
         }
@@ -771,20 +773,22 @@
                     <tr style="text-align:left;">
                         <th style="padding:4px 8px;">Shortcut</th>
                         <th style="padding:4px 8px;">Message Type</th>
+                        <th style="padding:4px 8px;">Açıklama</th>
                     </tr>
                 </thead>
                 <tbody>
-                <tr><td style="padding:4px 8px;">Ctrl + Space</td><td style="padding:4px 8px;">Review Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 1</td><td style="padding:4px 8px;">Print Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 2</td><td style="padding:4px 8px;">Cancel Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 3</td><td style="padding:4px 8px;">Noreturn Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 4</td><td style="padding:4px 8px;">Uspserror Messageage</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 5</td><td style="padding:4px 8px;">Priority Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 6</td><td style="padding:4px 8px;">Resend Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 7</td><td style="padding:4px 8px;">Reptrack Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 8</td><td style="padding:4px 8px;">Repfoto Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 9</td><td style="padding:4px 8px;">Wecan Message</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + "</td><td style="padding:4px 8px;">Shortcut Map</td></tr>
+                <tr><td style="padding:4px 8px;">Ctrl + Space</td><td style="padding:4px 8px;">Review Message</td><td style="padding:4px 8px;">Review Mesaj</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 1</td><td style="padding:4px 8px;">Print Message</td><td style="padding:4px 8px;">Bu Şekilde Baskıya</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 2</td><td style="padding:4px 8px;">Cancel Message</td><td style="padding:4px 8px;">Sipariş İptali</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 3</td><td style="padding:4px 8px;">Noreturn Message</td><td style="padding:4px 8px;">İade Yerine Kupon</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 4</td><td style="padding:4px 8px;">Uspserror Message</td><td style="padding:4px 8px;">Adres Hatası</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 5</td><td style="padding:4px 8px;">Priority Message</td><td style="padding:4px 8px;">Hızlı Kargo Seçeneği</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 6</td><td style="padding:4px 8px;">Resend(rep) Message</td><td style="padding:4px 8px;">Yanlış Ürün Yeniden(rep) Gönderiyorum</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 7</td><td style="padding:4px 8px;">Reptrack Message</td><td style="padding:4px 8px;">Yeni Ürün Gönderildi</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 8</td><td style="padding:4px 8px;">Repfoto Message</td><td style="padding:4px 8px;">Yanlış Ürün – Fotoğraf İste</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 9</td><td style="padding:4px 8px;">Wecan Message</td><td style="padding:4px 8px;">Kişiselleştirme Mümkün</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + 0</td><td style="padding:4px 8px;">Doapprow Message</td><td style="padding:4px 8px;">Onay Bekliyorum</td></tr>
+                    <tr><td style="padding:4px 8px;">Ctrl + "</td><td style="padding:4px 8px;">Shortcut Map</td><td style="padding:4px 8px;">Kısayol Haritası</td></tr>
                 </tbody>
             </table>
         </div>
