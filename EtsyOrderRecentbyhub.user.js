@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.30
+// @version      4.31
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -631,8 +631,8 @@
         store: "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > div > div.mud-paper.mud-elevation-0.pt-0.relative > div > div.mud-grid-item.mud-grid-item-xs-12.mud-grid-item-md-4.pl-1 > div > div > div.d-flex.flex-row.gap-3.w-100.mb-1.mt-4 > div.d-flex.flex-column.gap-0 > p.mud-typography.mud-typography-body1.text-muted.mt-0.fs-2.mud-typography-nowrap",
         mapAdress: "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > div > div.mud-paper.mud-elevation-0.pt-0.relative.ch-n-od-shipinfos > div > div.mud-grid-item.mud-grid-item-xs-12.mud-grid-item-md-8.pl-0.pr-3.pt-2 > div > div > div > div.mud-grid-item.mud-grid-item-xs-12.mud-grid-item-md-8.p-0.overflow-hidden > div.d-flex.flex-row.gap-3.w-100.mb-0.mt-3 > div.d-flex.flex-column.gap-0 > p.mud-typography.mud-typography-body1.text-muted.mt-0.fs-2",
         subTotalSel: "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div > div > div > div > div > div.d-flex.align-items-center.justify-content-between.mb-3.pt-2 > h6",
+        popupCart: "div.d-flex.flex-row.gap-0.cus-action-buttons.position-absolute.z-3.pl-3.ch-n-od-header.w-100 > div.mud-paper.mud-elevation-0.pt-2.shades.transparent.ch-n-od-buttons > div"
     };
-
     function getText(selector,doc = document) {
         const el = doc.querySelector(selector);
         return el?.textContent.trim() || null;
@@ -1097,6 +1097,20 @@
             salNode.dataset.contentInserted = "true";
         };
     };
+
+    /*async function convertpopNode(popNode) {
+        if (popNode && !popNode.dataset.contentInserted) {
+            // Buton ekleme
+            const btn = document.createElement("button");
+            btn.textContent = "Run Sequence";
+            btn.style.padding = "5px 10px";
+            btn.style.marginLeft = "10px";
+            btn.style.cursor = "pointer";
+            btn.onclick = () => runSequence(popNode); // <-- burada düzeltme
+            popNode.appendChild(btn);
+            popNode.dataset.contentInserted = "true";
+        };
+    };*/
 
     let isProcessing = false; // Flag to prevent multiple executions
 
@@ -1951,63 +1965,6 @@
         }
 
         return fontFace;
-
-        /*
-        //console.log('Font data preview:', fontData.substring(0, 100));
-        try {
-            // Font'u DOM'a ekle
-            // Font verilerini parse et
-            let charFont;
-            try {
-                const parsedData = JSON.parse(fontData);
-                charFont = parsedData;
-            } catch (e) {
-                console.error('Font parse error:', e);
-                return null;
-            }
-            /*const style = document.createElement('style');
-            style.textContent = `
-        @font-face {
-            font-family: '${charFont.name}';
-            src: url('${charFont.base64}') format('woff2');
-            font-display: swap;
-        }`;
-            document.head.appendChild(style);*/
-
-        /***/
-        /*// 2. FontFace oluştur
-            const fontFace = new FontFace(
-                charFont.name,
-                charFont.base64,
-                { display: 'swap' }
-            );
-
-            // 3. Fontu yükle
-            await fontFace.load();
-            document.fonts.add(fontFace);
-
-            // 4. Yükleme kontrolü
-            await document.fonts.ready;
-            if (!document.fonts.check(`12px ${charFont.name}`)) {
-                throw new Error('Font sistem tarafından tanınmadı');
-            }
-            *//***/
-        // Font'un yüklenmesini bekle (optimize edilmiş versiyon)
-        /*await new Promise((resolve) => {
-                const checkFont = () => {
-                    if (document.fonts.check(`12px '${charFont.name}'`)) {
-                        resolve();
-                    } else {
-                        setTimeout(checkFont, 100);
-                    }
-                };
-                checkFont();
-            });
-
-        } catch (error) {
-            console.error(`Error loading font "${fontData.base64?.substring(0, 100)}":`, error);
-            throw error;
-        }*/
     };
 
     const generateImageWithSKUSettings = async (sku, text) => {
@@ -2352,8 +2309,6 @@
     // Improved unique ID generator
     const generateUniqueId = () => {
         return 'personalization-' + crypto.randomUUID(); // Modern browsers
-        // Fallback for older browsers:
-        // return 'personalization-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     };
 
     function cleanupBlob(blob) {
@@ -3041,6 +2996,197 @@
         });
     }
 
+    /*function runSequence(popNode) {
+        const steps = [
+            () => popNode.querySelector("div.mudcard-optionsx div:nth-child(3) button")?.click(),
+            () => document.querySelector("div.mud-popover-open div > div:nth-child(1)")?.click(),
+            () => {
+                let el = document.querySelector("input[id^='mudinput']");
+                if (el) {
+                    el.value = 3;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            },
+            () => document.querySelector("div.mud-dialog-actions > button")?.click(),
+            () => popNode.querySelector("div.mudcard-optionsx div:nth-child(5) button")?.click(),
+            () => document.querySelector("div.mud-popover-open div > div:nth-child(1)")?.click(),
+            () => {
+                let el = document.querySelector("input[id^='mudinput']");
+                if (el) {
+                    el.value = 2;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            },
+            () => document.querySelector("div.mud-dialog-actions > button")?.click()
+        ];
+
+        steps.forEach((fn, i) => setTimeout(fn, i * 3000));
+    }*/
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    function last(arr){ return arr && arr.length ? arr[arr.length-1] : null; }
+
+    function safeClick(el){
+        if(!el) return false;
+        el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));
+        el.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));
+        el.click();
+        return true;
+    }
+
+    function setInputValue(el, val){
+        if(!el) return;
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        setter.call(el, String(val));
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function waitFor(selector, root=document, timeout=10000){
+        return new Promise((resolve, reject)=>{
+            const found = root.querySelector(selector);
+            if(found) return resolve(found);
+            const obs = new MutationObserver(()=>{
+                const el = root.querySelector(selector);
+                if(el){ obs.disconnect(); resolve(el); }
+            });
+            obs.observe(root === document ? document.documentElement : root, {childList:true, subtree:true});
+            setTimeout(()=>{ obs.disconnect(); reject(new Error('Timeout: '+selector)); }, timeout);
+        });
+    }
+    function getScopeFrom(popNode){
+        return popNode.closest(".mud-dialog, .mud-dialog-root, .mud-focus-trap-child-container, .mud-focus-trap") || document;
+    }
+
+    function getLastOpenDialog(){
+        const ds = [...document.querySelectorAll(".mud-dialog, .mud-dialog-root")];
+        return last(ds) || document;
+    }
+
+    function getFirstPopoverItem(){
+        // MudMenu genelde list item’lar açar; birkaç olası seçici deniyoruz
+        return document.querySelector(
+            ".mud-popover-open .mud-list-item, " +
+            ".mud-popover-open [role='menuitem'], " +
+            ".mud-popover-open .mud-menu-item, " +
+            ".mud-popover-open .mud-list > *"
+        );
+    }
+    function findButtons(popNode) {
+        let buttons = popNode.querySelectorAll("div.mudcard-optionsx button");
+        let btns
+        buttons.forEach(btn => {
+            if (btn.querySelector(".mud-icon-root.mud-svg-icon.mud-icon-size-medium.mud-icon-badge")) {
+                btns = 5; // Özel ikonu olan
+            } else {
+                btns = 3; // Diğeri
+            }
+        });
+
+        return btns;
+    }
+
+    // ---- main sequence ----
+    async function runSequence(popNode){
+        try{
+            const scope = getScopeFrom(popNode);
+
+            // 1) 3. buton (ilk ayar)
+            const btn3 = await waitFor("div.mudcard-optionsx div:nth-child(3) button", scope);
+            safeClick(btn3);
+            await sleep(1000);
+
+            // 2) Popover - ilk seçenek
+            const popItem1 = await waitFor(".mud-popover-open", document);
+            const firstItem1 = getFirstPopoverItem();
+            if(firstItem1) safeClick(firstItem1);
+            await sleep(800);
+
+            // 3) Dialog input = 3, sonra OK
+            const dlg1 = getLastOpenDialog();
+            const inputs1 = await waitFor("input[id^='mudinput']", dlg1).then(() => dlg1.querySelectorAll("input[id^='mudinput']"));
+            const input1 = inputs1[2]; // 0,1,2 -> 3. input
+            setInputValue(input1, 3);
+
+            await sleep(400);
+            const ok1 = await waitFor("div.mud-dialog-actions button:not([disabled])", dlg1);
+            safeClick(ok1);
+            await sleep(1000);
+
+            // 4) 5. buton (ikinci ayar)
+            //let btn = findButtons(popNode)
+            const btn5 = await waitFor("div.mudcard-optionsx div:nth-child(3) button", scope);
+            safeClick(btn5);
+            await sleep(1000);
+
+            // 5) Popover - ilk seçenek
+            const popItem2 = await waitFor(".mud-popover-open", document);
+            const firstItem2 = getFirstPopoverItem();
+            if(firstItem2) safeClick(firstItem2);
+            await sleep(800);
+
+            // 6) Dialog input = 2, sonra OK
+            const dlg2 = getLastOpenDialog();
+            const inputs2 = await waitFor("input[id^='mudinput']", dlg2).then(() => dlg2.querySelectorAll("input[id^='mudinput']"));
+            const input2 = inputs2[2]; // 3. input
+            setInputValue(input2, 2);
+
+            /*await sleep(500);
+            const ok2 = await waitFor("div.mud-dialog-actions button:not([disabled])", dlg2);
+            safeClick(ok2);*/
+            // bitti
+        } catch(err){
+            console.error("[runSequence] Hata:", err);
+        }
+    }
+
+    // ---- butonu ekle ----
+    async function convertpopNode(popNode){
+        if (popNode && !popNode.dataset.contentInserted) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = "Run Sequence";
+            btn.style.padding = "6px 10px";
+            btn.style.marginLeft = "10px";
+            btn.style.cursor = "pointer";
+            btn.addEventListener("click", (e)=>{
+                e.stopPropagation();
+                e.preventDefault();
+                runSequence(popNode);
+            }, { once:false });
+            popNode.appendChild(btn);
+            /*const btnap = document.createElement("button");
+            btnap.type = "button";
+            btnap.textContent = "Gönder";
+            btnap.style.padding = "6px 10px";
+            btnap.style.marginLeft = "10px";
+            btnap.style.cursor = "pointer";
+            btnap.addEventListener("click", (e)=>{
+                e.stopPropagation();
+                e.preventDefault();
+                let savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
+                const currentOrder = orderCutText.textContent.trim();
+                if (!savedOrders.includes(currentOrder)) {
+                    savedOrders.push(currentOrder);
+                    localStorage.setItem('orderNumbers', JSON.stringify(savedOrders));
+                }
+                e.target.style.backgroundColor = "darkgreen";
+
+            }, { once:false });
+            popNode.appendChild(btnap);*/
+            popNode.dataset.contentInserted = "true";
+        }
+    }
+
+    // ---- mevcut node varsa hemen ekle ----
+    (function initOnce(){
+        const existing = document.querySelector(selectors.popupCart);
+        if(existing) convertpopNode(existing);
+    })();
+
+
     window.addEventListener('load', async () => {
         loadConfig();
         initUI();
@@ -3063,14 +3209,21 @@
                     const pNode = node.querySelector(selectors.selector);
                     const cutNode = node.querySelector(selectors.trCut);
                     const salNode = node.querySelector(selectors.salesSummary);
+                    //const popNode = node.querySelector(selectors.popupCart);
                     if (pNode && !pNode.dataset.processed) convertNode(pNode);
                     if (cutNode && !cutNode.dataset.processed) convertCutNode();
                     if (salNode && !salNode.dataset.processed) convertSalNode(salNode);
+                   // if (popNode && !popNode.dataset.processed) convertpopNode(popNode);
                     checkAndInsertEarningContent();
+                    const popNode = node.querySelector?.(selectors.popupCart);
+                    if (popNode && !popNode.dataset.processed){
+                        convertpopNode(popNode);
+                        popNode.dataset.processed = "true";
+                    }
                 }
             });
         });
-    }
+        }
 
     const observer = new MutationObserver(handleMutation);
     observer.observe(document.body, observerOptions);
