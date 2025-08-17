@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.31
+// @version      4.32
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -631,7 +631,8 @@
         store: "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > div > div.mud-paper.mud-elevation-0.pt-0.relative > div > div.mud-grid-item.mud-grid-item-xs-12.mud-grid-item-md-4.pl-1 > div > div > div.d-flex.flex-row.gap-3.w-100.mb-1.mt-4 > div.d-flex.flex-column.gap-0 > p.mud-typography.mud-typography-body1.text-muted.mt-0.fs-2.mud-typography-nowrap",
         mapAdress: "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > div > div.mud-paper.mud-elevation-0.pt-0.relative.ch-n-od-shipinfos > div > div.mud-grid-item.mud-grid-item-xs-12.mud-grid-item-md-8.pl-0.pr-3.pt-2 > div > div > div > div.mud-grid-item.mud-grid-item-xs-12.mud-grid-item-md-8.p-0.overflow-hidden > div.d-flex.flex-row.gap-3.w-100.mb-0.mt-3 > div.d-flex.flex-column.gap-0 > p.mud-typography.mud-typography-body1.text-muted.mt-0.fs-2",
         subTotalSel: "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div > div > div > div > div > div.d-flex.align-items-center.justify-content-between.mb-3.pt-2 > h6",
-        popupCart: "div.d-flex.flex-row.gap-0.cus-action-buttons.position-absolute.z-3.pl-3.ch-n-od-header.w-100 > div.mud-paper.mud-elevation-0.pt-2.shades.transparent.ch-n-od-buttons > div"
+        popupCart: "div.d-flex.flex-row.gap-0.cus-action-buttons.position-absolute.z-3.pl-3.ch-n-od-header.w-100 > div.mud-paper.mud-elevation-0.pt-2.shades.transparent.ch-n-od-buttons > div",
+        popupOrderId: "div.mud-focus-trap.outline-none > div.mud-focus-trap-child-container.outline-none > div.mud-dialog-content.cus-detail-dialog-content.px-3.pt-0 > div > div > div.mud-paper.mud-elevation-0.pt-0.relative.ch-n-od-shipinfos > div > div.mud-grid-item.mud-grid-item-xs-12.mud-grid-item-md-4.pl-1.pt-2 > div > div > div.d-flex.flex-row.gap-3.w-100.mb-3.mt-4 > div.d-flex.flex-column.gap-0 > p.mud-typography.mud-typography-body1.card-title.mb-0.fs-3.fw-bold.link.link-primary"
     };
     function getText(selector,doc = document) {
         const el = doc.querySelector(selector);
@@ -754,7 +755,7 @@
                 const skuText = skuNodes[index] ? skuNodes[index].textContent.trim() : "Bilinmiyor";
                 insertEarningContent(earningNode, costText, priceText, shirtText, quantity, miktar, shipText, skuText);
             });
-        }, 100); // 100 ms timeout
+        }, 500); // 100 ms timeout
     }
 
     // Map to track generated BLOBs and their URLs
@@ -764,12 +765,14 @@
         pNode.classList.add("link", "link-primary");
         pNode.style.cursor = "pointer";
         pNode.dataset.processed = "true";
+        let storeNode;
+        let orderId;
         const mapAdressNode = document.querySelector(selectors.mapAdress);
         pNode.addEventListener("click", (e) => {
-            const storeNode = getText(selectors.store);
+            storeNode = getText(selectors.store);
             if (!storeNode) return;
             //copy order no!!!
-            const orderId = pNode.textContent.replace("#", "");
+            orderId = pNode.textContent.replace("#", "");
             if (!storeNode.includes("Hand") || orderId.includes('_')) {
                 navigator.clipboard.writeText(orderId).then(() => {
                     //e.target.style.backgroundColor = "red"
@@ -795,7 +798,6 @@
             const targetMapUrl = `https://www.google.com/maps/dir/${encodeURIComponent(address)}`;
             window.open(targetMapUrl, "_blank");
         });
-
     }
 
     async function convertCutNode() {
@@ -836,38 +838,7 @@
                         console.log("imgCutUrl: ", imgCutUrl);
                         clearInterval(interval);
                     }
-                }, 500);
-
-
-                const shirtColorCuttext = getText(selectors.shirtColorCut,sNode);
-                if (shirtColorCuttext) {
-                    const shirtColor = shirtColorCuttext.replace("(", "").replace(")", "").trim();
-                    //console.log("shirtColor: ",shirtColor);
-                    const oldColorRGB = 'rgb(220, 220, 220)';
-                    const oldColorEmpty = '#dcdcdc';
-                    let newColor, designColor;
-                    // Get white color's hex
-                    newColor = shirtColors.find(c => c.name === shirtColor)?.hex;
-                    designColor = shirtColors.find(c => c.name === shirtColor)?.ischecked == 1 ? "black" : "white";
-                    //    border-width: thick; border-color: white;
-                    //console.log("newColor: ",newColor);
-                    const interval = setInterval(() => {
-                        const imgColorCutEl = sNode.querySelector(selectors.imgColorCut);
-                        if (!imgColorCutEl) return;
-
-                        const descendants = imgColorCutEl.querySelectorAll("*");
-                        descendants.forEach(Node => {
-                            const style = window.getComputedStyle(Node);
-                            if (style.backgroundColor.toLowerCase() === oldColorRGB || style.backgroundColor === oldColorEmpty) {
-                                Node.style.backgroundColor = newColor;
-                                Node.style.borderColor = designColor;
-                                Node.style.borderWidth = "8px";
-                            }
-                        });
-
-                        clearInterval(interval); // Bulunca durdur
-                    }, 500);
-                }
+                }, 1000);
 
                 const orderCutText = sNode.querySelector(selectors.orderCut);
                 if (orderCutText) {
@@ -984,6 +955,38 @@
                     //skuNoElement.parentNode.insertBefore(copyButton, skuNoElement.nextSibling);
                 }
 
+                const shirtColorCuttext = getText(selectors.shirtColorCut,sNode);
+                if (shirtColorCuttext) {
+                    const shirtColor = shirtColorCuttext.replace("(", "").replace(")", "").trim();
+                    //console.log("shirtColor: ",shirtColor);
+                    const oldColorRGB = 'rgb(220, 220, 220)';
+                    const oldColorEmpty = '#dcdcdc';
+                    let newColor, designColor;
+                    // Get white color's hex
+                    newColor = shirtColors.find(c => c.name === shirtColor)?.hex;
+                    designColor = shirtColors.find(c => c.name === shirtColor)?.ischecked == 1 ? "black" : "white";
+                    //    border-width: thick; border-color: white;
+                    //console.log("newColor: ",newColor);
+
+                    makeHexBox(newColor, sNode.querySelector(selectors.skuCut));
+                    const interval = setInterval(() => {
+                        const imgColorCutEl = sNode.querySelector(selectors.imgColorCut);
+                        if (!imgColorCutEl) return;
+
+                        const descendants = imgColorCutEl.querySelectorAll("*");
+                        descendants.forEach(Node => {
+                            const style = window.getComputedStyle(Node);
+                            if (style.backgroundColor.toLowerCase() === oldColorRGB || style.backgroundColor === oldColorEmpty) {
+                                Node.style.backgroundColor = newColor;
+                                Node.style.borderColor = designColor;
+                                Node.style.borderWidth = "8px";
+                            }
+                        });
+
+                        clearInterval(interval); // Bulunca durdur
+                    }, 1000);
+                }
+
                 const personaCutEl = getText(selectors.personaCut,sNode);
                 if (skuCText && personaCutEl) {
                     const sku = skuCText.textContent;
@@ -1097,20 +1100,6 @@
             salNode.dataset.contentInserted = "true";
         };
     };
-
-    /*async function convertpopNode(popNode) {
-        if (popNode && !popNode.dataset.contentInserted) {
-            // Buton ekleme
-            const btn = document.createElement("button");
-            btn.textContent = "Run Sequence";
-            btn.style.padding = "5px 10px";
-            btn.style.marginLeft = "10px";
-            btn.style.cursor = "pointer";
-            btn.onclick = () => runSequence(popNode); // <-- burada düzeltme
-            popNode.appendChild(btn);
-            popNode.dataset.contentInserted = "true";
-        };
-    };*/
 
     let isProcessing = false; // Flag to prevent multiple executions
 
@@ -2996,34 +2985,6 @@
         });
     }
 
-    /*function runSequence(popNode) {
-        const steps = [
-            () => popNode.querySelector("div.mudcard-optionsx div:nth-child(3) button")?.click(),
-            () => document.querySelector("div.mud-popover-open div > div:nth-child(1)")?.click(),
-            () => {
-                let el = document.querySelector("input[id^='mudinput']");
-                if (el) {
-                    el.value = 3;
-                    el.dispatchEvent(new Event('input', { bubbles: true }));
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            },
-            () => document.querySelector("div.mud-dialog-actions > button")?.click(),
-            () => popNode.querySelector("div.mudcard-optionsx div:nth-child(5) button")?.click(),
-            () => document.querySelector("div.mud-popover-open div > div:nth-child(1)")?.click(),
-            () => {
-                let el = document.querySelector("input[id^='mudinput']");
-                if (el) {
-                    el.value = 2;
-                    el.dispatchEvent(new Event('input', { bubbles: true }));
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            },
-            () => document.querySelector("div.mud-dialog-actions > button")?.click()
-        ];
-
-        steps.forEach((fn, i) => setTimeout(fn, i * 3000));
-    }*/
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     function last(arr){ return arr && arr.length ? arr[arr.length-1] : null; }
@@ -3147,36 +3108,46 @@
         if (popNode && !popNode.dataset.contentInserted) {
             const btn = document.createElement("button");
             btn.type = "button";
-            btn.textContent = "Run Sequence";
-            btn.style.padding = "6px 10px";
+            btn.textContent = "Varyasyon Düzelt";
+            btn.className = "mud-button-root mud-button mud-button-outlined mud-button-outlined-default mud-button-outlined-size-medium mud-ripple mx-1 menu-buttons";
+            /*btn.style.padding = "6px 10px";
             btn.style.marginLeft = "10px";
-            btn.style.cursor = "pointer";
+            btn.style.cursor = "pointer";*/
             btn.addEventListener("click", (e)=>{
                 e.stopPropagation();
                 e.preventDefault();
                 runSequence(popNode);
             }, { once:false });
             popNode.appendChild(btn);
-            /*const btnap = document.createElement("button");
-            btnap.type = "button";
-            btnap.textContent = "Gönder";
-            btnap.style.padding = "6px 10px";
-            btnap.style.marginLeft = "10px";
-            btnap.style.cursor = "pointer";
-            btnap.addEventListener("click", (e)=>{
-                e.stopPropagation();
-                e.preventDefault();
-                let savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
-                const currentOrder = orderCutText.textContent.trim();
-                if (!savedOrders.includes(currentOrder)) {
-                    savedOrders.push(currentOrder);
-                    localStorage.setItem('orderNumbers', JSON.stringify(savedOrders));
-                }
-                e.target.style.backgroundColor = "darkgreen";
-
-            }, { once:false });
-            popNode.appendChild(btnap);*/
             popNode.dataset.contentInserted = "true";
+            const scope = getScopeFrom(popNode);
+            const orderIdNode = await waitFor(selectors.popupOrderId, scope);
+            //const orderIdNode = getText(selectors.popupOrderId);
+            if (!orderIdNode) return;
+            const orderId = orderIdNode.textContent.replace("#", "");
+            if (orderId) {
+                const btnap = document.createElement("button");
+                btnap.type = "button";
+                btnap.textContent = "Gönder";
+                btnap.className = "mud-button-root mud-button mud-button-outlined mud-button-outlined-default mud-button-outlined-size-medium mud-ripple mx-1 menu-buttons";
+                /*btnap.style.padding = "6px 10px";
+                btnap.style.marginLeft = "10px";
+                btnap.style.cursor = "pointer";*/
+                btnap.addEventListener("click", (e)=>{
+                    e.stopPropagation();
+                    e.preventDefault();
+                    let savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
+                    if (!savedOrders.includes(orderId)) {
+                        savedOrders.push(orderId);
+                        localStorage.setItem('orderNumbers', JSON.stringify(savedOrders));
+                    }
+                    e.target.style.backgroundColor = "darkgreen";
+
+                }, { once:false });
+                popNode.appendChild(btnap);
+            }else{
+                console.log("order no alınamadı")
+            }
         }
     }
 
@@ -3185,6 +3156,64 @@
         const existing = document.querySelector(selectors.popupCart);
         if(existing) convertpopNode(existing);
     })();
+
+    function makeHexBox(hex, container=document.body){
+        if(!/^#?[0-9a-fA-F]{6}$/.test(hex)) throw new Error("Geçersiz hex");
+        if(hex[0] !== '#') hex = '#'+hex;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        //btn.textContent = hex;
+        btn.setAttribute('aria-label', `Renk ${hex} kopyala`);
+        btn.title = 'Tıklayınca kopyalar';
+
+        // Stil
+        Object.assign(btn.style, {
+            backgroundColor: hex,
+            border: '1px solid rgba(0,0,0,.15)',
+            borderRadius: '6px',
+            //padding: '6px 9px',
+            minWidth: '24px',
+            height: '24px',
+            display: 'inline-flex',
+            //alignItems: 'center',
+            //justifyContent: 'center',
+            //fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+            //fontSize: '9px',
+            //fontWeight: '500',
+            cursor: 'pointer',
+            outline: 'none',
+            margin: '0px 4px',
+            userSelect: 'none'
+        });
+
+        // Kontrast için metin rengi
+        const r = parseInt(hex.slice(1,3),16),
+              g = parseInt(hex.slice(3,5),16),
+              b = parseInt(hex.slice(5,7),16);
+        const luminance = 0.2126*r + 0.7152*g + 0.0722*b; // 0–255
+        btn.style.color = luminance > 150 ? '#111' : '#fff';
+
+        // Tıkla → kopyala
+        btn.addEventListener('click', async () => {
+            try{
+                await navigator.clipboard.writeText(hex);
+                const prev = btn.textContent;
+                btn.textContent = 'Kopyalandı!';
+                btn.style.transition = 'transform .08s ease';
+                btn.style.transform = 'scale(0.98)';
+                setTimeout(()=>{ btn.style.transform = 'scale(1)'; btn.textContent = prev; }, 650);
+            }catch(e){
+                // Fallback
+                const ta = document.createElement('textarea');
+                ta.value = hex; document.body.appendChild(ta); ta.select();
+                document.execCommand('copy'); ta.remove();
+            }
+        });
+
+        container.parentNode.appendChild(btn);
+        return btn;
+    }
 
 
     window.addEventListener('load', async () => {
