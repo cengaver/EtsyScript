@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.32
+// @version      4.33
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -3054,7 +3054,7 @@
         try{
             const scope = getScopeFrom(popNode);
 
-            // 1) 3. buton (ilk ayar)
+            /*// 1) 3. buton (ilk ayar)
             const btn3 = await waitFor("div.mudcard-optionsx div:nth-child(3) button", scope);
             safeClick(btn3);
             await sleep(1000);
@@ -3094,7 +3094,7 @@
             const input2 = inputs2[2]; // 3. input
             setInputValue(input2, 2);
 
-            /*await sleep(500);
+            await sleep(500);
             const ok2 = await waitFor("div.mud-dialog-actions button:not([disabled])", dlg2);
             safeClick(ok2);*/
             // bitti
@@ -3106,33 +3106,33 @@
     // ---- butonu ekle ----
     async function convertpopNode(popNode){
         if (popNode && !popNode.dataset.contentInserted) {
-            const btn = document.createElement("button");
+            /*const btn = document.createElement("button");
             btn.type = "button";
-            btn.textContent = "Varyasyon Düzelt";
+            const ptnap = document.createElement("p");
+            ptnap.className = "mud-typography mud-typography-subtitle2";
+            ptnap.style.fontSize = "x-small";
+            ptnap.textContent = "Varyasyon";
             btn.className = "mud-button-root mud-button mud-button-outlined mud-button-outlined-default mud-button-outlined-size-medium mud-ripple mx-1 menu-buttons";
-            /*btn.style.padding = "6px 10px";
-            btn.style.marginLeft = "10px";
-            btn.style.cursor = "pointer";*/
             btn.addEventListener("click", (e)=>{
                 e.stopPropagation();
                 e.preventDefault();
                 runSequence(popNode);
             }, { once:false });
-            popNode.appendChild(btn);
+            btn.appendChild(ptnap);
+            popNode.appendChild(btn);*/
             popNode.dataset.contentInserted = "true";
             const scope = getScopeFrom(popNode);
             const orderIdNode = await waitFor(selectors.popupOrderId, scope);
-            //const orderIdNode = getText(selectors.popupOrderId);
             if (!orderIdNode) return;
             const orderId = orderIdNode.textContent.replace("#", "");
             if (orderId) {
                 const btnap = document.createElement("button");
                 btnap.type = "button";
-                btnap.textContent = "Gönder";
+                const pnap = document.createElement("p");
+                pnap.className = "mud-typography mud-typography-subtitle2";
+                pnap.style.fontSize = "x-small";
+                pnap.textContent = "Gönder";
                 btnap.className = "mud-button-root mud-button mud-button-outlined mud-button-outlined-default mud-button-outlined-size-medium mud-ripple mx-1 menu-buttons";
-                /*btnap.style.padding = "6px 10px";
-                btnap.style.marginLeft = "10px";
-                btnap.style.cursor = "pointer";*/
                 btnap.addEventListener("click", (e)=>{
                     e.stopPropagation();
                     e.preventDefault();
@@ -3144,6 +3144,7 @@
                     e.target.style.backgroundColor = "darkgreen";
 
                 }, { once:false });
+                btnap.appendChild(pnap);
                 popNode.appendChild(btnap);
             }else{
                 console.log("order no alınamadı")
@@ -3176,11 +3177,6 @@
             minWidth: '24px',
             height: '24px',
             display: 'inline-flex',
-            //alignItems: 'center',
-            //justifyContent: 'center',
-            //fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
-            //fontSize: '9px',
-            //fontWeight: '500',
             cursor: 'pointer',
             outline: 'none',
             margin: '0px 4px',
@@ -3238,11 +3234,9 @@
                     const pNode = node.querySelector(selectors.selector);
                     const cutNode = node.querySelector(selectors.trCut);
                     const salNode = node.querySelector(selectors.salesSummary);
-                    //const popNode = node.querySelector(selectors.popupCart);
                     if (pNode && !pNode.dataset.processed) convertNode(pNode);
                     if (cutNode && !cutNode.dataset.processed) convertCutNode();
                     if (salNode && !salNode.dataset.processed) convertSalNode(salNode);
-                   // if (popNode && !popNode.dataset.processed) convertpopNode(popNode);
                     checkAndInsertEarningContent();
                     const popNode = node.querySelector?.(selectors.popupCart);
                     if (popNode && !popNode.dataset.processed){
