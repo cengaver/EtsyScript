@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.33
+// @version      4.36
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -645,8 +645,17 @@
         btnApprove.className = 'mud-button-root mud-button mud-button-text mud-button-text-default mud-button-text-size-medium mud-ripple';
         btnApprove.style.cssText = 'padding: 3px 10px; font-size: 11px; border-right: 1px solid #e0e0e0; border-radius: 0; margin-right: 8px;';
         btnApprove.addEventListener('click', () => {
-            checkCheckboxesFromLocalStorage();
-            btnApprove.style.backgroundColor = 'darkgreen';
+            checkCheckboxesFromLocalStorage('orderNumbers');
+            btnApprove.style.backgroundColor = 'green';
+        });
+
+        const btnAwait= document.createElement('button');
+        btnAwait.textContent = 'Wait';
+        btnAwait.className = btnApprove.className;
+        btnAwait.style.cssText = btnApprove.style.cssText + 'border-right: none;';
+        btnAwait.addEventListener('click', () => {
+            checkCheckboxesFromLocalStorage('orderNumbersWait');
+            btnAwait.style.backgroundColor = 'olive';
         });
 
         const btnClear = document.createElement('button');
@@ -655,15 +664,26 @@
         btnClear.style.cssText = btnApprove.style.cssText + 'border-right: none;';
         btnClear.addEventListener('click', () => {
             localStorage.removeItem('orderNumbers');// sadece localStorage'ı temizle
-            btnClear.style.backgroundColor = 'darkred';
+            btnClear.style.backgroundColor = 'red';
             btnApprove.style.backgroundColor = '';
         });
+        const btnClearwait = document.createElement('button');
+        btnClearwait.textContent = 'Clearwait';
+        btnClearwait.className = btnApprove.className;
+        btnClearwait.style.cssText = btnApprove.style.cssText + 'border-right: none;';
+        btnClearwait.addEventListener('click', () => {
+            localStorage.removeItem('orderNumbersWait');// sadece localStorage'ı temizle
+            btnClearwait.style.backgroundColor = 'red';
+            btnAwait.style.backgroundColor = '';
+        });
+        container.insertBefore(btnClearwait, container.firstChild);
         container.insertBefore(btnClear, container.firstChild);
+        container.insertBefore(btnAwait, container.firstChild);
         container.insertBefore(btnApprove, container.firstChild);
     };
 
-    function checkCheckboxesFromLocalStorage() {
-        const savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
+    function checkCheckboxesFromLocalStorage(orderkeys) {
+        const savedOrders = JSON.parse(localStorage.getItem(orderkeys) || '[]');
         document.querySelectorAll('tr').forEach(tr => {
             const orderNoLink = tr.querySelector('td a');
             if (orderNoLink) {
@@ -842,34 +862,63 @@
 
                 const orderCutText = sNode.querySelector(selectors.orderCut);
                 if (orderCutText) {
-                    //console.log("orderCutText: ",orderCutText.textContent);
+                    const currentOrder = orderCutText.textContent.trim();
                     const copyOButton = document.createElement('button');
                     copyOButton.textContent = 'Copy';
                     copyOButton.style.marginLeft = '10px'; // Space between SKU and icon
                     copyOButton.className = 'copy-icon'; // Aynı simgenin tekrar eklenmemesi için
                     orderCutText.parentNode.appendChild(copyOButton);
                     copyOButton.addEventListener('click', function (e) {
-                        navigator.clipboard.writeText(orderCutText.textContent).then(() => {
+                        navigator.clipboard.writeText(currentOrder).then(() => {
                             e.target.style.backgroundColor = "aqua"
-                            //alert('orderCutText kopyalandı: ' + orderCutText.textContent);
                         });
                     });
                     const approveButton = document.createElement('button');
                     approveButton.textContent = 'Gönder';
                     approveButton.style.marginLeft = '10px';
                     approveButton.className = 'approve-icon';
+                    let savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
+                    if (savedOrders.includes(currentOrder)) {
+                        const td = orderCutText.closest("td");
+                        if (td) td.classList.add("toast-success");
+                        //approveButton.closest("td").style.backgroundColor = "lime !important";
+                    }
                     orderCutText.parentNode.appendChild(approveButton);
 
                     approveButton.addEventListener('click', function (e) {
-                        let savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
-                        const currentOrder = orderCutText.textContent.trim();
+                        savedOrders = JSON.parse(localStorage.getItem('orderNumbers') || '[]');
                         if (!savedOrders.includes(currentOrder)) {
                             savedOrders.push(currentOrder);
                             localStorage.setItem('orderNumbers', JSON.stringify(savedOrders));
                         }
-                        e.target.style.backgroundColor = "darkgreen";
+                        //approveButton.classList.add("link", "link-primary");
+                        const td = approveButton.closest("td");
+                        if (td) td.classList.add("toast-success");
+                        e.target.style.backgroundColor = "green"
+                        //approveButton.closest("td").style.backgroundColor = "lime";
                     });
 
+                    const waitButton = document.createElement('button');
+                    waitButton.textContent = 'Beklet';
+                    waitButton.style.marginLeft = '10px';
+                    waitButton.className = 'wait-icon';
+                    let savedOrdersw = JSON.parse(localStorage.getItem('orderNumbersWait') || '[]');
+                    if (savedOrdersw.includes(currentOrder)) {
+                        const td = orderCutText.closest("td");
+                        if (td) td.classList.add("toast-warning");
+                    }
+                    orderCutText.parentNode.appendChild(waitButton);
+                    waitButton.addEventListener('click', function (e) {
+                        savedOrdersw = JSON.parse(localStorage.getItem('orderNumbersWait') || '[]');
+                        if (!savedOrdersw.includes(currentOrder)) {
+                            savedOrdersw.push(currentOrder);
+                            localStorage.setItem('orderNumbersWait', JSON.stringify(savedOrdersw));
+                        }
+                        const td = orderCutText.closest("td");
+                        if (td) td.classList.add("toast-warning");
+                        e.target.style.backgroundColor = "olive"
+                        //e.target.closest("td").style.backgroundColor = "olive";
+                    });
                 }
 
                 const skuCText = sNode.querySelector(selectors.skuCut);
@@ -3106,20 +3155,6 @@
     // ---- butonu ekle ----
     async function convertpopNode(popNode){
         if (popNode && !popNode.dataset.contentInserted) {
-            /*const btn = document.createElement("button");
-            btn.type = "button";
-            const ptnap = document.createElement("p");
-            ptnap.className = "mud-typography mud-typography-subtitle2";
-            ptnap.style.fontSize = "x-small";
-            ptnap.textContent = "Varyasyon";
-            btn.className = "mud-button-root mud-button mud-button-outlined mud-button-outlined-default mud-button-outlined-size-medium mud-ripple mx-1 menu-buttons";
-            btn.addEventListener("click", (e)=>{
-                e.stopPropagation();
-                e.preventDefault();
-                runSequence(popNode);
-            }, { once:false });
-            btn.appendChild(ptnap);
-            popNode.appendChild(btn);*/
             popNode.dataset.contentInserted = "true";
             const scope = getScopeFrom(popNode);
             const orderIdNode = await waitFor(selectors.popupOrderId, scope);
@@ -3141,11 +3176,31 @@
                         savedOrders.push(orderId);
                         localStorage.setItem('orderNumbers', JSON.stringify(savedOrders));
                     }
-                    e.target.style.backgroundColor = "darkgreen";
+                    e.target.style.backgroundColor = "green";
 
                 }, { once:false });
                 btnap.appendChild(pnap);
                 popNode.appendChild(btnap);
+                const btn = document.createElement("button");
+                btn.type = "button";
+                const ptnap = document.createElement("p");
+                ptnap.className = "mud-typography mud-typography-subtitle2";
+                ptnap.style.fontSize = "x-small";
+                ptnap.textContent = "Beklet";
+                btn.className = "mud-button-root mud-button mud-button-outlined mud-button-outlined-default mud-button-outlined-size-medium mud-ripple mx-1 menu-buttons";
+                btn.addEventListener("click", (e)=>{
+                    e.stopPropagation();
+                    e.preventDefault();
+                    let savedOrdersWait = JSON.parse(localStorage.getItem('orderNumbersWait') || '[]');
+                    if (!savedOrdersWait.includes(orderId)) {
+                        savedOrdersWait.push(orderId);
+                        localStorage.setItem('orderNumbersWait', JSON.stringify(savedOrdersWait));
+                    }
+                    e.target.style.backgroundColor = "olive";
+
+                }, { once:false });
+                btn.appendChild(ptnap);
+                popNode.appendChild(btn);
             }else{
                 console.log("order no alınamadı")
             }
