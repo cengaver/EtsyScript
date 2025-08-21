@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.71
+// @version      1.72
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -723,12 +723,13 @@
     async function main(messageKey) {
         const orderName = document.querySelector("#order-details-header-text > span")?.innerText;
         if (!orderName) return;
-        const userName = orderName.replace("Order from ", "");
+        const userName = orderName.replace("Order from ", "").split(" ")[0];
+        const capitalizedUserName = userName[0].toUpperCase() + userName.slice(1).toLowerCase();
 
         const savedMessage = config[messageKey];
         if (!savedMessage) return;
 
-        const personalizedMessage = `\n${savedMessage.replace("{{userName}}", userName)}\n`;
+        const personalizedMessage = `\n${savedMessage.replace("{{userName}}", capitalizedUserName)}\n`;
 
         const textAreaEl = document.querySelector('textarea[name="message"]');
         if (textAreaEl && !textAreaEl.value.includes(personalizedMessage)) {
