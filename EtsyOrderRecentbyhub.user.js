@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.36
+// @version      4.4
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -16,11 +16,13 @@
 // @icon         https://dashboard.k8s.customhub.io/Modernize/assets/images/logos/favicon.png
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
+// @run-at       document-idle
 // ==/UserScript==
 // At script startup
 
 (function () {
     "use strict";
+
     // Modern UI Styles
     GM.addStyle(`
         :root {
@@ -510,7 +512,8 @@
             { id: 'shipHoodie', label: 'Hoodie Kargo:', type: 'number', value: config.shipHoodie },
             { id: 'shipHoodie2', label: 'Hoodie Kargo 2. ürün:', type: 'number', value: config.shipHoodie2 },
             { id: 'shipTee', label: 'Shirt Kargo:', type: 'number', value: config.shipTee },
-            { id: 'shipTee2', label: 'Shirt Kargo 2. ürün:', type: 'number', value: config.shipTee2 }
+            { id: 'shipTee2', label: 'Shirt Kargo 2. ürün:', type: 'number', value: config.shipTee2 },
+            { id: 'credit', label: 'Kredi', type: 'number', value: config.credit }
         ];
 
         fields.forEach(field => {
@@ -657,9 +660,16 @@
             checkCheckboxesFromLocalStorage('orderNumbersWait');
             btnAwait.style.backgroundColor = 'olive';
         });
-
+        const btnDelay= document.createElement('button');
+        btnDelay.textContent = 'Delay';
+        btnDelay.className = btnApprove.className;
+        btnDelay.style.cssText = btnApprove.style.cssText + 'border-right: none;';
+        btnDelay.addEventListener('click', () => {
+            checkCheckboxesFromLocalStorage('orderNumbersDelay');
+            btnDelay.style.backgroundColor = 'blue';
+        });
         const btnClear = document.createElement('button');
-        btnClear.textContent = 'Temizle';
+        btnClear.textContent = 'ClearApp';
         btnClear.className = btnApprove.className;
         btnClear.style.cssText = btnApprove.style.cssText + 'border-right: none;';
         btnClear.addEventListener('click', () => {
@@ -668,7 +678,7 @@
             btnApprove.style.backgroundColor = '';
         });
         const btnClearwait = document.createElement('button');
-        btnClearwait.textContent = 'Clearwait';
+        btnClearwait.textContent = 'ClearWait';
         btnClearwait.className = btnApprove.className;
         btnClearwait.style.cssText = btnApprove.style.cssText + 'border-right: none;';
         btnClearwait.addEventListener('click', () => {
@@ -676,12 +686,58 @@
             btnClearwait.style.backgroundColor = 'red';
             btnAwait.style.backgroundColor = '';
         });
+        const btnCleardelay = document.createElement('button');
+        btnCleardelay.textContent = 'ClearDelay';
+        btnCleardelay.className = btnApprove.className;
+        btnCleardelay.style.cssText = btnApprove.style.cssText + 'border-right: none;';
+        btnCleardelay.addEventListener('click', () => {
+            localStorage.removeItem('orderNumbersDelay');// sadece localStorage'ı temizle
+            btnCleardelay.style.backgroundColor = 'red';
+            btnAwait.style.backgroundColor = '';
+        });
+        container.insertBefore(btnCleardelay, container.firstChild);
         container.insertBefore(btnClearwait, container.firstChild);
         container.insertBefore(btnClear, container.firstChild);
+        container.insertBefore(btnDelay, container.firstChild);
         container.insertBefore(btnAwait, container.firstChild);
         container.insertBefore(btnApprove, container.firstChild);
     };
 
+    function checkCheckboxes() {
+        let lastCheckedRow = null;
+        //console.log("checker yüklendi")
+        document.querySelectorAll('tr').forEach(tr => {
+            //console.log("checker seçildi")
+            const checkbox = tr.querySelector('input[type="checkbox"], dxbl-check');
+            if (!checkbox) return;
+
+            checkbox.addEventListener('click', e => {
+                const rows = Array.from(document.querySelectorAll('tr'));
+                const currentRow = tr;
+
+                if (e.shiftKey && lastCheckedRow) {
+                    const startIndex = rows.indexOf(lastCheckedRow);
+                    const endIndex = rows.indexOf(currentRow);
+                    const [minIndex, maxIndex] = [Math.min(startIndex, endIndex), Math.max(startIndex, endIndex)];
+
+                    for (let i = minIndex; i <= maxIndex; i++) {
+                        const checkboxInput = rows[i].querySelector('input[type="checkbox"]');
+                        if (checkboxInput) {
+                            checkboxInput.checked = true;
+                            checkboxInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        const dxblCheck = rows[i].querySelector('dxbl-check');
+                        if (dxblCheck) {
+                            dxblCheck.setAttribute('check-state', '1');
+                            dxblCheck.dispatchEvent(new Event('click', { bubbles: true }));
+                        }
+                    }
+                }
+
+                lastCheckedRow = currentRow;
+            });
+        });
+    }
     function checkCheckboxesFromLocalStorage(orderkeys) {
         const savedOrders = JSON.parse(localStorage.getItem(orderkeys) || '[]');
         document.querySelectorAll('tr').forEach(tr => {
@@ -854,7 +910,6 @@
                                 console.error('Yükleme sırasında hata:', err);
                             }
                         });
-
                         console.log("imgCutUrl: ", imgCutUrl);
                         clearInterval(interval);
                     }
@@ -917,6 +972,27 @@
                         const td = orderCutText.closest("td");
                         if (td) td.classList.add("toast-warning");
                         e.target.style.backgroundColor = "olive"
+                        //e.target.closest("td").style.backgroundColor = "olive";
+                    });
+                    const delayButton = document.createElement('button');
+                    delayButton.textContent = 'Ertele';
+                    delayButton.style.marginLeft = '10px';
+                    delayButton.className = 'wait-icon';
+                    let savedOrderdl = JSON.parse(localStorage.getItem('orderNumbersDelay') || '[]');
+                    if (savedOrderdl.includes(currentOrder)) {
+                        const td = orderCutText.closest("td");
+                        if (td) td.classList.add("toast-info");
+                    }
+                    orderCutText.parentNode.appendChild(delayButton);
+                    delayButton.addEventListener('click', function (e) {
+                        savedOrderdl = JSON.parse(localStorage.getItem('orderNumbersDelay') || '[]');
+                        if (!savedOrderdl.includes(currentOrder)) {
+                            savedOrderdl.push(currentOrder);
+                            localStorage.setItem('orderNumbersDelay', JSON.stringify(savedOrderdl));
+                        }
+                        const td = orderCutText.closest("td");
+                        if (td) td.classList.add("toast-info");
+                        e.target.style.backgroundColor = "blue"
                         //e.target.closest("td").style.backgroundColor = "olive";
                     });
                 }
@@ -1003,8 +1079,13 @@
                     skuCText.parentNode.appendChild(linkElement);
                     //skuNoElement.parentNode.insertBefore(copyButton, skuNoElement.nextSibling);
                 }
+                const newColor = reapplyProofLogic(sNode);
+                if (newColor) makeHexBox(newColor, sNode.querySelector(selectors.skuCut));
 
-                const shirtColorCuttext = getText(selectors.shirtColorCut,sNode);
+                // İlk yüklemede slider event'leri ekle
+                initSliderListeners(sNode);
+
+                /*const shirtColorCuttext = getText(selectors.shirtColorCut,sNode);
                 if (shirtColorCuttext) {
                     const shirtColor = shirtColorCuttext.replace("(", "").replace(")", "").trim();
                     //console.log("shirtColor: ",shirtColor);
@@ -1016,12 +1097,21 @@
                     designColor = shirtColors.find(c => c.name === shirtColor)?.ischecked == 1 ? "black" : "white";
                     //    border-width: thick; border-color: white;
                     //console.log("newColor: ",newColor);
-
+                    const intervalc = setInterval(() => {
+                        const imgCutmenu = sNode.querySelector(selectors.imgCut);
+                        if (imgCutmenu) {
+                            const aElement = imgCutmenu.querySelector("div > div > div:nth-child(4)");
+                            if (!aElement) return; // a elementi yoksa hata vermesin
+                            const imgCutUrl = aElement.querySelector("a")?.href;
+                            if (!imgCutUrl) return; // elementi yoksa hata vermesin
+                            addProofButton(imgCutUrl,newColor,aElement);
+                            clearInterval(intervalc);
+                        }
+                    }, 1000);
                     makeHexBox(newColor, sNode.querySelector(selectors.skuCut));
                     const interval = setInterval(() => {
                         const imgColorCutEl = sNode.querySelector(selectors.imgColorCut);
                         if (!imgColorCutEl) return;
-
                         const descendants = imgColorCutEl.querySelectorAll("*");
                         descendants.forEach(Node => {
                             const style = window.getComputedStyle(Node);
@@ -1034,7 +1124,7 @@
 
                         clearInterval(interval); // Bulunca durdur
                     }, 1000);
-                }
+                }*/
 
                 const personaCutEl = getText(selectors.personaCut,sNode);
                 if (skuCText && personaCutEl) {
@@ -1219,7 +1309,7 @@
         const credit = getcreditElValue();
         const creditInTl = credit * exchangeRate
         const balance = getbalanceElValue();
-        const balance1 = 3750;
+        const balance1 = config.credit;
         const balanceInTl = balance * exchangeRate
         const balanceInT2 = balance1* exchangeRate
         addText(creditElement, "tl-info", ` (${Math.round(creditInTl)} ₺)`)
@@ -3266,10 +3356,123 @@
         return btn;
     }
 
+    function addProofButton(imgCutUrl,newColor,aElement) {
+        const uploadDiv = document.createElement('div');
+        uploadDiv.className = 'mud-tooltip-root mud-tooltip-inline';
+        const btn = document.createElement('button');
+        btn.innerHTML = `<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><defs><image  width="14" height="13" id="img1" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAANCAMAAACuAq9NAAAAAXNSR0IB2cksfwAAAPZQTFRFSXieXIufZpWgYpGfTXyeS3mfapGxeJy5cJW0SXeeR3adjr6ioNCkns6kkcGjVIOeSXeepb/S0+Ps1OTs3OnxSnifR3admcmjYpGgSXeeSXeeSXieAAAASXeeWoWo4u71THqga5qgZ4+wSHadf6+iXo2fXIeprcXWSXieUn6jSXieSXieSnifSXieTXqgSnifXICbSnidSXeeXXWZSXieR3advrGPeY+YZHWY0GyBS3ad07uNg5SXaXWY62p8THacoqOTmJ6UjZmVV36cSniehHKRnHCMmXGN8Gp6oKGTw7OOtKuQX4KbSHadoG+Lw22EuW6GSnadfPrvlgAAAFJ0Uk5TB2N4cRUEaHhyEyf7////UBr/////Uir+vWVaCABNnP9VkFsf5XND7UMAFgUCGAEHaCcQahEm+ohR/k/+kFv/VdyupyYIlaXF//P//UkY+P//RUqivaQAAABaSURBVHicY2RgZGQAYkYoxQViQLggQgzG+MPACuZy/WaAALa/GFxlRsbvUC7IGE1Gxo9QrgCQq8/I+BrKBZlqysj4FMqVAZmsyvgAylXExmVFuOo7o7IaspsBU8cOXt0V6UAAAAAASUVORK5CYII="/></defs><style></style><use  href="#img1" x="5" y="5"/></svg>`;
+        btn.className = 'mud-button-root mud-icon-button mud-secondary-text hover:mud-secondary-hover mud-ripple mud-ripple-icon';
+        btn.title = imgCutUrl;
+        uploadDiv.appendChild(btn); // Doğru elementin parentNode'u
+        btn.onclick = () => createProof(imgCutUrl,newColor);
+        aElement.parentNode.insertBefore(uploadDiv, aElement);
+    }
+
+    // HEX kodu buraya örn: #FFFFFF
+    function createProof(imgUrls, bgColor) {
+        if (!imgUrls) {
+            alert('Görseller bulunamadı!');
+            return;
+        }
+        if (!Array.isArray(imgUrls)) imgUrls = [imgUrls];
+        const loadImage = src => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = src;
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+        });
+
+        Promise.all(imgUrls.map(loadImage)).then(images => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const canvasWidth = 500;
+            const canvasHeight = 600; // Tişört alanına göre ayarlanabilir
+            const printArea = { x: 100, y: 150, width: 300, height: 400 }; // Baskı alanı dikdörtgeni
+
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            images.forEach(img => {
+                const scale = Math.min(printArea.width / img.width, printArea.height / img.height);
+                const newWidth = img.width * scale;
+                const newHeight = img.height * scale;
+                const offsetX = printArea.x + (printArea.width - newWidth) / 2;
+                const offsetY = printArea.y + (printArea.height - newHeight) / 2;
+                ctx.drawImage(img, offsetX, offsetY, newWidth, newHeight);
+            });
+
+            const proofURL = canvas.toDataURL('image/png');
+            const w = window.open();
+            w.document.write(`<img src="${proofURL}" style="max-width:100%;">`);
+        }).catch(err => alert('Görseller yüklenirken hata oluştu: ' + err));
+    }
+
+
+    // Event listener'ları sadece bir kere ekle
+    function initSliderListeners(sNode) {
+        sNode.querySelectorAll('.mud-carousel [aria-label="Next"], .mud-carousel [aria-label="Previous"]').forEach(btn => {
+            if (!btn.dataset.listenerAdded) {
+                btn.addEventListener('click', () => {
+                    setTimeout(() => reapplyProofLogic(sNode), 500);
+                });
+                btn.dataset.listenerAdded = "true";
+            }
+        });
+    }
+
+    function reapplyProofLogic(sNode) {
+        const shirtColorCuttext = getText(selectors.shirtColorCut, sNode);
+        if (!shirtColorCuttext) return;
+        console.log("slider");
+
+        const shirtColor = shirtColorCuttext.replace(/[()]/g, "").trim();
+        const oldColorRGB = 'rgb(220, 220, 220)';
+        const oldColorEmpty = '#dcdcdc';
+        const newColor = shirtColors.find(c => c.name === shirtColor)?.hex;
+        const designColor = shirtColors.find(c => c.name === shirtColor)?.ischecked == 1 ? "black" : "white";
+
+        const intervalc = setInterval(() => {
+            const imgCutmenus = sNode.querySelectorAll(selectors.imgCut);
+            if (!imgCutmenus || imgCutmenus.length === 0) return;
+
+            imgCutmenus.forEach(menuNode => {
+                const aElement = menuNode.querySelector("div > div > div:nth-child(4)");
+                if (!aElement) return;
+                const imgCutUrl = aElement.querySelector("a")?.href;
+                if (!imgCutUrl) return;
+                addProofButton(imgCutUrl, newColor, aElement);
+            });
+
+            clearInterval(intervalc);
+        }, 300);
+
+        const interval = setInterval(() => {
+            const imgColorCutEl = sNode.querySelector(selectors.imgColorCut);
+            if (!imgColorCutEl) return;
+            imgColorCutEl.querySelectorAll("*").forEach(Node => {
+                const style = window.getComputedStyle(Node);
+                if (style.backgroundColor.toLowerCase() === oldColorRGB || style.backgroundColor === oldColorEmpty) {
+                    Node.style.backgroundColor = newColor;
+                    Node.style.borderColor = designColor;
+                    Node.style.borderWidth = "8px";
+                }
+            });
+            clearInterval(interval);
+        }, 300);
+
+        return newColor;
+    }
+
 
     window.addEventListener('load', async () => {
         loadConfig();
         initUI();
+        checkCheckboxes();
         if (window.location.href.includes("/drop-ship/orders")) {
             createFloatingPanelSystem();
             try {
@@ -3282,7 +3485,11 @@
     });
 
     function handleMutation(mutationsList) {
-        if (window.location.href.includes('customhub.io/drop-ship/approval-pending')) processPage();
+        if (window.location.href.includes('customhub.io/drop-ship/approval-pending')) {
+            processPage();
+            checkCheckboxes();
+        }
+
         mutationsList.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
@@ -3293,17 +3500,19 @@
                     if (cutNode && !cutNode.dataset.processed) convertCutNode();
                     if (salNode && !salNode.dataset.processed) convertSalNode(salNode);
                     checkAndInsertEarningContent();
+
                     const popNode = node.querySelector?.(selectors.popupCart);
-                    if (popNode && !popNode.dataset.processed){
+                    if (popNode && !popNode.dataset.processed) {
                         convertpopNode(popNode);
                         popNode.dataset.processed = "true";
                     }
                 }
             });
         });
-        }
+    }
 
     const observer = new MutationObserver(handleMutation);
     observer.observe(document.body, observerOptions);
+
 
 })();
