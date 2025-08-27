@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.4
+// @version      4.43
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -3387,9 +3387,9 @@
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
 
-            const canvasWidth = 500;
-            const canvasHeight = 600; // Tişört alanına göre ayarlanabilir
-            const printArea = { x: 100, y: 150, width: 300, height: 400 }; // Baskı alanı dikdörtgeni
+            const canvasWidth = 1000;
+            const canvasHeight = 1200; // Tişört alanına göre ayarlanabilir
+            const printArea = { x: 50, y: 60, width: 900, height: 1080 }; // Baskı alanı dikdörtgeni
 
             canvas.width = canvasWidth;
             canvas.height = canvasHeight;
@@ -3487,9 +3487,10 @@
     function handleMutation(mutationsList) {
         if (window.location.href.includes('customhub.io/drop-ship/approval-pending')) {
             processPage();
+        }
+        if (window.location.href.includes('customhub.io/drop-ship/orders')) {
             checkCheckboxes();
         }
-
         mutationsList.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
