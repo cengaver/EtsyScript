@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Review Pie Chart with Badge
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.3
 // @description  Reviews yanına pie chart ve badge
 // @match        https://www.etsy.com/your/shops/me/dashboard*
 // @namespace    https://github.com/cengaver
@@ -13,12 +13,33 @@
 
 (function() {
     'use strict';
+    // Google Sheets log fonksiyonun
+    async function logToGoogleSheets(data) {
+        const sheetUrl = "https://script.google.com/macros/s/AKfycbyFu5XdmgReks6UPIV9S0PS99PbNj-AyRO1KfpXBKnfyFo5txTwVMVVtLdQue8UjSINrA/exec";
+
+        try {
+            const response = await fetch(sheetUrl, {
+                method: "POST",
+                mode: 'no-cors',
+                body: JSON.stringify(data),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            console.log("Veri gönderildi:", data);
+            return response;
+        } catch (error) {
+            console.error("İletişim hatası:", error);
+        }
+    }
 
     function normalizeNumber(str) {
         return parseInt(str.replace(/[^\d]/g, ''), 10);
     }
 
-    function addReviewPie() {
+    async function addReviewPie() {
+        // Dashboard’dan verileri al
         const container = document.querySelector('.dashboard-header-metadata');
         if (!container) return;
         if (container.querySelector('.review-pie-wrapper')) return;
@@ -30,6 +51,18 @@
         const reviews = normalizeNumber(reviewsEl.textContent);
         const sales = normalizeNumber(salesEl.textContent);
         if (!reviews || !sales) return;
+
+        // Active listings
+        const listingsEl = container.querySelector('a[href*="tools/listings"]');
+        const activeListings = listingsEl ? parseInt(listingsEl.textContent.replace(/[^\d]/g, ''), 10) : null;
+
+        // Shop name
+        const shopLinkEl = container.querySelector('a[href*="/shop/"]');
+        let shopName = "";
+        if (shopLinkEl) {
+            const urlParts = shopLinkEl.href.split('/');
+            shopName = urlParts[4].split('?')[0];
+        }
 
         const ratio = reviews / sales;
 
@@ -97,6 +130,17 @@
 
         // ReviewsEl'in yanına ekle
         reviewsEl.parentNode.appendChild(wrapper);
+        // Google Sheet’e gönderilecek veri objesi
+        const data = {
+            title: shopName,
+            sls: sales || "",
+            active_listings: activeListings || "",
+            reviews: reviews || "",
+            ratio: Math.floor(ratio*100) || ""
+        };
+
+        console.log(data);
+        await logToGoogleSheets(data);
     }
 
     addReviewPie();
