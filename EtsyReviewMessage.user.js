@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.72
+// @version      1.73
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -564,8 +564,8 @@
         return toastContainer;
     }
 
-    function showToast(message, type = 'success', duration = 3000) {
-        const container = createToastContainer();
+    async function showToast(message, type = 'success', duration = 3000) {
+        const container = await createToastContainer();
 
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
@@ -622,7 +622,7 @@
         closeBtn.innerHTML = '&times;';
         closeBtn.addEventListener('click', () => {
             overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
+            setTimeout(() => overlay.remove(), 500);
         });
 
         header.appendChild(title);
