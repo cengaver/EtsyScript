@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.43
+// @version      4.5
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -1142,36 +1142,147 @@
                     const noteId = generateUniqueId();
                     const inputValue = personaText.replaceAll(":", "").replace(/NUMBER/i, "").replace(/NAME/i, "").replaceAll("\n", " | ").toUpperCase();
 
-                    const makeCard = (label, inputId, btnId,btnStyl) => `
-                  <div class="card card-body py-0 mb-0 p-1 shadow-none mt-0">
-                      <span class="side-stick"></span>
-                      <p class="note-date fs-1 mb-0">${label}</p>
-                      <div class="personalization-input mb-1">
-                          <input type="text"
-                                 class="mud-input-slot mud-input-root mud-input-root-text mud-input-root-adorned-end mud-input-root-margin-normal"
-                                 id="${inputId}"
-                                 value="${inputValue}"
-                                 style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
-                      </div>
-                      <div class="generation-controls">
-                          <div class="d-flex gap-1 align-items-center">
-                              <button class="mud-button mud-button-filled mud-button-filled-${btnStyl} mud-button-filled-size-small"
-                                      id="${btnId}">
-                                  Oluştur ve Yükle
-                              </button>
-                          </div>
-                          <div class="status-message mt-1" id="status-${btnId}"></div>
-                      </div>
-                  </div>`;
+                    const makeCard = (label, inputId, btnId, btnStyl, noteId, type) => {
+                        const extraControls = type === "font"
+                        ? `
+            <button class="mud-button mud-button-outlined mud-button-outlined-primary mud-button-outlined-size-small" id="color-btn-${noteId}">
+                🎨 Renk Seç
+            </button>
+            <select id="font-select-${noteId}" class="mud-select mud-select-size-small">
+                <option value="">Font Seç</option>
+            </select>
+            <input type="hidden" id="selected-color-${noteId}">
+            <input type="hidden" id="selected-font-${noteId}">
+            <div id="color-modal-${noteId}" class="color-modal" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; padding:10px; z-index:999;">
+                <table id="color-table-${noteId}"></table>
+            </div>`
+                        : `
+            <select id="charset-select-${noteId}" class="mud-select mud-select-size-small">
+                <option value="">Charset Seç</option>
+            </select>
+            <input type="hidden" id="selected-charset-${noteId}">
+        `;
+
+                        return `
+      <div class="card card-body py-0 mb-0 p-1 shadow-none mt-0">
+          <span class="side-stick"></span>
+          <p class="note-date fs-1 mb-0">${label}</p>
+          <div class="personalization-input mb-1">
+              <input type="text"
+                     class="mud-input-slot mud-input-root mud-input-root-text mud-input-root-adorned-end mud-input-root-margin-normal"
+                     id="${inputId}"
+                     value="${inputValue}"
+                     style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+          </div>
+          <div class="generation-controls">
+              <div class="d-flex gap-1 align-items-center">
+                  <button class="mud-button mud-button-filled mud-button-filled-${btnStyl} mud-button-filled-size-small"
+                          id="${btnId}">
+                      Oluştur ve Yükle
+                  </button>
+                  ${extraControls}
+              </div>
+              <div class="status-message mt-1" id="status-${btnId}"></div>
+          </div>
+      </div>`;
+                    };
+
+
                     let btnFont = SkuSettings?.fontName ? 'warning':'';
                     let btnImag = SkuSettings?.imageSet ? 'warning':'';
                     const noteHtml = `
-                  <div role="group" class="d-flex flex-row gap-3 col-md-12 single-note-item all-category note-social" id="${noteId}">
-                      ${makeCard("Dizayn oluştur Font ile", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`,btnFont)}
-                      ${makeCard("Dizayn oluştur Resim ile", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`,btnImag)}
-                  </div>`;
+  <div role="group" class="d-flex flex-row gap-3 col-md-12 single-note-item all-category note-social" id="${noteId}">
+      ${makeCard("Dizayn oluştur Font ile", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`, btnFont, noteId, "font")}
+      ${makeCard("Dizayn oluştur Resim ile", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`, btnImag, noteId, "image")}
+  </div>`;
+
+
 
                     targetCell.insertAdjacentHTML('beforeend', noteHtml);
+                    // FONT UI SETUP (renk paleti + font select)
+                    const colors = {
+                        "Kırmızı": "#FF0000",
+                        "Yeşil": "#00FF00",
+                        "Mavi": "#0000FF",
+                        "Siyah": "#000000",
+                        "Beyaz": "#FFFFFF",
+                        "Turuncu": "#FFA500",
+                        "Mor": "#800080"
+                    };
+
+                    const colorBtn = document.getElementById(`color-btn-${noteId}`);
+                    const colorModal = document.getElementById(`color-modal-${noteId}`);
+                    const colorTable = document.getElementById(`color-table-${noteId}`);
+                    const hiddenColor = document.getElementById(`selected-color-${noteId}`);
+
+                    if (colorBtn) {
+                        colorBtn.addEventListener("click", () => {
+                            colorModal.style.display = colorModal.style.display === "none" ? "block" : "none";
+                        });
+
+                        Object.entries(colors).forEach(([name, hex]) => {
+                            const row = document.createElement("tr");
+                            const colorCell = document.createElement("td");
+                            colorCell.style.background = hex;
+                            colorCell.style.width = "20px";
+                            colorCell.style.height = "20px";
+
+                            const nameCell = document.createElement("td");
+                            nameCell.textContent = name;
+
+                            row.appendChild(colorCell);
+                            row.appendChild(nameCell);
+
+                            row.addEventListener("click", () => {
+                                hiddenColor.value = hex;
+                                colorModal.style.display = "none";
+                                colorBtn.textContent = `🎨 ${name}`;
+                            });
+
+                            colorTable.appendChild(row);
+                        });
+                    }
+
+                    // FONT SELECT GM’den doldur
+                    const fontSelect = document.getElementById(`font-select-${noteId}`);
+                    const hiddenFont = document.getElementById(`selected-font-${noteId}`);
+                    if (fontSelect) {
+                        const keys = await GM.listValues();
+                        for (const key of keys) {
+                            if (key.startsWith("font_")) {
+                                const fontName = key.replace("font_", "");
+                                const option = document.createElement("option");
+                                option.value = fontName;
+                                option.textContent = fontName;
+                                fontSelect.appendChild(option);
+                            }
+                        }
+
+                        fontSelect.addEventListener("change", () => {
+                            hiddenFont.value = fontSelect.value;
+                        });
+                    }
+
+                    // CHARSET SELECT GM’den doldur
+                    const charsetSelect = document.getElementById(`charset-select-${noteId}`);
+                    const hiddenCharset = document.getElementById(`selected-charset-${noteId}`);
+                    if (charsetSelect) {
+                        const keys = await GM.listValues();
+                        for (const key of keys) {
+                            if (key.startsWith("charset_")) {
+                                const charsetName = key.replace("charset_", "");
+                                const option = document.createElement("option");
+                                option.value = charsetName;
+                                option.textContent = charsetName;
+                                charsetSelect.appendChild(option);
+                            }
+                        }
+
+                        charsetSelect.addEventListener("change", () => {
+                            hiddenCharset.value = charsetSelect.value;
+                        });
+                    }
+
 
                     const handleGeneration = (method, inputId, btnId, generateFn) => {
                         document.getElementById(btnId).addEventListener('click', async () => {
@@ -1218,11 +1329,20 @@
                         });
                     };
 
-                    handleGeneration("font", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`, generateImageWithSKUSettings);
-                    handleGeneration("image", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`, generateImageWithCharacterImages);
+                    //handleGeneration("font", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`, generateImageWithSKUSettings);
+                    //handleGeneration("image", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`, generateImageWithCharacterImages);
+                    handleGeneration("font", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`, async (sku, currentText) => {
+                        const colorValue = document.getElementById(`selected-color-${noteId}`).value;
+                        const fontValue = document.getElementById(`selected-font-${noteId}`).value;
+
+                        return await generateImageWithSKUSettings(sku, currentText, colorValue, fontValue);
+                    });
+                    handleGeneration("image", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`, async (sku, currentText) => {
+                        const charsetValue = document.getElementById(`selected-charset-${noteId}`).value;
+
+                        return await generateImageWithCharacterImages(sku, currentText, charsetValue);
+                    });
                 }
-
-
             };
         });
     };
@@ -2095,21 +2215,28 @@
         return fontFace;
     };
 
-    const generateImageWithSKUSettings = async (sku, text) => {
-        // 1. SKU ayarlarını yeni sistemle al
-        const settings = await getSkuSettings(sku);
-        if (!settings) {
-            alert(`"${sku}" için ayar bulunamadı`);
-            return null;
-        }
+    const generateImageWithSKUSettings = async (sku, text, color, font) => {
 
-        // 2. Gerekli ayarları al
-        const { fontName, fillColor, strokeColor, strokeWidth } = settings;
-        if (!fontName) {
-            alert(`No font set defined for SKU ${sku}`);
-            return null;
-        }
+        let fontName, fillColor = '#000000', strokeColor = '#000000', strokeWidth =0;
 
+        if (font && color) {
+            fontName = font;
+            fillColor = color;
+        }else{
+            // 1. SKU ayarlarını yeni sistemle al
+            const settings = await getSkuSettings(sku);
+            if (!settings) {
+                alert(`"${sku}" için ayar bulunamadı`);
+                return null;
+            }
+
+            // 2. Gerekli ayarları al
+            ;({ fontName, fillColor, strokeColor, strokeWidth } = settings);
+            if (!fontName) {
+                alert(`No font set defined for SKU ${sku}`);
+                return null;
+            }
+        }
         // 3. Karakter setini IndexedDB'den al
         const fontSetData = await getImage(`font_${fontName}`);
         if (!fontSetData) {
@@ -2180,20 +2307,27 @@
 
     };
 
-    const generateImageWithCharacterImages = async (sku, text) => {
+    const generateImageWithCharacterImages = async (sku, text,charset) => {
         try {
+            let imageSet, space = 200, angle = 0 ;
+
+            if (charset) {
+               imageSet = charset
+            }else{
             // 1. SKU ayarlarını yeni sistemle al
             const settings = await getSkuSettings(sku);
+
             if (!settings) {
                 alert(`"${sku}" için ayar bulunamadı`);
                 return null;
             }
 
             // 2. Gerekli ayarları al
-            const { imageSet, space = 200, angle = 0 } = settings;
+            ; ({ imageSet, space, angle } = settings);
             if (!imageSet) {
                 alert(`No image set defined for SKU ${sku}`);
                 return null;
+            }
             }
 
             // 3. Karakter setini IndexedDB'den al
