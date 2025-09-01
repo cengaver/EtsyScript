@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.41
+// @version      3.43
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -819,7 +819,7 @@
             return;
         }
         const sheetName = config.rangeLink.split("!")[0];
-        console.log(sheetName);
+        //console.log(sheetName);
         const document = null; // use window.document instead!
         const location = null; // use window.location instead!
         const tokenUri = "https://oauth2.googleapis.com/token";
@@ -1163,7 +1163,7 @@
 
             if (
                 cachedData &&
-                now - parseInt(cachedData.timestamp) < 24 * 60 * 60 * 1000 &&
+                now - parseInt(cachedData.timestamp) < 48 * 60 * 60 * 1000 &&
                 "tags" in cachedData &&
                 "title" in cachedData
             ) {
@@ -1219,7 +1219,7 @@
                 safeSetItem(cacheKey, JSON.stringify(erankData));
                 if ((age >= 1 && age <= 50) && ( sales / 1.5 > age) ){
                     //console.log("age",age);
-                    //console.log("sales",age);
+                    //console.log(response.data);
                     await logToGoogleSheets(erankLogData);
                 }
                 //console.log(erankLogData);
@@ -1336,29 +1336,54 @@
         }
 
         async function logToGoogleSheets(data) {
-            let sheetUrl = "https://script.google.com/macros/s/AKfycbxuh_lJRDY4ZCVY3js2JVlIdusGmb3RtDd4IlH82hisewmwR13PUogxW9pUuX8h0C-e/exec"; // Buraya Apps Script'in Web URL'sini yapıştır
-            fetch(sheetUrl, {
-                method: "POST",
-                mode: 'no-cors', // CORS engelini devre dışı bırakır ama yanıt okunamaz
-                body: JSON.stringify({
-                    id:data.id,
-                    link:data.link,
-                    img:data.img,
-                    title:data.title,
-                    tag:data.tag,
-                    sls:data.sls,
-                    day:data.day,
-                    quantity:data.quantity,
-                    views:data.views,
-                    favorers:data.favorers,
-                    est_conversion_rate:data.est_conversion_rate,
-                    team:config.team
-                }),
-                headers: { "Content-Type": "application/json" }
-            })
-                .then(response => response.text())
-                .then(result => console.log("Log kaydedildi:", result))
-                .catch(error => console.error("Log hatası:", error));
+            const sheetUrl = "https://script.google.com/macros/s/AKfycbxuh_lJRDY4ZCVY3js2JVlIdusGmb3RtDd4IlH82hisewmwR13PUogxW9pUuX8h0C-e/exec";
+
+            //console.log("Gönderilen veri:", JSON.stringify(data, null, 2));
+            //console.log("ID türü:", typeof data.id, "Değer:", data.id);
+
+            try {
+                const response = await fetch(sheetUrl, {
+                    method: "POST",
+                    mode: 'no-cors', //KALDIRILDI (CORS sorunu için alternatif çözüm aşağıda)
+                    body: JSON.stringify({
+                        id: String(data.id), // ID'yi string'e kesin olarak dönüştür
+                        link: data.link || "",
+                        img: data.img || "",
+                        title: data.title || "",
+                        tag: data.tag || "",
+                        sls: data.sls || "",
+                        day: data.day || "",
+                        quantity: data.quantity || "",
+                        views: data.views || "",
+                        favorers: data.favorers || "",
+                        est_conversion_rate: data.est_conversion_rate || "",
+                        team: config.team || ""
+                    }),
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + getAccessToken() // Opsiyonel güvenlik
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.text();
+                console.log("Sunucu yanıtı:", result);
+                return result;
+            } catch (error) {
+                //console.error("İletişim hatası:", error);
+                // Fallback mekanizması (localStorage veya başka bir loglama)
+                //saveFailedRequest(data, error);
+                //throw error;
+            }
+        }
+
+        function saveFailedRequest(data, error) {
+            const failedRequests = JSON.parse(localStorage.getItem('failedSheetRequests') || '[]');
+            failedRequests.push({ data, error, timestamp: new Date().toISOString() });
+            localStorage.setItem('failedSheetRequests', JSON.stringify(failedRequests));
         }
 
         const createOverlayOnElement = async ({
