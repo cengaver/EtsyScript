@@ -1,16 +1,23 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.73
+// @version      1.74
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/orders/sold/completed*
-// @match        https://www.etsy.com/your/orders/sold/*?order_id=*
+// @match        https://www.etsy.com/your/orders/sold/*order_id=*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.registerMenuCommand
 // @grant        GM.addStyle
+// @grant        GM.xmlHttpRequest
+// @grant        GM.getValue
+// @grant        GM.setValue
+// @grant        GM.addElement
+// @grant        GM.getResourceText
+// @connect      sheets.googleapis.com
+// @connect      script.google.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewMessage.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewMessage.user.js
 // @run-at       document-en
@@ -536,12 +543,21 @@
         return true;
     }
 
-    function insertProgressBar(completed, total) {
+    function insertOrUpdateProgressBar(completed, total) {
         const percent = Math.round((completed / total) * 100);
 
-        const li = document.createElement('li');
-        li.className = 'wt-tab__item';
-        li.style = 'display:flex;align-items:center;gap:5px;padding:4px 8px;';
+        const ul = document.querySelector('nav.wt-tab-container ul.wt-tab');
+        if (!ul) return;
+
+        let li = document.querySelector('#reviews-progress-bar');
+
+        if (!li) {
+            li = document.createElement('li');
+            li.id = 'reviews-progress-bar';
+            li.className = 'wt-tab__item';
+            li.style = 'display:flex;align-items:center;gap:5px;padding:4px 8px;';
+            ul.appendChild(li);
+        }
 
         li.innerHTML = `
     <span style="background:#e0e0e0;width:100px;height:10px;border-radius:5px;overflow:hidden;display:inline-block;">
@@ -549,9 +565,6 @@
     </span>
     <span style="font-size:12px;color:#333;">${percent}% (${completed}/${total}) reviews</span>
   `;
-
-        const ul = document.querySelector('nav.wt-tab-container ul.wt-tab');
-        if (ul) ul.appendChild(li);
     }
 
     // Modern Toast Notification System
@@ -644,7 +657,8 @@
             { id: 'reptrackMessage', label: 'Yeni Ürün Gönderildi', type: 'textarea', value: config.reptrackMessage },
             { id: 'repfotoMessage', label: 'Yanlış Ürün – Fotoğraf İste', type: 'textarea', value: config.repfotoMessage },
             { id: 'wecanMessage', label: 'Kişiselleştirme Mümkün', type: 'textarea', value: config.wecanMessage },
-            { id: 'doapprowMessage', label: 'Onay Bekliyorum', type: 'textarea', value: config.doapprowMessage }
+            { id: 'doapprowMessage', label: 'Onay Bekliyorum', type: 'textarea', value: config.doapprowMessage },
+            { id: 'shopName', label: 'Mağaza Adı', type: 'textarea', value: config.shopName }
         ];
 
         fields.forEach(field => {
@@ -831,7 +845,8 @@
             button.innerText = `...`;
         });
         //console.log(el.length, star)
-        await insertProgressBar(star,el.length);
+        await insertOrUpdateProgressBar(star,el.length);
+        await insertOrUpdateRefreshButton();
         let isTriggered = false;
 
         document.addEventListener('keydown', (event) => {
@@ -865,7 +880,6 @@
 
     }
 
-
     // Ctrl + Alt  gönderme
     document.addEventListener("keydown", (event) => {
         if (event.ctrlKey && event.altKey) {
@@ -890,27 +904,68 @@
             main(true); // Doldur ve gönder
         }
     });
-    //console.log("Betik yüklendi.");
+    async function insertOrUpdateRefreshButton() {
+        const ul = document.querySelector('nav.wt-tab-container ul.wt-tab');
+        if (!ul) return;
 
-    const observer = new MutationObserver(() => {
-                // Butonları seç
-        const messageButtonsEL =
-              "#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div >";
+        let li = document.querySelector('#refresh-tab-item');
+        if (!li) {
+            li = document.createElement('li');
+            li.id = 'refresh-tab-item';
+            li.className = 'wt-tab__item';
+
+            const btn = document.createElement('button');
+            btn.className = 'refresh-button';
+            btn.innerHTML = '&times;';
+            btn.addEventListener('click', () => {
+                observeButtons();
+            });
+
+            li.appendChild(btn);
+            ul.appendChild(li);
+        } else {
+            // Eğer button varsa, event listener eklenmişse tekrar eklemenin önüne geç
+            const btn = li.querySelector('button.refresh-button');
+            if (!btn) {
+                const newBtn = document.createElement('button');
+                newBtn.className = 'refresh-button';
+                newBtn.innerHTML = '&times;';
+                newBtn.addEventListener('click', () => {
+                    observeButtons();
+                });
+                li.appendChild(newBtn);
+            }
+        }
+    }
+
+    function observeButtons() {
+        const messageButtonsEL = "#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div";
         const buttons = document.querySelectorAll(
             messageButtonsEL + ' :is(div, div:nth-child(2)) > span > button[data-clg-id="WtButton"]:not([data-test-id="purchase-shipping-label-button"])'
         );
-        //const buttons = document.querySelectorAll('button.wt-btn--transparent.wt-tooltip__trigger');
-        //console.log(buttons);
-        if ( buttons.length > 0 && !window.location.href.includes("https://www.etsy.com/your/orders/sold/new?search_query=") ) {
-            butonsAll(buttons)
+        if (buttons.length > 0 && !window.location.href.includes("https://www.etsy.com/your/orders/sold/new?search_query=")) {
+            butonsAll(buttons);
             console.log("Butonlar bulundu:", buttons);
-            observer.disconnect(); // Gözlemlemeyi durdur
+            observer.disconnect(); // İlk gözlemi durdur
         }
-    });
+    }
 
+    const observer = new MutationObserver(observeButtons);
     observer.observe(document.body, { childList: true, subtree: true });
 
-        // Initialize
+    let lastPage = new URL(location.href).searchParams.get("page") || "1";
+
+    new MutationObserver(() => {
+        const currentPage = new URL(location.href).searchParams.get("page") || "1";
+        if (currentPage !== lastPage) {
+            console.log(`Sayfa değişti: ${lastPage} → ${currentPage}`);
+            lastPage = currentPage;
+            observeButtons();
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+
+
+    // Initialize
     async function initialize() {
         // Load config
         await loadConfig();
