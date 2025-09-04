@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.54
+// @version      1.57
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
+// @match        https://www.etsy.com/your/orders/sold/*
 // @grant        GM.registerMenuCommand
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.xmlHttpRequest
 // @connect      api-free.deepl.com
+// @connect      api.deepl.com
 // @connect      translate.googleapis.com
 // @icon         https://www.google.com/s2/favicons?domain=deepl.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyTrMessage.user.js
@@ -40,6 +42,13 @@
         alert(`🔁 Her zaman çeviri yap: ${next ? "Açık" : "Kapalı"}`);
     });
 
+    GM.registerMenuCommand("⚙️ DeepL Pro (Açık/Kapalı)", async () => {
+        const current = await GM.getValue("deepl_pro", false);
+        const next = !current;
+        await GM.setValue("deepl_pro", next);
+        alert(`🔁 Pro olarak çeviri yap: ${next ? "Açık" : "Kapalı"}`);
+    });
+
     async function getTranslator() {
         return await GM.getValue("translator", "deepl");
     }
@@ -52,6 +61,10 @@
 
     async function getAlwaysTranslate() {
         return await GM.getValue("always_translate", false);
+    }
+
+    async function getProTranslate() {
+        return await GM.getValue("deepl_pro", false);
     }
 
     function createTooltip(text, targetElement) {
@@ -96,9 +109,17 @@
         } else {
             const API_KEY = await getApiKey();
             if (!API_KEY) return;
+            const proTranslate = await getProTranslate();
+            let url;
+            if(proTranslate)
+            {
+                url ="https://api.deepl.com/v2/translate"
+            }else{
+                url ="https://api-free.deepl.com/v2/translate"
+            }
             GM.xmlHttpRequest({
                 method: 'POST',
-                url: 'https://api-free.deepl.com/v2/translate',
+                url,
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 data: `auth_key=${API_KEY}&text=${encodeURIComponent(text)}&target_lang=${targetLang}`,
                 onload: res => {
@@ -113,12 +134,10 @@
         }
     }
 
-    function observeMsgContainer() {
-        const container = document.querySelector('.msg-list-container');
-        if (!container) return;
-
+    function observeMsgContainer(container,spans) {
+        if (!container) {console.log("yok"); return;}
+        console.log(container);
         const processSpans = () => {
-            const spans = container.querySelectorAll('span:not(.screen-reader-only)');
             spans.forEach(span => {
                 if (!span.dataset.translatable && span.textContent.trim().length > 2) {
                     span.dataset.translatable = '1';
@@ -218,17 +237,27 @@
 
     function waitForMsgContainerThenObserve() {
         const observer = new MutationObserver((mutations, obs) => {
-            const container = document.querySelector('.msg-list-container');
+            let container,spans;
+            if (window.location.href.includes("/your/orders/sold")) {
+                console.log("sold");
+                container = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel")
+                spans = container.querySelectorAll('.note');
+            }else{
+                console.log("msg");
+                container = document.querySelector('.msg-list-container');
+                spans = container.querySelectorAll('span:not(.screen-reader-only)');
+            }
+
             if (container) {
                 obs.disconnect();
-                observeMsgContainer();
+                observeMsgContainer(container,spans);
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
     const interval = setInterval(() => {
-        const textarea = document.querySelector('textarea.new-message-textarea-min-height');
+        const textarea = document.querySelector('textarea.new-message-textarea-min-height');//injecktions button
         if (textarea) {
             clearInterval(interval);
             injectTranslateButton();
