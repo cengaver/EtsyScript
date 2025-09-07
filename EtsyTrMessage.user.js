@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.57
+// @version      1.60
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @match        https://www.etsy.com/your/orders/sold/*
@@ -136,7 +136,7 @@
 
     function observeMsgContainer(container,spans) {
         if (!container) {console.log("yok"); return;}
-        console.log(container);
+        //console.log(container);
         const processSpans = () => {
             spans.forEach(span => {
                 if (!span.dataset.translatable && span.textContent.trim().length > 2) {
@@ -198,31 +198,34 @@
     }
 
     function injectTranslateButton() {
-        const translateButton = document.querySelector("#main-content > div > div.wt-grid.wt-overflow-hidden > div.detail-view.wt-grid__item-xs-12.wt-grid__item-md-8.wt-grid__item-lg-7.wt-display-flex-xs.wt-flex-direction-column-xs.wt-br-md > div.wt-p-xs-1.wt-p-md-2.wt-z-index-1.inline-compose-container > div:nth-child(2) > div > div.wt-position-relative > div > div > div:nth-child(2)")
+        const translateButton = document.querySelector(".inline-compose-container > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(1)");
         const textarea = document.querySelector('textarea.new-message-textarea-min-height');
         if (!textarea || textarea.dataset.hasTranslator) return;
         textarea.dataset.hasTranslator = '1';
 
         const btn = document.createElement('button');
-        btn.textContent = '🌍';
+        btn.innerHTML = `<svg width="24" height="24" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+            <style>.st2{fill:none;stroke:#0F005B;stroke-width:8;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;}</style>
+            <ellipse class="st2" cx="64" cy="64" rx="18.9" ry="44.3"/>
+            <line class="st2" x1="22.7" x2="105.3" y1="49.2" y2="49.2"/>
+            <line class="st2" x1="92.5" x2="22.7" y1="78.8" y2="78.8"/>
+            <circle class="st2" cx="64" cy="64" r="44.3"/>
+            </svg>`;
+
         Object.assign(btn.style, {
-            position: 'absolute',
-            right: '12px',
-            bottom: '4px',
-            padding: '4px 6px',
-            background: '#eee',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
+            marginLeft: '8px',
+            padding: '4px',
+            background: 'transparent',
+            title: 'Translate',
+            border: 'none',
             cursor: 'pointer',
-            fontSize: '16px',
-            zIndex: 9999
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
         });
 
-        const wrapper = document.createElement('div');
-        wrapper.style.position = 'relative';
-        translateButton.parentNode.insertBefore(wrapper, translateButton);
-        wrapper.appendChild(translateButton);
-        wrapper.appendChild(btn);
+        // **Butonu sonuna ekle**
+        translateButton.appendChild(btn);
 
         btn.addEventListener('click', async () => {
             const original = textarea.value.trim();
@@ -239,16 +242,17 @@
         const observer = new MutationObserver((mutations, obs) => {
             let container,spans;
             if (window.location.href.includes("/your/orders/sold")) {
-                console.log("sold");
+                //console.log("sold");
                 container = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel")
-                spans = container.querySelectorAll('.note');
+                //spans = container?.querySelectorAll('.note');
+                spans = container?.querySelectorAll('span');
             }else{
-                console.log("msg");
+                //console.log("msg");
                 container = document.querySelector('.msg-list-container');
-                spans = container.querySelectorAll('span:not(.screen-reader-only)');
+                spans = container?.querySelectorAll('span:not(.screen-reader-only)');
             }
 
-            if (container) {
+            if (container && spans) {
                 obs.disconnect();
                 observeMsgContainer(container,spans);
             }
