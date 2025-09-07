@@ -1,18 +1,22 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.5
+// @version      4.53
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
 // @grant        GM.addStyle
 // @grant        GM.xmlHttpRequest
+// @grant        GM_xmlhttpRequest
 // @grant        GM.registerMenuCommand
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.listValues
 // @grant        GM.deleteValue
 // @connect      www.tcmb.gov.tr
+// @connect      sheets.googleapis.com
+// @connect      script.google.com
+// @connect      script.googleusercontent.com
 // @icon         https://dashboard.k8s.customhub.io/Modernize/assets/images/logos/favicon.png
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
@@ -106,6 +110,20 @@
 
         .toast-close:hover {
             opacity: 1;
+        }
+
+       .generation-controls {
+            position: relative;
+        }
+        .color-modal {
+            position: absolute;
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 10px;
+            z-index: 9999;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            max-height: 200px;
+            overflow-y: auto;
         }
 
         /* Modal */
@@ -313,93 +331,95 @@
     let config = { ...DEFAULT_CONFIG };
     let toastContainer = null;
 
-    const shirtColors = [
-        { "name": "Heather Navy", "ischecked": 0, "hex": "#333F48" },
-        { "name": "Heather Mauve", "ischecked": 1, "hex": "#C49BA3" },
-        { "name": "Charcoal", "ischecked": 0, "hex": "#4D4D4D" },
-        { "name": "Caroline Blue", "ischecked": 1, "hex": "#71B2DB" },
-        { "name": "Comfort Colors Banana", "ischecked": 1, "hex": "#FCE9A6" },
-        { "name": "Comfort Colors Blue Jean", "ischecked": 0, "hex": "#566D7E" },
-        { "name": "Comfort Colors Butter", "ischecked": 1, "hex": "#F9E38C" },
-        { "name": "Comfort Colors Chalky Mint", "ischecked": 1, "hex": "#A8D5BA" },
-        { "name": "Comfort Colors Chambray", "ischecked": 1, "hex": "#A3BFD9" },
-        { "name": "Comfort Colors Denim", "ischecked": 0, "hex": "#4F728E" },
-        { "name": "Comfort Colors Burnt Orange", "ischecked": 1, "hex": "#CC5500" },
-        { "name": "Comfort Colors Granite", "ischecked": 0, "hex": "#5F5F60" },
-        { "name": "Comfort Colors Grey", "ischecked": 0, "hex": "#B2B2B2" },
-        { "name": "Comfort Colors Hemp", "ischecked": 0, "hex": "#434b36" },
-        { "name": "Comfort Colors Ice Blue", "ischecked": 0, "hex": "#85aac4" },
-        { "name": "Comfort Colors Ivory", "ischecked": 1, "hex": "#F3F1DC" },
-        { "name": "Comfort Colors Light Green", "ischecked": 1, "hex": "#BFD8B8" },
-        { "name": "Comfort Colors Midnight", "ischecked": 0, "hex": "#2E3B4E" },
-        { "name": "Comfort Colors Orchid", "ischecked": 1, "hex": "#C3A3BF" },
-        { "name": "Comfort Colors Pepper", "ischecked": 0, "hex": "#4B4F52" },
-        { "name": "Comfort Colors Seafoam", "ischecked": 1, "hex": "#9FE2BF" },
-        { "name": "Comfort Colors Watermelon", "ischecked": 0, "hex": "#FA6C6C" },
-        { "name": "Comfort Colors White", "ischecked": 1, "hex": "#eceaee" },
-        { "name": "Comfort Colors Yam", "ischecked": 0, "hex": "#FF8C42" },
-        { "name": "Comfort Colors Terracotta", "ischecked": 0, "hex": "#E3775E" },
-        { "name": "Comfort Colors Berry", "ischecked": 0, "hex": "#85394A" },
-        { "name": "Comfort Colors Black", "ischecked": 0, "hex": "#1f1f1f" },
-        { "name": "Comfort Colors Blue Spruce", "ischecked": 0, "hex": "#49796B" },
-        { "name": "Comfort Colors Brick", "ischecked": 0, "hex": "#9C3E2E" },
-        { "name": "Comfort Colors Blossom", "ischecked": 1, "hex": "#F4C2C2" },
-        { "name": "Comfort Colors Boysenberry", "ischecked": 0, "hex": "#873260" },
-        { "name": "Comfort Colors Crimson", "ischecked": 0, "hex": "#A91B0D" },
-        { "name": "Comfort Colors Crunchberry", "ischecked": 0, "hex": "#DE5D83" },
-        { "name": "Comfort Colors Espresso", "ischecked": 0, "hex": "#3B2F2F" },
-        { "name": "Comfort Colors Grape", "ischecked": 0, "hex": "#6F42C1" },
-        { "name": "Comfort Colors Lagoon Blue", "ischecked": 0, "hex": "#6DAEDB" },
-        { "name": "Comfort Colors Moss", "ischecked": 0, "hex": "#8A9A5B" },
-        { "name": "Comfort Colors Neon Red Orange", "ischecked": 0, "hex": "#FF5349" },
-        { "name": "Comfort Colors Neon Yellow", "ischecked": 0, "hex": "#FFFF33" },
-        { "name": "Comfort Colors Red", "ischecked": 0, "hex": "#C1272D" },
-        { "name": "Comfort Colors Rose", "ischecked": 1, "hex": "#E7A2A2" },
-        { "name": "Comfort Colors Seafoam Green", "ischecked": 0, "hex": "#9FE2BF" },
-        { "name": "Comfort Colors Sunset", "ischecked": 0, "hex": "#FA8072" },
-        { "name": "Comfort Colors Violet", "ischecked": 0, "hex": "#8F509D" },
-        { "name": "Comfort Colors Washed Denim", "ischecked": 0, "hex": "#5D6D7E" },
-        { "name": "Comfort Colors Wine", "ischecked": 0, "hex": "#722F37" },
-        { "name": "Daisy", "ischecked": 1, "hex": "#FFD300" },
-        { "name": "Dark Gray", "ischecked": 0, "hex": "#A9A9A9" },
-        { "name": "Evergreen", "ischecked": 0, "hex": "#115740" },
-        { "name": "Forest Green", "ischecked": 0, "hex": "#228B22" },
-        { "name": "Heather Autumn", "ischecked": 1, "hex": "#C48447" },
-        { "name": "Heather Deep Teal", "ischecked": 0, "hex": "#255E69" },
-        { "name": "Heather Galapagos Blue", "ischecked": 1, "hex": "#496C8D" },
-        { "name": "Heather Maroon", "ischecked": 0, "hex": "#4A1C2A" },
-        { "name": "Heather Peach", "ischecked": 1, "hex": "#FFDAB9" },
-        { "name": "Heather Prism Lilac", "ischecked": 1, "hex": "#D8B7DD" },
-        { "name": "Azalea", "ischecked": 1, "hex": "#F78FA7" },
-        { "name": "Irish Green", "ischecked": 1, "hex": "#1CA659" },
-        { "name": "Light Pink", "ischecked": 1, "hex": "#FFB6C1" },
-        { "name": "Kelly Green", "ischecked": 0, "hex": "#4CBB17" },
-        { "name": "Light Blue", "ischecked": 1, "hex": "#ADD8E6" },
-        { "name": "Comfort Colors Sage", "ischecked": 0, "hex": "#C1C8B6" },
-        { "name": "Dark Grey Heather", "ischecked": 0, "hex": "#555555" },
-        { "name": "Heather Indigo Blue", "ischecked": 0, "hex": "#395573" },
-        { "name": "White", "ischecked": 1, "hex": "#FFFFFF" },
-        { "name": "Tan", "ischecked": 1, "hex": "#D2B48C" },
-        { "name": "Sage Green", "ischecked": 1, "hex": "#9CAF88" },
-        { "name": "True Royal", "ischecked": 0, "hex": "#4169E1" },
-        { "name": "Sport Grey", "ischecked": 1, "hex": "#C0C0C0" },
-        { "name": "Navy", "ischecked": 0, "hex": "#000080" },
-        { "name": "Military Green", "ischecked": 0, "hex": "#4B5320" },
-        { "name": "Heather True Royal", "ischecked": 0, "hex": "#3A5DAE" },
-        { "name": "Heather Berry", "ischecked": 0, "hex": "#db689d" },
-        { "name": "Maroon", "ischecked": 0, "hex": "#800000" },
-        { "name": "Mauve", "ischecked": 1, "hex": "#E0B0FF" },
-        { "name": "Natural", "ischecked": 1, "hex": "#F5F5DC" },
-        { "name": "Orange", "ischecked": 1, "hex": "#FFA500" },
-        { "name": "Purple", "ischecked": 0, "hex": "#800080" },
-        { "name": "Red", "ischecked": 0, "hex": "#FF0000" },
-        { "name": "Sand", "ischecked": 1, "hex": "#ECD9B0" },
-        { "name": "Soft Cream", "ischecked": 1, "hex": "#FFFDD0" },
-        { "name": "Heliconia", "ischecked": 0, "hex": "#FF69B4" },
-        { "name": "Black", "ischecked": 0, "hex": "#000000" },
-        { "name": "Comfort Colors Mustard", "ischecked": 1, "hex": "#e2bc75" },
-        { "name": "Sapphire", "ischecked": 0, "hex": "#0067A0" }
-    ]
+    var shirtColors = [
+        { name: "Heather Navy", ischecked: 0, hex: "#333F48" },
+        { name: "Heather Mauve", ischecked: 1, hex: "#C49BA3" },
+        { name: "Charcoal", ischecked: 0, hex: "#4D4D4D" },
+        { name: "Caroline Blue", ischecked: 1, hex: "#71B2DB" },
+        { name: "Comfort Colors Banana", ischecked: 1, hex: "#FCE9A6" },
+        { name: "Comfort Colors Blue Jean", ischecked: 0, hex: "#566D7E" },
+        { name: "Comfort Colors Butter", ischecked: 1, hex: "#F9E38C" },
+        { name: "Comfort Colors Chalky Mint", ischecked: 1, hex: "#A8D5BA" },
+        { name: "Comfort Colors Chambray", ischecked: 1, hex: "#A3BFD9" },
+        { name: "Comfort Colors Denim", ischecked: 0, hex: "#4F728E" },
+        { name: "Comfort Colors Burnt Orange", ischecked: 1, hex: "#CC5500" },
+        { name: "Comfort Colors Granite", ischecked: 0, hex: "#5F5F60" },
+        { name: "Comfort Colors Grey", ischecked: 0, hex: "#B2B2B2" },
+        { name: "Comfort Colors Hemp", ischecked: 0, hex: "#434b36" },
+        { name: "Comfort Colors Ice Blue", ischecked: 0, hex: "#85aac4" },
+        { name: "Comfort Colors Ivory", ischecked: 1, hex: "#F3F1DC" },
+        { name: "Comfort Colors Light Green", ischecked: 1, hex: "#BFD8B8" },
+        { name: "Comfort Colors Midnight", ischecked: 0, hex: "#2E3B4E" },
+        { name: "Comfort Colors Orchid", ischecked: 1, hex: "#C3A3BF" },
+        { name: "Comfort Colors Pepper", ischecked: 0, hex: "#4B4F52" },
+        { name: "Comfort Colors Pepper", ischecked: 0, hex: "#4B4F52" },
+        { name: "Comfort Colors Seafoam", ischecked: 1, hex: "#9FE2BF" },
+        { name: "Comfort Colors Watermelon", ischecked: 0, hex: "#FA6C6C" },
+        { name: "Comfort Colors White", ischecked: 1, hex: "#eceaee" },
+        { name: "Comfort Colors Yam", ischecked: 0, hex: "#FF8C42" },
+        { name: "Comfort Colors Terracotta", ischecked: 0, hex: "#E3775E" },
+        { name: "Comfort Colors Berry", ischecked: 0, hex: "#85394A" },
+        { name: "Comfort Colors Black", ischecked: 0, hex: "#1f1f1f" },
+        { name: "Comfort Colors Blue Spruce", ischecked: 0, hex: "#49796B" },
+        { name: "Comfort Colors Brick", ischecked: 0, hex: "#9C3E2E" },
+        { name: "Comfort Colors Blossom", ischecked: 1, hex: "#F4C2C2" },
+        { name: "Comfort Colors Boysenberry", ischecked: 0, hex: "#873260" },
+        { name: "Comfort Colors Crimson", ischecked: 0, hex: "#A91B0D" },
+        { name: "Comfort Colors Crunchberry", ischecked: 0, hex: "#DE5D83" },
+        { name: "Comfort Colors Espresso", ischecked: 0, hex: "#3B2F2F" },
+        { name: "Comfort Colors Grape", ischecked: 0, hex: "#6F42C1" },
+        { name: "Comfort Colors Lagoon Blue", ischecked: 0, hex: "#6DAEDB" },
+        { name: "Comfort Colors Moss", ischecked: 0, hex: "#8A9A5B" },
+        { name: "Comfort Colors Neon Red Orange", ischecked: 0, hex: "#FF5349" },
+        { name: "Comfort Colors Neon Yellow", ischecked: 0, hex: "#FFFF33" },
+        { name: "Comfort Colors Red", ischecked: 0, hex: "#C1272D" },
+        { name: "Comfort Colors Rose", ischecked: 1, hex: "#E7A2A2" },
+        { name: "Comfort Colors Seafoam Green", ischecked: 0, hex: "#9FE2BF" },
+        { name: "Comfort Colors Sunset", ischecked: 0, hex: "#FA8072" },
+        { name: "Comfort Colors Violet", ischecked: 0, hex: "#8F509D" },
+        { name: "Comfort Colors Washed Denim", ischecked: 0, hex: "#5D6D7E" },
+        { name: "Comfort Colors Wine", ischecked: 0, hex: "#722F37" },
+        { name: "Daisy", ischecked: 1, hex: "#FFD300" },
+        { name: "Dark Gray", ischecked: 0, hex: "#A9A9A9" },
+        { name: "Evergreen", ischecked: 0, hex: "#115740" },
+        { name: "Forest Green", ischecked: 0, hex: "#228B22" },
+        { name: "Heather Autumn", ischecked: 1, hex: "#C48447" },
+        { name: "Heather Deep Teal", ischecked: 0, hex: "#255E69" },
+        { name: "Heather Galapagos Blue", ischecked: 1, hex: "#496C8D" },
+        { name: "Heather Maroon", ischecked: 0, hex: "#4A1C2A" },
+        { name: "Heather Peach", ischecked: 1, hex: "#FFDAB9" },
+        { name: "Heather Prism Lilac", ischecked: 1, hex: "#D8B7DD" },
+        { name: "Azalea", ischecked: 1, hex: "#F78FA7" },
+        { name: "Irish Green", ischecked: 1, hex: "#1CA659" },
+        { name: "Light Pink", ischecked: 1, hex: "#FFB6C1" },
+        { name: "Kelly Green", ischecked: 0, hex: "#4CBB17" },
+        { name: "Light Blue", ischecked: 1, hex: "#ADD8E6" },
+        { name: "Comfort Colors Sage", ischecked: 0, hex: "#C1C8B6" },
+        { name: "Dark Grey Heather", ischecked: 0, hex: "#555555" },
+        { name: "Heather Indigo Blue", ischecked: 0, hex: "#395573" },
+        { name: "White", ischecked: 1, hex: "#FFFFFF" },
+        { name: "Tan", ischecked: 1, hex: "#D2B48C" },
+        { name: "Sage Green", ischecked: 1, hex: "#9CAF88" },
+        { name: "True Royal", ischecked: 0, hex: "#4169E1" },
+        { name: "Sport Grey", ischecked: 1, hex: "#C0C0C0" },
+        { name: "Navy", ischecked: 0, hex: "#000080" },
+        { name: "Military Green", ischecked: 0, hex: "#4B5320" },
+        { name: "Heather True Royal", ischecked: 0, hex: "#3A5DAE" },
+        { name: "Maroon", ischecked: 0, hex: "#800000" },
+        { name: "Mauve", ischecked: 1, hex: "#E0B0FF" },
+        { name: "Natural", ischecked: 1, hex: "#F5F5DC" },
+        { name: "Orange", ischecked: 1, hex: "#FFA500" },
+        { name: "Purple", ischecked: 0, hex: "#800080" },
+        { name: "Red", ischecked: 0, hex: "#FF0000" },
+        { name: "Sand", ischecked: 1, hex: "#ECD9B0" },
+        { name: "Soft Cream", ischecked: 1, hex: "#FFFDD0" },
+        { name: "Heliconia", ischecked: 0, hex: "#FF69B4" },
+        { name: "Black", ischecked: 0, hex: "#000000" },
+        { name: "Comfort Colors Mustard", ischecked: 1, hex: "#e2bc75" },
+        { name: "Sapphire", ischecked: 0, hex: "#0067A0" },
+        { name: "Heather Berry", ischecked: 0, hex: "#db689d" }
+    ];
+
 
     // Config yönetimi
     async function loadConfig() {
@@ -995,6 +1015,35 @@
                         e.target.style.backgroundColor = "blue"
                         //e.target.closest("td").style.backgroundColor = "olive";
                     });
+                    const orderImageBtn = document.createElement('button');
+                    orderImageBtn.textContent = 'OrderImg';
+                    orderImageBtn.style.marginLeft = '10px';
+                    orderImageBtn.className = 'wait-icon';
+                    let orderImage = JSON.parse(localStorage.getItem('orderImg') || '[]');
+                    if ( orderImage.includes(currentOrder)) {
+                        const td = orderCutText.closest("td");
+                        if (td) td.classList.add("toast-error");
+                    }
+                    orderCutText.parentNode.appendChild(orderImageBtn);
+                    orderImageBtn.addEventListener('click',async function (e) {
+                        orderImageBtn.style.backgroundColor = "orange"
+                        orderImage = JSON.parse(localStorage.getItem('orderImg') || '[]');
+                        const orderImagelink = await getLinkById(currentOrder);
+                        console.log("Link:", orderImagelink);
+                        if(orderImagelink){
+                            orderImageBtn.style.backgroundColor = "green"
+                            window.open(orderImagelink, "_blank");
+                            if (! orderImage.includes(currentOrder)) {
+                                orderImage.push(currentOrder);
+                                localStorage.setItem('orderImg', JSON.stringify(orderImage));
+                            }
+                            const td = orderCutText.closest("td");
+                            if (td) td.classList.add("toast-info");
+                            e.target.style.backgroundColor = "pink"
+                        }else{
+                            orderImageBtn.style.backgroundColor = "red"
+                        }
+                    });
                 }
 
                 const skuCText = sNode.querySelector(selectors.skuCut);
@@ -1085,47 +1134,6 @@
                 // İlk yüklemede slider event'leri ekle
                 initSliderListeners(sNode);
 
-                /*const shirtColorCuttext = getText(selectors.shirtColorCut,sNode);
-                if (shirtColorCuttext) {
-                    const shirtColor = shirtColorCuttext.replace("(", "").replace(")", "").trim();
-                    //console.log("shirtColor: ",shirtColor);
-                    const oldColorRGB = 'rgb(220, 220, 220)';
-                    const oldColorEmpty = '#dcdcdc';
-                    let newColor, designColor;
-                    // Get white color's hex
-                    newColor = shirtColors.find(c => c.name === shirtColor)?.hex;
-                    designColor = shirtColors.find(c => c.name === shirtColor)?.ischecked == 1 ? "black" : "white";
-                    //    border-width: thick; border-color: white;
-                    //console.log("newColor: ",newColor);
-                    const intervalc = setInterval(() => {
-                        const imgCutmenu = sNode.querySelector(selectors.imgCut);
-                        if (imgCutmenu) {
-                            const aElement = imgCutmenu.querySelector("div > div > div:nth-child(4)");
-                            if (!aElement) return; // a elementi yoksa hata vermesin
-                            const imgCutUrl = aElement.querySelector("a")?.href;
-                            if (!imgCutUrl) return; // elementi yoksa hata vermesin
-                            addProofButton(imgCutUrl,newColor,aElement);
-                            clearInterval(intervalc);
-                        }
-                    }, 1000);
-                    makeHexBox(newColor, sNode.querySelector(selectors.skuCut));
-                    const interval = setInterval(() => {
-                        const imgColorCutEl = sNode.querySelector(selectors.imgColorCut);
-                        if (!imgColorCutEl) return;
-                        const descendants = imgColorCutEl.querySelectorAll("*");
-                        descendants.forEach(Node => {
-                            const style = window.getComputedStyle(Node);
-                            if (style.backgroundColor.toLowerCase() === oldColorRGB || style.backgroundColor === oldColorEmpty) {
-                                Node.style.backgroundColor = newColor;
-                                Node.style.borderColor = designColor;
-                                Node.style.borderWidth = "8px";
-                            }
-                        });
-
-                        clearInterval(interval); // Bulunca durdur
-                    }, 1000);
-                }*/
-
                 const personaCutEl = getText(selectors.personaCut,sNode);
                 if (skuCText && personaCutEl) {
                     const sku = skuCText.textContent;
@@ -1142,7 +1150,7 @@
                     const noteId = generateUniqueId();
                     const inputValue = personaText.replaceAll(":", "").replace(/NUMBER/i, "").replace(/NAME/i, "").replaceAll("\n", " | ").toUpperCase();
 
-                    const makeCard = (label, inputId, btnId, btnStyl, noteId, type) => {
+                    const makeCard = (label, inputId, btnId, btnStyl,btnTitle, noteId, type) => {
                         const extraControls = type === "font"
                         ? `
             <button class="mud-button mud-button-outlined mud-button-outlined-primary mud-button-outlined-size-small" id="color-btn-${noteId}">
@@ -1153,7 +1161,7 @@
             </select>
             <input type="hidden" id="selected-color-${noteId}">
             <input type="hidden" id="selected-font-${noteId}">
-            <div id="color-modal-${noteId}" class="color-modal" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; padding:10px; z-index:999;">
+            <div id="color-modal-${noteId}" class="color-modal" style="display:none; bottom:0; position:absolute; background:#fff; border:1px solid #ccc; padding:10px; z-index:999;">
                 <table id="color-table-${noteId}"></table>
             </div>`
                         : `
@@ -1176,7 +1184,7 @@
           </div>
           <div class="generation-controls">
               <div class="d-flex gap-1 align-items-center">
-                  <button class="mud-button mud-button-filled mud-button-filled-${btnStyl} mud-button-filled-size-small"
+                  <button title ="${btnTitle}" class="mud-button mud-button-filled mud-button-filled-${btnStyl} mud-button-filled-size-small"
                           id="${btnId}">
                       Oluştur ve Yükle
                   </button>
@@ -1192,8 +1200,8 @@
                     let btnImag = SkuSettings?.imageSet ? 'warning':'';
                     const noteHtml = `
   <div role="group" class="d-flex flex-row gap-3 col-md-12 single-note-item all-category note-social" id="${noteId}">
-      ${makeCard("Dizayn oluştur Font ile", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`, btnFont, noteId, "font")}
-      ${makeCard("Dizayn oluştur Resim ile", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`, btnImag, noteId, "image")}
+      ${makeCard("Dizayn oluştur Font ile", `persona-input-1-${noteId}`, `generate-btn-1-${noteId}`, btnFont,SkuSettings?.fontName, noteId, "font")}
+      ${makeCard("Dizayn oluştur Resim ile", `persona-input-2-${noteId}`, `generate-btn-2-${noteId}`, btnImag,SkuSettings?.imageSet, noteId, "image")}
   </div>`;
 
 
@@ -1201,13 +1209,32 @@
                     targetCell.insertAdjacentHTML('beforeend', noteHtml);
                     // FONT UI SETUP (renk paleti + font select)
                     const colors = {
-                        "Kırmızı": "#FF0000",
-                        "Yeşil": "#00FF00",
-                        "Mavi": "#0000FF",
-                        "Siyah": "#000000",
-                        "Beyaz": "#FFFFFF",
-                        "Turuncu": "#FFA500",
-                        "Mor": "#800080"
+                        black: "#000000",
+                        white: "#ffffff",
+                        red: "#ac110d",
+                        royal: "#00237d",
+                        columbia: "#74cae3",
+                        navy: "#192145",
+                        sky_blue: "#0397d5",
+                        purple: "#6c35aa",
+                        neon_orange: "#f3541c",
+                        grey: "#646263",
+                        maroon: "#800000",
+                        orange: "#fea500",
+                        yellow: "#fedd04",
+                        vegas: "#c4b454",
+                        gold: "#d3af37",
+                        teal: "#008081",
+                        sand: "#c3ae81",
+                        neon_pink: "#ed1880",
+                        green: "#1e6334",
+                        neon_green: "#44b83d",
+                        silver: "#c0c0c0",
+                        brown: "#974a02",
+                        magenta: "#ff00fe",
+                        pink: "#ffbfcd",
+                        burgundy: "#811930",
+                        kelly_green: "#4CBB17"
                     };
 
                     const colorBtn = document.getElementById(`color-btn-${noteId}`);
@@ -1224,8 +1251,8 @@
                             const row = document.createElement("tr");
                             const colorCell = document.createElement("td");
                             colorCell.style.background = hex;
-                            colorCell.style.width = "20px";
-                            colorCell.style.height = "20px";
+                            colorCell.style.width = "30px";
+                            colorCell.style.height = "30px";
 
                             const nameCell = document.createElement("td");
                             nameCell.textContent = name;
@@ -2216,43 +2243,38 @@
     };
 
     const generateImageWithSKUSettings = async (sku, text, color, font) => {
-
-        let fontName, fillColor = '#000000', strokeColor = '#000000', strokeWidth =0;
+        let fontName, fillColor = '#000000', strokeColor = '#000000', strokeWidth = 0;
 
         if (font && color) {
             fontName = font;
             fillColor = color;
-        }else{
-            // 1. SKU ayarlarını yeni sistemle al
+        } else {
             const settings = await getSkuSettings(sku);
             if (!settings) {
                 alert(`"${sku}" için ayar bulunamadı`);
                 return null;
             }
-
-            // 2. Gerekli ayarları al
-            ;({ fontName, fillColor, strokeColor, strokeWidth } = settings);
+            ({ fontName, fillColor, strokeColor, strokeWidth } = settings);
             if (!fontName) {
                 alert(`No font set defined for SKU ${sku}`);
                 return null;
             }
         }
-        // 3. Karakter setini IndexedDB'den al
+
         const fontSetData = await getImage(`font_${fontName}`);
         if (!fontSetData) {
             alert(`Font set "${fontName}" not found`);
             return null;
         }
 
-        //await loadFontSafely(fontSetData);
         try {
             const fontface = await injectFontFromStorage(fontSetData);
             if (fontface.family !== fontName) throw new Error(`Font isimleri uyumsuz: ${fontface.family} !== ${fontName}`);
-        }catch(error){
-            console.error("injectFontFromStorage:", error)
+        } catch (error) {
+            console.error("injectFontFromStorage:", error);
         }
 
-        // Render text
+        const lines = text.replace(/\\n/g, '\n').split('\n');
         const maxCanvasWidth = 3000;
         const padding = 40;
         const maxContentWidth = maxCanvasWidth - padding * 2;
@@ -2260,21 +2282,23 @@
         const tempCanvas = new OffscreenCanvas(1, 1);
         const tempCtx = tempCanvas.getContext('2d');
 
-        const baseFontSize = 600
-        let fontSize = baseFontSize
-        let textWidth, textHeight
+        const baseFontSize = 600;
+        let fontSize = baseFontSize;
+        let textWidths = [], textHeights = [];
 
         do {
             tempCtx.font = `${fontSize}px '${fontName}'`;
-            const metrics = tempCtx.measureText(text);
-            textWidth = metrics.actualBoundingBoxRight - metrics.actualBoundingBoxLeft;
-            textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-            textHeight *= 1.2
+            textWidths = lines.map(line => tempCtx.measureText(line).width);
+            textHeights = lines.map(line => {
+                const m = tempCtx.measureText(line);
+                return m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+            });
             fontSize -= 10;
-        } while (textWidth > maxContentWidth && fontSize > 10);
+        } while (Math.max(...textWidths) > maxContentWidth && fontSize > 10);
 
-        const canvasWidth = textWidth + padding * 2;
-        const canvasHeight = textHeight + padding * 2;
+        const totalHeight = textHeights.reduce((a, b) => a + b, 0) * 1.2;
+        const canvasWidth = Math.max(...textWidths) + padding * 2;
+        const canvasHeight = totalHeight + padding * 2;
 
         const canvas = new OffscreenCanvas(canvasWidth, canvasHeight);
         const ctx = canvas.getContext('2d');
@@ -2285,17 +2309,20 @@
         ctx.imageSmoothingEnabled = true;
 
         const x = canvas.width / 2;
-        const y = canvas.height / 2;
+        let y = (canvas.height - totalHeight) / 2;
 
-        if (strokeWidth > 0) {
-            const scaleFactor = fontSize / baseFontSize;
-            ctx.lineWidth = strokeWidth * scaleFactor;
-            ctx.strokeStyle = strokeColor;
-            ctx.strokeText(text, x, y);
+        for (let i = 0; i < lines.length; i++) {
+            y += textHeights[i] * 1.2 / 2;
+            if (strokeWidth > 0) {
+                const scaleFactor = fontSize / baseFontSize;
+                ctx.lineWidth = strokeWidth * scaleFactor;
+                ctx.strokeStyle = strokeColor;
+                ctx.strokeText(lines[i], x, y);
+            }
+            ctx.fillStyle = fillColor;
+            ctx.fillText(lines[i], x, y);
+            y += textHeights[i] * 0.6;
         }
-
-        ctx.fillStyle = fillColor;
-        ctx.fillText(text, x, y);
 
         const trimmed = trimCanvas(canvas);
         return new Promise(resolve => {
@@ -2304,8 +2331,8 @@
                 resolve(withDPI);
             }, 'image/png', 1.0);
         });
-
     };
+
 
     const generateImageWithCharacterImages = async (sku, text,charset) => {
         try {
@@ -3617,6 +3644,40 @@
             }
         }
     });
+
+    function getLinkById(id) {
+        const sheetUrl = 'https://script.google.com/macros/s/AKfycbwrgsia2C2-NoxZWGpdA1qrvMPeRn3EUwkzsrpvitNQQzu9VeunN7sPVygSw4dZqBb4/exec';
+        const payload = { action: "getLink", sheetName: "order", id: id };
+
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: "POST",
+                url: sheetUrl,
+                data: JSON.stringify(payload),
+                headers: { "Content-Type": "application/json" },
+                onload: function(response) {
+                    console.log(response.responseText)
+                    try {
+                        const data = JSON.parse(response.responseText);
+                        if (data.status === 'success') {
+                            showToast('✅ Link istendi');
+                            resolve(data.link);
+                        } else {
+                            showToast('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
+                            reject(data.message);
+                        }
+                    } catch (e) {
+                        showToast('❌ Yanıt işlenemedi');
+                        reject(e);
+                    }
+                },
+                onerror: function(error) {
+                    showToast('❌ Gönderilemedi: ' + (error.message || 'Bilinmeyen hata'));
+                    reject(error);
+                }
+            });
+        });
+    }
 
     function handleMutation(mutationsList) {
         if (window.location.href.includes('customhub.io/drop-ship/approval-pending')) {
