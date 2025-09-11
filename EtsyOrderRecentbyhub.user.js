@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.53
+// @version      4.55
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -1213,13 +1213,13 @@
                         white: "#ffffff",
                         red: "#ac110d",
                         royal: "#00237d",
-                        columbia: "#74cae3",
+                        columbia: "#318dde",
                         navy: "#192145",
                         sky_blue: "#0397d5",
                         purple: "#6c35aa",
                         neon_orange: "#f3541c",
                         grey: "#646263",
-                        maroon: "#800000",
+                        maroon: "#580018",
                         orange: "#fea500",
                         yellow: "#fedd04",
                         vegas: "#c4b454",
@@ -1268,6 +1268,35 @@
 
                             colorTable.appendChild(row);
                         });
+
+                        // --- Custom HEX satırı ---
+                        const customRow = document.createElement("tr");
+                        const inputCell = document.createElement("td");
+                        inputCell.colSpan = 2;
+
+                        const input = document.createElement("input");
+                        input.type = "text";
+                        input.placeholder = "#rrggbb";
+                        input.style.width = "80px";
+
+                        const applyBtn = document.createElement("button");
+                        applyBtn.textContent = "OK";
+
+                        applyBtn.addEventListener("click", () => {
+                            const hex = input.value.trim();
+                            if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+                                hiddenColor.value = hex;
+                                colorModal.style.display = "none";
+                                colorBtn.textContent = `🎨 Custom (${hex})`;
+                            } else {
+                                alert("Geçerli bir HEX kodu girin (örn: #ff00aa)");
+                            }
+                        });
+
+                        inputCell.appendChild(input);
+                        inputCell.appendChild(applyBtn);
+                        customRow.appendChild(inputCell);
+                        colorTable.appendChild(customRow);
                     }
 
                     // FONT SELECT GM’den doldur
