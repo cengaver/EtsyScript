@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order search gdrive
 // @namespace    https://github.com/cengaver
-// @version      1.8
+// @version      1.82
 // @description  Order Search Gdrive
 // @author       Cengaver
 // @match        https://www.etsy.com/your/orders/sold/*
@@ -46,7 +46,13 @@
     }
 
     async function addIconNextToOrderNo(selector) {
-        const orderNoElement = selector?document.querySelector("#main-content > div > div.wt-grid.wt-overflow-hidden.wt-bt-xs.wt-width-full > div.wt-hide-xs.wt-show-md.wt-grid__item-xs-12.wt-grid__item-md-4.wt-grid__item-lg-3.wt-display-flex-md.wt-flex-direction-column-xs.wt-pl-xs-4.wt-pr-xs-3.wt-pt-xs-2 > div.buyer-info.wt-mt-xs-2 > div:nth-child(2) > div.wt-display-flex-xs.wt-justify-content-space-between > div"):document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div.mt-xs-6 > div.col-group.col-flush > h4");
+        let orderNoElement;
+        if(selector){
+            orderNoElement = document.querySelector("#main-content > div > div.wt-grid.wt-overflow-hidden.wt-bt-xs.wt-width-full > div.wt-hide-xs.wt-show-md.wt-grid__item-xs-12.wt-grid__item-md-4.wt-grid__item-lg-3.wt-display-flex-md.wt-flex-direction-column-xs.wt-pl-xs-4.wt-pr-xs-3.wt-pt-xs-2 > div.buyer-info.wt-mt-xs-2 > div:nth-child(2) > div.wt-display-flex-xs.wt-justify-content-space-between > div");
+            orderNoElement = orderNoElement?orderNoElement:document.querySelector("#main-content > div > div.wt-grid.wt-overflow-hidden.wt-bt-xs.wt-width-full > div.wt-hide-xs.wt-show-md.wt-grid__item-xs-12.wt-grid__item-md-4.wt-grid__item-lg-3.wt-display-flex-md.wt-flex-direction-column-xs.wt-pl-xs-4.wt-pr-xs-3.wt-pt-xs-2 > div.buyer-info.wt-mt-xs-2 > div:nth-child(2) > div > a > div > div > div > div.wt-ml-xs-2 > p:nth-child(3)");
+        }else{
+            orderNoElement = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div.mt-xs-6 > div.col-group.col-flush > h4");
+        }
         if (orderNoElement && !orderNoElement.dataset.gdAdded) {
             orderNoElement.dataset.gdAdded = "true";
             const orderNo = orderNoElement.textContent.match(/\d+/)[0];
@@ -168,14 +174,15 @@
             rowEl.dataset.gdAdded = "true";
         });
     }
-    const sheetID = GM.getValue("sheetID", 0);
-    const WEB_APP_URL = 'https://script.google.com/macros/s/${sheetID}/exec';
 
     function absoluteUrl(href) {
         try { return new URL(href, location.href).href; } catch { return href || ''; }
     }
 
     async function sendLink(u) {
+        const sheetID = await GM.getValue("sheetID", 0);
+        const WEB_APP_URL = `https://script.google.com/macros/s/${sheetID}/exec`;
+        console.log(WEB_APP_URL)
         //const orderNo = orderNoElement.textContent.trim().replace("Receipt #", "");
         const orderNo = document.querySelector("#order-details-order-info > a:nth-child(1)")?.innerText;
         const shopName = document.querySelector("#order-details-order-info > a:nth-child(2)")?.innerText;
@@ -186,6 +193,7 @@
             shop: shopName
         };
         // GM_xmlhttpRequest kullanıyoruz (fetch yerine)
+        console.log(payload)
         GM_xmlhttpRequest({
             method: "POST",
             url: WEB_APP_URL,
