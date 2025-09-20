@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Sum Sales Listings
 // @namespace    https://github.com/cengaver
-// @version      0.22
+// @version      0.3
 // @description  Etsy Sum Sales Listings
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings*
@@ -21,18 +21,32 @@
 
     function sumSalesListing() {
         isUpdating = true;
-        observer.disconnect(); // Güncelleme sırasında gözlemciyi durduruyoruz
-        const items = document.querySelectorAll('.wt-block-grid__item');
+        observer.disconnect();
         let sumSales = 0;
+        const items = document.querySelectorAll('.wt-block-grid__item');
         items.forEach(item => {
             const salesElements = item.querySelectorAll('.card-meta-row-item.text-gray-lighter.selected-color');
             salesElements.forEach(el => {
                 if (el.innerText.includes("sales")) {
                     const match = el.innerText.match(/\d+/);
-                    if (match) sumSales += Number(match[0]);
+                    if (match) {
+                        const count = Number(match[0]);
+                        sumSales += count;
+                        if (count > 0 && count <= 10) {
+                            el.style.backgroundColor = "yellow";
+                            el.style.color = "#000";
+                        } else if (count > 10 && count <= 100) {
+                            el.style.backgroundColor = "orange";
+                            el.style.color = "#fff";
+                        } else if (count > 100) {
+                            el.style.backgroundColor = "lightgreen";
+                            el.style.color = "#000";
+                        }
+                    }
                 }
             });
         });
+
         const sumSalesElement = document.querySelector("#page-region > div > div > div.wt-width-full.wt-mt-xs-2.wt-mt-lg-0.wt-pl-xs-2.wt-pl-lg-6.wt-pr-xs-2.wt-pr-lg-6 > div > div > div:nth-child(1) > h3");
         if (sumSalesElement) {
             let saleslabel = document.getElementById('etsy-sales-sum');
