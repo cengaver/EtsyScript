@@ -1,11 +1,10 @@
 // ==UserScript==
 // @name         Etsy Sum Sales Listings
 // @namespace    https://github.com/cengaver
-// @version      0.2
+// @version      0.22
 // @description  Etsy Sum Sales Listings
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings*
-// @grant        GM_addStyle
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsySumSalesListings.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsySumSalesListings.user.js
@@ -13,6 +12,7 @@
 
 (function() {
     'use strict';
+
     let isUpdating = false;
     const observer = new MutationObserver(mutations => {
         if (!isUpdating) sumSalesListing();
@@ -33,7 +33,7 @@
                 }
             });
         });
-        const sumSalesElement = document.querySelector("#page-region > div > div > header > div.wt-pl-xs-2.wt-pr-xs-2.wt-pl-lg-3.wt-pr-lg-3 > div > h1")
+        const sumSalesElement = document.querySelector("#page-region > div > div > div.wt-width-full.wt-mt-xs-2.wt-mt-lg-0.wt-pl-xs-2.wt-pl-lg-6.wt-pr-xs-2.wt-pr-lg-6 > div > div > div:nth-child(1) > h3");
         if (sumSalesElement) {
             let saleslabel = document.getElementById('etsy-sales-sum');
             if (saleslabel) {
