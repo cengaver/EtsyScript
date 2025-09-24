@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.55
+// @version      4.56
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -26,7 +26,6 @@
 
 (function () {
     "use strict";
-
     // Modern UI Styles
     GM.addStyle(`
         :root {
@@ -355,7 +354,7 @@
         { name: "Comfort Colors Pepper", ischecked: 0, hex: "#4B4F52" },
         { name: "Comfort Colors Seafoam", ischecked: 1, hex: "#9FE2BF" },
         { name: "Comfort Colors Watermelon", ischecked: 0, hex: "#FA6C6C" },
-        { name: "Comfort Colors White", ischecked: 1, hex: "#eceaee" },
+        { name: "Comfort Colors White", ischecked: 1, hex: "#ffffff" },
         { name: "Comfort Colors Yam", ischecked: 0, hex: "#FF8C42" },
         { name: "Comfort Colors Terracotta", ischecked: 0, hex: "#E3775E" },
         { name: "Comfort Colors Berry", ischecked: 0, hex: "#85394A" },
@@ -493,6 +492,11 @@
 
         return toast;
     }
+
+    window.addEventListener("autopea_done", e => {
+        const {isSuccess} = e.detail
+        showToast(isSuccess ? "✅order Yapıldı" : "❌order Hata verdi", isSuccess ? "success" : "error")
+    });
 
     // Modern Config Dialog
     async function showConfigMenu() {
@@ -1213,7 +1217,7 @@
                         white: "#ffffff",
                         red: "#ac110d",
                         royal: "#00237d",
-                        columbia: "#318dde",
+                        columbia: "#74cae3",
                         navy: "#192145",
                         sky_blue: "#0397d5",
                         purple: "#6c35aa",
