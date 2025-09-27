@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.74
+// @version      1.75
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -746,13 +746,23 @@
         const personalizedMessage = `\n${savedMessage.replace("{{userName}}", capitalizedUserName)}\n`;
 
         const textAreaEl = document.querySelector('textarea[name="message"]');
-        if (textAreaEl && !textAreaEl.value.includes(personalizedMessage)) {
-            textAreaEl.value += personalizedMessage;
-            textAreaEl.setAttribute("value", textAreaEl.value);
-            textAreaEl.dispatchEvent(new Event('input', { bubbles: true }));
-            textAreaEl.dispatchEvent(new Event('change', { bubbles: true }));
-            textAreaEl.focus();
+        const msgBuyerButton =[...document.querySelectorAll("#dg-tabs-preact__tab-1--default_wt_tab_panel .flag-body button")].find(el => el.textContent.trim() === "Message buyer")
+        const replyButton =[...document.querySelectorAll("#dg-tabs-preact__tab-1--default_wt_tab_panel .flag-body button")].find(el => el.textContent.trim() === "Reply")
+
+        if (!textAreaEl) {
+            console.log("textAreaEl yok")
+            if (msgBuyerButton) { console.log("msgBuyerButton var");msgBuyerButton.click()}
+            if (replyButton){console.log("replyButton var");replyButton.click()}
         }
+        setTimeout(() => {
+            if (textAreaEl && !textAreaEl.value.includes(personalizedMessage)) {
+                textAreaEl.value += personalizedMessage;
+                textAreaEl.setAttribute("value", textAreaEl.value);
+                textAreaEl.dispatchEvent(new Event('input', { bubbles: true }));
+                textAreaEl.dispatchEvent(new Event('change', { bubbles: true }));
+                textAreaEl.focus();
+            }
+        }, 500);
     }
 
     document.addEventListener("keydown", (event) => {
@@ -883,7 +893,7 @@
     // Ctrl + Alt  gönderme
     document.addEventListener("keydown", (event) => {
         if (event.ctrlKey && event.altKey) {
-            const sendButton = document.querySelector('button[data-test-id="submit"]');
+            const sendButton = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel .panel-body .btn.btn-primary.btn-small");
             if (sendButton) {
                 setTimeout(() => sendButton.click(), 500); // Gönderim için zamanlama ekle
                 //console.log("gömderildi")
