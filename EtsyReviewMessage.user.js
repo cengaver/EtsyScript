@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.75
+// @version      1.76
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -493,6 +493,7 @@
     const DEFAULT_CONFIG = {
         reviewMessage: `Hello {{userName}}, 🙏`
     };
+    const MESSAGE_BUTTONS_SELECTOR = '#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div';
 
     // Global değişkenler
     let config = {...DEFAULT_CONFIG};
@@ -828,66 +829,95 @@
         }
     }
     insertShortcutTable();
+    // helper: görünür ve tıklanabilir mi?
+    function isVisibleAndEnabled(el){ return el && !el.disabled && (!!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)); }
+
+    function waitFor(predicate, interval=150, attempts=40){
+        return new Promise((resolve, reject)=>{
+            let i=0;
+            const t = setInterval(()=>{
+                if(predicate()){ clearInterval(t); resolve(); }
+                if(++i>=attempts){ clearInterval(t); reject(new Error('waitFor timeout')); }
+            }, interval);
+        });
+    }
+
+    // butonsAll: çağırdığınız fonksiyonun güncellenmiş hali
     async function butonsAll(el){
-        //console.log("Betik başlatıldı.");
-        // Butonlara tab sırası ekle
-        let star = 0
+        let star = 0;
         el.forEach((button, index) => {
-            let parentElement = button; // Başlangıç noktası olarak buton
+            let parentElement = button;
             let skip = false;
-
-            // 4 üst seviyeyi dolaşarak `data-icon="star"` kontrolü yap
-            for (let i = 0; i < 5; i++) {
-                if (!parentElement) break; // Eğer parent kalmazsa döngüyü kır
-                parentElement = parentElement.parentElement; // Bir üst seviyeye çık
-
-                if (parentElement && parentElement.querySelector('[data-icon="star"]')) {
-                    skip = true; // Eğer `data-icon="star"` bulunursa atla
-                    star++
-                    break;
-                }
+            for (let i = 0; i < 5; i++){
+                if(!parentElement) break;
+                parentElement = parentElement.parentElement;
+                if(parentElement && parentElement.querySelector('[data-icon="star"]')){ skip = true; star++; break; }
             }
-
-            if (skip) return; // Atla
-
-            // Tab sırasını ekle ve yaz
-            button.tabIndex = index + 1;
-            button.innerText = `...`;
+            if(skip) return;
+            button.setAttribute('tabindex', String(index + 1)); // attribute olarak koy -> getAttribute/selector tutarlı olur
+            button.innerText = '...';
         });
-        //console.log(el.length, star)
-        await insertOrUpdateProgressBar(star,el.length);
+
+        await insertOrUpdateProgressBar(star, el.length);
         await insertOrUpdateRefreshButton();
-        let isTriggered = false;
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Control') isTriggered = false; // Tekrar basmaya izin verir.
-            if (event.ctrlKey && event.key === 'ArrowRight' && !isTriggered) {
-                isTriggered = true;
+        // bir kere ekle (aynı sayfada ikinci kez çağrılırsa tekrar eklemesin)
+        if(!window.__btnNavigatorInitialized){
+            window.__btnNavigatorInitialized = true;
+            window.__btnNavState = { isTriggered: false };
 
-                // 1. Sayfayı geri götür
-                window.history.back();
+            document.addEventListener('keydown', function(e){
+                if(e.key === 'Control'){ window.__btnNavState.isTriggered = false; return; }
+                if(e.ctrlKey && e.key === 'ArrowRight' && !window.__btnNavState.isTriggered && !e.repeat){
+                    window.__btnNavState.isTriggered = true;
+                    e.preventDefault();
+                    window.history.back();
+                    // popstate dinleyicisi sonrası click tetiklenir (aşağıda tanımlı)
+                }
+            });
 
-                // 2. 1 saniye sonra bir sonraki tabindex öğesine tıkla
-                setTimeout(() => clickNextTabIndex(), 1000);
-            }
-        });
+            document.addEventListener('keyup', function(e){
+                if(e.key === 'Control') window.__btnNavState.isTriggered = false;
+            });
 
-        function clickNextTabIndex() {
-            const focusableElements = Array.from(document.querySelectorAll('[tabindex]'))
-            .filter(el => !isNaN(el.getAttribute('tabindex')))
-            .sort((a, b) => parseInt(a.getAttribute('tabindex')) - parseInt(b.getAttribute('tabindex')));
+            window.addEventListener('popstate', function(){
+                // Sayfa içeriği SPA olarak güncelleniyorsa DOM'un hazır olmasını bekle
+                waitFor(()=> document.querySelectorAll(MESSAGE_BUTTONS_SELECTOR + ' :is(div, div:nth-child(2)) > span > button[data-clg-id="WtButton"]').length > 0, 120, 50)
+                    .then(()=> clickNextTabIndex())
+                    .catch(()=> {
+                    // fallback: 1s sonra dene
+                    setTimeout(clickNextTabIndex, 1000);
+                });
+            });
+        }
+    }
 
-            const activeElement = document.activeElement;
-            const currentIndex = focusableElements.indexOf(activeElement);
+    function clickNextTabIndex(){
+        const nodes = Array.from(document.querySelectorAll('[tabindex]'))
+        .filter(isVisibleAndEnabled)
+        .map(el => ({el, tab: Number(el.getAttribute('tabindex') ?? el.tabIndex ?? 0)}))
+        .filter(o => !Number.isNaN(o.tab))
+        .sort((a,b) => a.tab - b.tab)
+        .map(o => o.el);
 
-            const nextElement = focusableElements[currentIndex + 1] || focusableElements[0]; // Döngüsel olsun
-            if (nextElement) {
-                nextElement.focus();
-                nextElement.click();
-                console.log('Clicked on element with tabindex:', nextElement.getAttribute('tabindex'));
-            }
+        if(nodes.length === 0){ console.log('No focusable elements found'); return; }
+
+        const active = document.activeElement;
+        let currentIndex = nodes.indexOf(active);
+
+        // Eğer activeElement listede yoksa ilk elemanı seç (veya odaklanmış öğeyi bulmaya çalış)
+        if(currentIndex === -1){
+            // alternatif: active element'in en yakın [tabindex] ancestor'unu bul
+            const anc = active ? active.closest && active.closest('[tabindex]') : null;
+            currentIndex = anc ? nodes.indexOf(anc) : -1;
         }
 
+        let nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % nodes.length;
+        const nextEl = nodes[nextIndex];
+        if(nextEl){
+            try { nextEl.focus(); } catch(e){}
+            setTimeout(()=> { try { nextEl.click(); console.log('Clicked tabindex', nextEl.getAttribute('tabindex')); } catch(e){ console.error(e); } }, 40);
+        }
     }
 
     // Ctrl + Alt  gönderme
@@ -949,9 +979,9 @@
     }
 
     function observeButtons() {
-        const messageButtonsEL = "#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div";
+        //const messageButtonsEL = "#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div";
         const buttons = document.querySelectorAll(
-            messageButtonsEL + ' :is(div, div:nth-child(2)) > span > button[data-clg-id="WtButton"]:not([data-test-id="purchase-shipping-label-button"])'
+            MESSAGE_BUTTONS_SELECTOR + ' :is(div, div:nth-child(2)) > span > button[data-clg-id="WtButton"]:not([data-test-id="purchase-shipping-label-button"])'
         );
         if (buttons.length > 0 && !window.location.href.includes("https://www.etsy.com/your/orders/sold/new?search_query=")) {
             butonsAll(buttons);
