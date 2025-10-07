@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Marketplace Insights - Search/Listings Percent
-// @version      1.2
+// @version      1.21
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @description  Adds a "Percentes" column to the similar-terms table showing searches/listings % and updates live on mutation.
@@ -40,7 +40,7 @@
     }
 
     function formatPercent(p){
-        if (!isFinite(p) || isNaN(p)) return '—';
+        if (!isFinite(p) || isNaN(p)) return '';
         return p.toFixed(2) + '%';
     }
 
@@ -72,16 +72,60 @@
             if (isHeader) continue;
 
             const directDataCols = Array.from(row.children).filter(ch => ch.classList && ch.className.includes('kr-similar-term-row-data'));
-            let searchesText = '', listingsText = '';
+            let searchesText = '', listingsText = '',searchesCell,listingsCell;
             if (directDataCols.length >= 2){
-                searchesText = directDataCols[0].textContent.trim();
-                listingsText = directDataCols[1].textContent.trim();
+                searchesCell = directDataCols[0];
+                listingsCell = directDataCols[1];
+                searchesText = searchesCell.textContent.trim();
+                listingsText = listingsCell.textContent.trim();
+                searchesCell.style.backgroundColor = '';
+                searchesCell.style.color = '';
+
+                const search = parseCompactNumber(searchesText);
+
+                if (searchesText) {
+                    if (search > 10000) {
+                        searchesCell.style.backgroundColor = 'darkgreen';
+                        searchesCell.style.color = 'white';
+                    } else if (search > 5000) {
+                        searchesCell.style.backgroundColor = 'green';
+                        searchesCell.style.color = 'white';
+                    } else if (search > 1000) {
+                        searchesCell.style.backgroundColor = 'lightgreen';
+                    } else if (search > 500) {
+                        searchesCell.style.backgroundColor = 'yellow';
+                    }
+                }
             } else {
                 const spans = Array.from(row.querySelectorAll('span.wt-text-body-small, span.wt-text-title-small'));
-                if (spans.length >= 2){
-                    searchesText = spans[0].textContent.trim();
-                    listingsText = spans[1].textContent.trim();
-                } else continue;
+                if (spans.length >= 2) {
+                    searchesCell = spans[0];
+                    listingsCell = spans[1];
+                    const searchesText = searchesCell.textContent.trim();
+                    const listingsText = listingsCell.textContent.trim();
+
+                    /*searchesCell.style.backgroundColor = '';
+                    searchesCell.style.color = '';
+
+                    const search = parseCompactNumber(searchesText);
+
+                    if (searchesText) {
+                        if (search > 10000) {
+                            searchesCell.style.backgroundColor = 'darkgreen';
+                            searchesCell.style.color = 'white';
+                        } else if (search > 5000) {
+                            searchesCell.style.backgroundColor = 'green';
+                            searchesCell.style.color = 'white';
+                        } else if (search > 3000) {
+                            searchesCell.style.backgroundColor = 'lightgreen';
+                        } else if (search > 1000) {
+                            searchesCell.style.backgroundColor = 'yellowgreen';
+                        } else {
+                            searchesCell.style.backgroundColor = 'yellow';
+                        }
+                    }*/
+                }
+
             }
 
             const searches = parseCompactNumber(searchesText);
@@ -104,7 +148,7 @@
             percentCell.style.color = '';
             if (!isNaN(percent) && isFinite(percent)) {
                 if (percent > 100) {percentCell.style.backgroundColor = 'darkgreen';percentCell.style.color = 'white'}
-                else if (percent > 50) percentCell.style.backgroundColor = 'green';
+                else if (percent > 50) {percentCell.style.backgroundColor = 'green';percentCell.style.color = 'white'}
                 else if (percent > 20) percentCell.style.backgroundColor = 'lightgreen';
                 else if (percent > 10) percentCell.style.backgroundColor = 'yellowgreen';
                 else if (percent > 1) percentCell.style.backgroundColor = 'yellow';
