@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Marketplace Insights - Search/Listings Percent
-// @version      1.14
+// @version      1.2
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @description  Adds a "Percentes" column to the similar-terms table showing searches/listings % and updates live on mutation.
@@ -113,13 +113,7 @@
         }
     }
 
-    function init(){
-        const container = document.querySelector(CONTAINER_SELECTOR);
-        if (!container) { setTimeout(init, 500); return; }
-
-        ensureHeader(container);
-        updateRows(container);
-
+    function observeContainers(container) {
         const observer = new MutationObserver(() => {
             if (observer._timeout) clearTimeout(observer._timeout);
             observer._timeout = setTimeout(() => {
@@ -129,6 +123,24 @@
             }, 1000);
         });
         observer.observe(container, {childList: true, subtree: true, characterData: true});
+    }
+
+    let lastPath = location.pathname + location.search;
+    setInterval(() => {
+        const currentPath = location.pathname + location.search;
+        if (currentPath !== lastPath) {
+            lastPath = currentPath;
+            init(); // veya observeContainers()
+        }
+    }, 500);
+
+    function init(){
+        const container = document.querySelector(CONTAINER_SELECTOR);
+        if (!container) { setTimeout(init, 500); return; }
+
+        ensureHeader(container);
+        updateRows(container);
+        observeContainers(container);
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
