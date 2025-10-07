@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Marketplace Insights - Search/Listings Percent
-// @version      1.1
+// @version      1.12
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @description  Adds a "Percentes" column to the similar-terms table showing searches/listings % and updates live on mutation.
@@ -102,9 +102,11 @@
             // Renkleri uygula
             percentCell.style.backgroundColor = '';
             if (!isNaN(percent) && isFinite(percent)) {
-                if (percent > 3) percentCell.style.backgroundColor = 'lightgreen';
-                else if (percent > 2) percentCell.style.backgroundColor = 'orange';
-                else if (percent > 1) percentCell.style.backgroundColor = 'yellow';
+                if (percent > 100) {percentCell.style.backgroundColor = 'darkgreen';percentCell.style.color = 'white'}
+                else if (percent > 50) percentCell.style.backgroundColor = 'green';
+                else if (percent > 20) percentCell.style.backgroundColor = 'lightgreen';
+                else if (percent > 10) percentCell.style.backgroundColor = 'orange';
+                else if (percent > 3) percentCell.style.backgroundColor = 'yellow';
             }
 
         }
