@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.43
+// @version      3.50
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -11,6 +11,7 @@
 // @match        https://www.etsy.com/people/*
 // @match        https://www.etsy.com/c/*
 // @match        https://ehunt.ai/product-detail/*
+// @match        https://www.etsy.com/your/purchases*
 // @match        https://ehunt.ai/etsy-product-research*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
@@ -1188,7 +1189,7 @@
                     responseType: "json",
                 });
 
-                if (response.error) {
+                if (!response.data) {
                     console.error("eRank API error:", response.error.code, response.error.message);
                     return {
                         error: response.error.code == 404 ? "Not found" : "Error",
@@ -1592,25 +1593,8 @@
             observeElements("[data-listing-id][data-listing-card-v2]", addOverlay, window.document);
         };
 
-        /*deprecated*/
-        const observeUrlChanges = () => {
-            let lastUrl = window.location.href;
-            new MutationObserver(() => {
-                if (window.location.href !== lastUrl) {
-                    lastUrl = window.location.href;
-                    if (window.location.href.includes("/listing/")) {
-                        handleListingPage();
-                    } else {
-                        initOverlay();
-                    }
-                }
-            }).observe(window.document, { subtree: true, childList: true });
-        };
-
         if (config.sheetId !== "") await fetchColumnData();
         if (config.sheetId2 !== "") await fetchColumnData(2);
-
-        //observeUrlChanges();
 
         async function waitFor(conditionFn, delay = 500, timeout = 30_000) {
             const startTime = Date.now();
@@ -1650,6 +1634,34 @@
             observeElements(".el-table__row", addOverlay, window.document);
         }
 
+        function purchasesOverlay() {
+
+            const addOverlay = async (el) => {
+                const info = readTransaction(el)
+                /*transactionId: li.getAttribute('data-transaction-id') || null,
+                receiptId: li.getAttribute('data-receipt-id') || null,
+                title: titleEl?.innerText?.trim() || null,
+                link: titleEl?.href || null,
+                image: imgEl?.src || imgEl?.getAttribute('data-src') || null,
+                priceText,
+                priceNumber: parsePriceToNumber(priceText)*/
+
+                const imgUrl = info.image.replace("/il_300x300","/il_600x600");
+                const infoEl = el.querySelector('.transaction-download.transaction-data') || el.querySelector('.transaction-downloads') || el.querySelector('.transaction-download');
+                const url = info.link;
+                const id = /https:\/\/www\.etsy\.com\/listing\/(\d+)\/.+/.exec(url)[1];
+                const title = info.title;
+
+                await createOverlayOnElement({
+                    element: infoEl,
+                    id,
+                    imgUrl,
+                    url,
+                });
+            };
+            observeElements("li.transaction", addOverlay, window.document);
+        }
+
         const ehuntOverlayDetail = async () => {
             //console.log("ehuntOverlay Detail is working");
             const urlParts = window.location.pathname.split('/');
@@ -1687,9 +1699,77 @@
             //console.log("Document is ready:", window.document.location.href);
         }
 
+        function parsePriceToNumber(s){
+            if(!s) return null;
+            s = s.toString().trim().replace(/\s+/g,'').replace(/[^0-9\.,-]/g,'');
+            if(s.indexOf('.')!==-1 && s.indexOf(',')!==-1){
+                const lastComma=s.lastIndexOf(','), lastDot=s.lastIndexOf('.');
+                if(lastComma>lastDot){ s = s.replace(/\./g,''); s = s.replace(/,/g,'.'); }
+                else { s = s.replace(/,/g,''); }
+            } else if(s.indexOf(',')!==-1) s = s.replace(/,/g,'.');
+            const v = parseFloat(s); return Number.isFinite(v)? v : null;
+        }
+
+        function readTransaction(li){
+            const titleEl = li.querySelector('.transaction-title a');
+            const imgEl = li.querySelector('.transaction-image img');
+            const priceEl = li.querySelector('.currency-value');
+            const priceText = priceEl ? priceEl.innerText.trim() : null;
+            return {
+                transactionId: li.getAttribute('data-transaction-id') || null,
+                receiptId: li.getAttribute('data-receipt-id') || null,
+                title: titleEl?.innerText?.trim() || null,
+                link: titleEl?.href || null,
+                image: imgEl?.src || imgEl?.getAttribute('data-src') || null,
+                priceText,
+                priceNumber: parsePriceToNumber(priceText)
+            };
+        }
+
+        /*function attachButton(li){
+            if(li.querySelector('.tx-get-info-btn')) {
+                console.log('[TX-DEBUG] button already exists for', li.getAttribute('data-transaction-id'));
+                return;
+            }
+
+            const target = li.querySelector('.transaction-download.transaction-data') || li.querySelector('.transaction-downloads') || li.querySelector('.transaction-download');
+            const container = target || li;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'tx-get-info-btn btn btn-small';
+            btn.textContent = 'Bilgileri Al';
+            btn.style.marginLeft = '8px';
+            btn.style.cursor = 'pointer';
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const info = readTransaction(li);
+                console.log('[TX-DEBUG] clicked info:', info);
+                const blob = new Blob([JSON.stringify(info, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `transaction-${info.transactionId||info.receiptId||'unknown'}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                btn.textContent = 'İndirildi';
+                btn.disabled = true;
+                li.setAttribute('data-last-exported', new Date().toISOString());
+            });
+
+            container.appendChild(btn);
+            console.log('[TX-DEBUG] attached button to', li.getAttribute('data-transaction-id') || li);
+        }*/
+
+
         if (window.location.href.includes("/listing/")) {
             handleListingPage();
             //console.log("handleListingPage");
+        } else if (window.location.href.includes("etsy.com/your/purchases")) {
+            purchasesOverlay()
         } else if (window.name == "zbaseiframe") {
             //console.log("window.name ? zbaseiframe :", window.name);
             await waitForValidEHuntDocument();
