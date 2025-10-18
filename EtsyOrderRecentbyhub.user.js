@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.56
+// @version      4.58
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -401,7 +401,7 @@
         { name: "Sage Green", ischecked: 1, hex: "#9CAF88" },
         { name: "True Royal", ischecked: 0, hex: "#4169E1" },
         { name: "Sport Grey", ischecked: 1, hex: "#C0C0C0" },
-        { name: "Navy", ischecked: 0, hex: "#000080" },
+        { name: "Navy", ischecked: 0, hex: "#202A44" },
         { name: "Military Green", ischecked: 0, hex: "#4B5320" },
         { name: "Heather True Royal", ischecked: 0, hex: "#3A5DAE" },
         { name: "Maroon", ischecked: 0, hex: "#800000" },
@@ -2276,22 +2276,22 @@
     };
 
     const generateImageWithSKUSettings = async (sku, text, color, font) => {
-        let fontName, fillColor = '#000000', strokeColor = '#000000', strokeWidth = 0;
+        let fontName, fillColor, strokeColor = '#000000', strokeWidth = 0;
 
-        if (font && color) {
-            fontName = font;
-            fillColor = color;
-        } else {
-            const settings = await getSkuSettings(sku);
-            if (!settings) {
-                alert(`"${sku}" için ayar bulunamadı`);
-                return null;
-            }
-            ({ fontName, fillColor, strokeColor, strokeWidth } = settings);
-            if (!fontName) {
-                alert(`No font set defined for SKU ${sku}`);
-                return null;
-            }
+        const settings = await getSkuSettings(sku);
+        if (!settings) {
+            alert(`"${sku}" için ayar bulunamadı`);
+            return null;
+        }
+
+        fontName = font || settings.fontName;
+        fillColor = color || settings.fillColor;
+        strokeColor = settings.strokeColor;
+        strokeWidth = settings.strokeWidth;
+
+        if (!fontName) {
+            alert(`No font set defined for SKU ${sku}`);
+            return null;
         }
 
         const fontSetData = await getImage(`font_${fontName}`);
@@ -2308,14 +2308,14 @@
         }
 
         const lines = text.replace(/\\n/g, '\n').split('\n');
-        const maxCanvasWidth = 3000;
+        const maxCanvasWidth = 5000;
         const padding = 40;
         const maxContentWidth = maxCanvasWidth - padding * 2;
 
         const tempCanvas = new OffscreenCanvas(1, 1);
         const tempCtx = tempCanvas.getContext('2d');
 
-        const baseFontSize = 600;
+        const baseFontSize = 3200;
         let fontSize = baseFontSize;
         let textWidths = [], textHeights = [];
 
