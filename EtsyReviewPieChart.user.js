@@ -1,11 +1,17 @@
 // ==UserScript==
 // @name         Etsy Review Pie Chart with Badge
-// @namespace    http://tampermonkey.net/
-// @version      1.3
+// @namespace    https://github.com/cengaver
+// @version      1.34
 // @description  Reviews yanına pie chart ve badge
 // @match        https://www.etsy.com/your/shops/me/dashboard*
-// @namespace    https://github.com/cengaver
 // @author       Cengaver
+// @grant        GM.xmlHttpRequest
+// @grant        GM.registerMenuCommand
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @connect      sheets.googleapis.com
+// @connect      script.google.com
+// @connect      script.googleusercontent.com
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewPieChart.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewPieChart.user.js
@@ -13,27 +19,64 @@
 
 (function() {
     'use strict';
-    // Google Sheets log fonksiyonun
-    async function logToGoogleSheets(data) {
-        const sheetUrl = "https://script.google.com/macros/s/AKfycbyFu5XdmgReks6UPIV9S0PS99PbNj-AyRO1KfpXBKnfyFo5txTwVMVVtLdQue8UjSINrA/exec";
-
-        try {
-            const response = await fetch(sheetUrl, {
-                method: "POST",
-                mode: 'no-cors',
-                body: JSON.stringify(data),
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            });
-
-            console.log("Veri gönderildi:", data);
-            return response;
-        } catch (error) {
-            console.error("İletişim hatası:", error);
+    GM.registerMenuCommand("⚙️ Sheet Url Ayarla", async () => {
+        const currentUrl = await getSheetUrl();
+        const url = prompt(" Sheet Url'nizi girin:" ,currentUrl);
+        if (url) {
+            await GM.setValue("sheet_url", url.trim());
+            alert("✅ Kaydedildi.");
         }
+    });
+    async function getSheetUrl() {
+        const url = await GM.getValue("sheet_url", "");
+        return url;
     }
 
+    // Google Sheets log fonksiyonun
+    async function logToGoogleSheets(payload) {
+        const sheetUrl = await getSheetUrl();
+        if (!sheetUrl) return;
+        GM.xmlHttpRequest({
+            method: "POST",
+            url: sheetUrl,
+            data: JSON.stringify(payload),
+            headers: {
+                "Content-Type": "application/json"
+            },
+            onload: function(response) {
+                try {
+                    const data = JSON.parse(response.responseText);
+                    if (data.status === 'success') {
+                        //toast('✅ Link gönderildi');
+                    } else {
+                        //toast('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
+                    }
+                } catch (e) {
+                   // toast('❌ Yanıt işlenemedi');
+                }
+            },
+            onerror: function(error) {
+                //toast('❌ Gönderilemedi: ' + (error.message || 'Bilinmeyen hata'));
+            }
+        });
+    }
+    function toast(msg) {
+        let c = document.querySelector('.tm-send-toast');
+        if (!c) {
+            c = document.createElement('div');
+            c.className = 'tm-send-toast';
+            Object.assign(c.style, {
+                position:'fixed', right:'12px', bottom:'12px', zIndex: 999999,
+                padding:'10px 14px', borderRadius:'12px', boxShadow:'0 4px 14px rgba(0,0,0,.2)',
+                background:'#111', color:'#fff', fontSize:'12px', opacity:'0.95'
+            });
+            document.body.appendChild(c);
+        }
+        c.textContent = msg;
+        setTimeout(() => {
+            if (c && c.parentNode) c.parentNode.removeChild(c);
+        }, 1800);
+    }
     function normalizeNumber(str) {
         return parseInt(str.replace(/[^\d]/g, ''), 10);
     }
@@ -136,7 +179,8 @@
             sls: sales || "",
             active_listings: activeListings || "",
             reviews: reviews || "",
-            ratio: Math.floor(ratio*100) || ""
+            ratio: Math.floor(ratio*100) || "",
+            sheetName: 'dashboard'
         };
 
         console.log(data);
