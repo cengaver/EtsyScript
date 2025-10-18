@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.60
+// @version      1.62
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @match        https://www.etsy.com/your/orders/sold/*
@@ -89,6 +89,11 @@
         const rect = targetElement.getBoundingClientRect();
         tooltip.style.top = (window.scrollY + rect.top - tooltip.offsetHeight - 8) + 'px';
         tooltip.style.left = (window.scrollX + rect.left) + 'px';
+        if (tooltip) {
+            setTimeout(() => {
+                if (tooltip && document.body.contains(tooltip)) tooltip.remove();
+            }, 10000); // 10 saniye sonra kapat
+        }
     }
 
     async function translateText(text, targetLang, callback) {
@@ -172,6 +177,13 @@
                         const tip = document.getElementById('deepl-tooltip');
                         if (tip) tip.remove();
                     });
+                    document.addEventListener('click', e => {
+                        const tip = document.getElementById('deepl-tooltip');
+                        if (tip && e.target === tip) {
+                            tip.remove();
+                        }
+                    });
+
                 }
             });
         };
@@ -197,9 +209,7 @@
         };
     }
 
-    function injectTranslateButton() {
-        const translateButton = document.querySelector(".inline-compose-container > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(1)");
-        const textarea = document.querySelector('textarea.new-message-textarea-min-height');
+    function injectTranslateButton(textarea,translateButton){
         if (!textarea || textarea.dataset.hasTranslator) return;
         textarea.dataset.hasTranslator = '1';
 
@@ -261,10 +271,19 @@
     }
 
     const interval = setInterval(() => {
-        const textarea = document.querySelector('textarea.new-message-textarea-min-height');//injecktions button
+        let textarea,translateButton
+        textarea = document.querySelector('textarea.new-message-textarea-min-height');//injecktions button
+        if (textarea) {
+            translateButton = document.querySelector(".inline-compose-container > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(1)");
+        }else{
+            textarea = document.querySelector("textarea.textarea");
+            if (textarea) {
+                translateButton = document.querySelector('#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div:nth-child(3) > div > div:nth-child(2) > div > div.display-flex-xs.justify-content-space-between.mt-xs-2 > div:nth-child(1)')
+            }
+        }
         if (textarea) {
             clearInterval(interval);
-            injectTranslateButton();
+            injectTranslateButton(textarea,translateButton)
         }
     }, 2000);
 
