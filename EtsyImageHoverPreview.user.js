@@ -1,17 +1,19 @@
 // ==UserScript==
 // @name         Etsy Image Hover Preview
 // @namespace    https://github.com/cengaver
-// @version      1.41
+// @version      1.42
 // @description  Show large image preview on hover, supports lazy loading
 // @author       Cengaver
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @match        https://www.etsy.com/your/shops/me/advertising*
 // @match        https://www.etsy.com/your/shops/me/dashboard*
+// @match        https://dashboard.k8s.customhub.io/p/batch/*
 // @match        https://www.etsy.com/people/*
 // @match        https://ehunt.ai/*
+// @match        https://erank.com/*
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyImageHoverPreview.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyImageHoverPreview.user.js
-// @grant        GM_addStyle
+// @grant        GM.addStyle
 // ==/UserScript==
 
 (() => {
@@ -61,6 +63,7 @@
                 let imgUrl = target.getAttribute('data-src') || target.src;
                 if (imgUrl) {
                     let largeImgUrl = imgUrl.replace('75x75', '400x400');
+                    largeImgUrl = imgUrl.replace('80x80', '400x400');
                     largeImgUrl = largeImgUrl.replace(/il_\d+xN/, 'il_400xN');
                     showPreview(event, largeImgUrl);
                 }
