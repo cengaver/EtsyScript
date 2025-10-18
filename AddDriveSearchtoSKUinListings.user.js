@@ -1,17 +1,17 @@
 // ==UserScript==
 // @name         Etsy Add Drive Search to SKU in Listings
 // @namespace    https://github.com/cengaver
-// @version      1.4
+// @version      1.51
 // @description  Add a Google Drive search link using SKU in Etsy Listings with API Sync and GM Fallback
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/AddDriveSearchtoSKUinListings.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/AddDriveSearchtoSKUinListings.user.js
-// @grant        GM_xmlhttpRequest
-// @grant        GM_getValue
-// @grant        GM_setValue
-// @grant        GM_registerMenuCommand
+// @grant        GM.xmlHttpRequest
+// @grant        GM.getValue
+// @grant        GM.setValue
+// @grant        GM.registerMenuCommand
 // ==/UserScript==
 
 (function() {
@@ -19,15 +19,16 @@
 
     const defaultJson = { "XHC10266": "clipart-grid" };
 
-    let skuMap = GM_getValue("skuMap", defaultJson);
-    let availableSKUs = GM_getValue("availableSKUs", {}); // API'den sync edilen aliases objesi
+    let skuMap = GM.xmlHttpRequest("skuMap", defaultJson);
+    let availableSKUs = GM.getValue("availableSKUs", {}); // API'den sync edilen aliases objesi
+    let configuredSKUs = GM.getValue("configuredSKUs", {}); // API'den sync edilen aliases objesi
 
-    GM_registerMenuCommand("SKU JSON Düzenle (GM)", () => {
+    GM.registerMenuCommand("SKU JSON Düzenle (GM)", () => {
         const newJson = prompt("SKU JSON girin:", JSON.stringify(skuMap, null, 2));
         if (newJson) {
             try {
                 skuMap = JSON.parse(newJson);
-                GM_setValue("skuMap", skuMap);
+                GM.setValue("skuMap", skuMap);
                 alert("SKU verisi güncellendi!");
             } catch (e) {
                 alert("Geçersiz JSON!");
@@ -36,23 +37,32 @@
     });
 
     function fetchAvailableSKUs() {
-        GM_xmlhttpRequest({
+        GM.xmlHttpRequest({
             method: "GET",
             url: "http://localhost:3000/available-recipes",
             timeout: 5000,
             onload: function(response) {
                 try {
                     const data = JSON.parse(response.responseText);
+
                     if (data.aliases && typeof data.aliases === "object") {
                         availableSKUs = data.aliases;
-                        GM_setValue("availableSKUs", availableSKUs);
-                        console.log("API verisi alındı, GM'e yazıldı:", Object.keys(availableSKUs).length);
-                        addDriveButton();
+                        GM.setValue("availableSKUs", availableSKUs);
+                        console.log("aliases alındı:", Object.keys(availableSKUs).length);
                     }
+
+                    if (data.configured && Array.isArray(data.configured)) {
+                        configuredSKUs = data.configured;
+                        GM.setValue("configuredSKUs", configuredSKUs);
+                        console.log("configured alındı:", configuredSKUs.length);
+                    }
+
+                    addDriveButton();
                 } catch (e) {
                     console.error("API yanıtı parse edilemedi:", e);
                     addDriveButton();
                 }
+
             },
             ontimeout: function() {
                 console.warn("API zaman aşımı - GM fallback kullanılacak");
@@ -80,10 +90,16 @@
                 if (availableSKUs[sku]) {
                     bgStyle = 'background-color: yellow; border-radius: 6px; padding: 2px;';
                     tooltip = `<span class="drive-tooltip">${availableSKUs[sku]} (API)</span>`;
-                } else if (skuMap[sku]) {
+                }
+                if (skuMap[sku]) {
                     bgStyle = 'background-color: blue; border-radius: 6px; padding: 2px;';
                     tooltip = `<span class="drive-tooltip">${skuMap[sku]} (GM)</span>`;
-                } else if (!sku.startsWith('X')) {
+                }
+                if (configuredSKUs.includes(sku)) {
+                    bgStyle = 'background-color: orange; border-radius: 6px; padding: 2px;';
+                    tooltip = `<span class="drive-tooltip">${sku} (configured)</span>`;
+                }
+                if (!sku.startsWith('X')) {
                     bgStyle = 'background-color: limegreen; border-radius: 6px; padding: 2px;';
                 }
 
@@ -135,6 +151,6 @@
     const observer = new MutationObserver(() => addDriveButton());
     observer.observe(document.body, { childList: true, subtree: true });
 
-    //fetchAvailableSKUs();
+    fetchAvailableSKUs();
 
 })();
