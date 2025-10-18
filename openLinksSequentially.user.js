@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      1.13
+// @version      1.14
 // @description  Open all matching links with a 1-second delay
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -36,7 +36,7 @@
             setTimeout(() => {
                 //console.log(link.href)
                 window.open(link.href, '_blank');
-            }, index * 3000);
+            }, index * 4000);
         });
     }
 
