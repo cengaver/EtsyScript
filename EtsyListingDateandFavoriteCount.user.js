@@ -1,11 +1,10 @@
 // ==UserScript==
 // @name         Etsy Listing Date and Favorite Count
 // @namespace    https://github.com/cengaver
-// @version      0.22
+// @version      0.24
 // @description  Displays the listing date and favorite count of a product on Etsy.
 // @author       Cengaver
 // @match        https://www.etsy.com/listing/*
-// @grant        GM_addStyle
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyListingDateandFavoriteCount.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyListingDateandFavoriteCount.user.js
@@ -106,10 +105,10 @@
     function copyText(textToCopy) {
         navigator.clipboard.writeText(textToCopy)
         .then(() => {
-            console.log('Text copied to clipboard:', textToCopy);
+            //console.log('Text copied to clipboard:', textToCopy);
         })
         .catch(err => {
-            console.error('Error copying text:', err);
+            //console.error('Error copying text:', err);
         });
     }
 
@@ -143,8 +142,8 @@
         const tagContainer = document.querySelector('.wt-action-group.wt-list-inline.wt-mb-xs-2');
         if (!tagContainer) {
             conText = titleReplace(concatenatedTextValue);
-            console.log("tag nothing");
-            console.log(conText);
+            //console.log("tag nothing");
+            //console.log(conText);
         } else {
             const tagElements = concatenateListItems(tagContainer.querySelectorAll('li.wt-action-group__item-container a'));
             conText = titleReplace(concatenatedTextValue + "," + tagElements);
@@ -155,10 +154,10 @@
             ${listingTitleElement.textContent}<br><hr><div class="wt-bg-turquoise-tint wt-text-gray wt-text-caption wt-pt-xs-1 wt-pb-xs-1">${listingTitle} <br><hr>${conText}</div>
         `;
         if (listingDate && favoriteCount) {
-            console.log("Listing Date: " + listingDate);
-            console.log("Favorite Count: " + favoriteCount);
-            console.log("Title: " + listingTitle);
-            console.log("Tags: " + concatenatedTextValue);
+            //console.log("Listing Date: " + listingDate);
+            //console.log("Favorite Count: " + favoriteCount);
+            //console.log("Title: " + listingTitle);
+            //console.log("Tags: " + concatenatedTextValue);
 
             const avrage = favoriteCount / daysAgoFromDate(listingDate);
             if (favoriteCount > 50) {
@@ -168,7 +167,7 @@
             let bestseller ="";
             if (bestsellerElement!== null){
                 bestseller = '<p style="margin: 0;"> 🎀 Bestseller </p>'
-                console.log("Bestseller: " + bestseller);
+                //console.log("Bestseller: " + bestseller);
             }
             const reviewItemElement = document.querySelector(' #same-listing-reviews-tab > span');
             let review ="";
@@ -178,15 +177,15 @@
                 reviewCount = "★" + reviewCount;
             }
                 review = '<p style="margin: 0;">Rev : '+reviewCount+' </p>'
-                console.log("ReviewItem: " + reviewCount);
+                //console.log("ReviewItem: " + reviewCount);
             }
             const script = document.querySelector('script[type="application/ld+json"]');
             const jsonData = JSON.parse(script.textContent.trim());
-            console.log(jsonData);
+            //console.log(jsonData);
             let eligibleQuantity = jsonData.offers.eligibleQuantity;
             const offerCount = jsonData.offers.offerCount;
-            console.log("Eligible Quantity:", eligibleQuantity);
-            console.log("Offer Count:", offerCount);
+            //console.log("Eligible Quantity:", eligibleQuantity);
+            //console.log("Offer Count:", offerCount);
             /*let stock ="";
             const in_stockValue = Etsy.Context.data?.granify?.product?.in_stock;
             if (in_stockValue!== undefined){
@@ -221,11 +220,11 @@
 
             const inputElement = document.querySelector('input[name="listing_id"]');
             const listingId = inputElement.value;
-            console.log("Listing ID:", listingId);
+            //console.log("Listing ID:", listingId);
 
             document.getElementById("copy").onclick = function(){
                 copyText("Listing ID:"+listingId+"\n"+listingTitle+"\n"+conText)
-                console.log("Text copied to clipboard:\nListing ID:"+listingId+"\n"+listingTitle+"\n"+conText);
+                //console.log("Text copied to clipboard:\nListing ID:"+listingId+"\n"+listingTitle+"\n"+conText);
             }
         }
     }
