@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Sum Sales Listings
 // @namespace    https://github.com/cengaver
-// @version      0.3
+// @version      0.4
 // @description  Etsy Sum Sales Listings
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings*
@@ -27,20 +27,28 @@
         items.forEach(item => {
             const salesElements = item.querySelectorAll('.card-meta-row-item.text-gray-lighter.selected-color');
             salesElements.forEach(el => {
-                if (el.innerText.includes("sales")) {
+                 //console.log(el.innerText);
+                if (el.innerText.includes("sale")) {
                     const match = el.innerText.match(/\d+/);
                     if (match) {
                         const count = Number(match[0]);
                         sumSales += count;
-                        if (count > 0 && count <= 10) {
+                        //console.log(count);
+                        if (count == 0) {
+                            el.style.backgroundColor = "red";
+                            el.style.color = "#fff";
+                        } else if (count == 1) {
+                            el.style.backgroundColor = "orange";
+                            el.style.color = "#000";
+                        } else if (count > 1 && count <= 10) {
                             el.style.backgroundColor = "yellow";
                             el.style.color = "#000";
                         } else if (count > 10 && count <= 100) {
-                            el.style.backgroundColor = "orange";
-                            el.style.color = "#fff";
-                        } else if (count > 100) {
                             el.style.backgroundColor = "lightgreen";
                             el.style.color = "#000";
+                        } else if (count > 100) {
+                            el.style.backgroundColor = "green";
+                            el.style.color = "#fff";
                         }
                     }
                 }
