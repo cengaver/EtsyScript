@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Discount Adjust
-// @version      1.23
+// @version      1.24
 // @description  Create daily discount
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -693,6 +693,10 @@
 
     async function main(send = false) {
         const lastDayStr = String(config.lastDay).padStart(2, '0');
+        if(config.lastDay>31) {
+            showToast("Yeni aya geç: "+config.lastDay, 'error');
+            return;
+        }
         const mountStr = String(config.mount).padStart(2, '0');
         // Inputlara tarih yaz
         const dateInputs = [...document.querySelectorAll('input[data-datepicker-input="true"]')];
