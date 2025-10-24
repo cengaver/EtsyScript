@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Add Drive Search to SKU in Listings
 // @namespace    https://github.com/cengaver
-// @version      1.51
+// @version      1.52
 // @description  Add a Google Drive search link using SKU in Etsy Listings with API Sync and GM Fallback
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -14,14 +14,16 @@
 // @grant        GM.registerMenuCommand
 // ==/UserScript==
 
-(function() {
+(async function() {
     'use strict';
 
     const defaultJson = { "XHC10266": "clipart-grid" };
 
-    let skuMap = GM.xmlHttpRequest("skuMap", defaultJson);
-    let availableSKUs = GM.getValue("availableSKUs", {}); // API'den sync edilen aliases objesi
-    let configuredSKUs = GM.getValue("configuredSKUs", {}); // API'den sync edilen aliases objesi
+    let skuMap = await GM.getValue("skuMap", defaultJson);
+    let availableSKUs = await GM.getValue("availableSKUs", {}); // API'den sync edilen aliases objesi
+    let configuredSKUs = await GM.getValue("configuredSKUs", {}); // API'den sync edilen aliases objesi
+    //console.log("skuMap:", Object.keys(skuMap).length);
+    //console.log("availableSKUs:", Object.keys(availableSKUs).length);
 
     GM.registerMenuCommand("SKU JSON Düzenle (GM)", () => {
         const newJson = prompt("SKU JSON girin:", JSON.stringify(skuMap, null, 2));
@@ -95,7 +97,7 @@
                     bgStyle = 'background-color: blue; border-radius: 6px; padding: 2px;';
                     tooltip = `<span class="drive-tooltip">${skuMap[sku]} (GM)</span>`;
                 }
-                if (configuredSKUs.includes(sku)) {
+                if (configuredSKUs?.includes(sku)) {
                     bgStyle = 'background-color: orange; border-radius: 6px; padding: 2px;';
                     tooltip = `<span class="drive-tooltip">${sku} (configured)</span>`;
                 }
