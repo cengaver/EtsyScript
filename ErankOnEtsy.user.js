@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.50
+// @version      3.51
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1408,8 +1408,9 @@
             overlay.appendChild(loadingEl);
 
             // Etsy ürün linkini al
-            url ??= element.querySelector("a.listing-link")?.href ?? window.location.href
+            url ??= element.querySelector("a.listing-link")?.href ?? element.querySelector("a.v2-listing-card__img")?.href ?? window.location.href
             const currentUrl = simplifyEtsyUrl(url);//**
+            //console.log(currentUrl);
             const img = imgUrl ?? element.querySelector("img")?.src;
 
             const erankData = await getErankData(id,img,currentUrl);
@@ -1583,6 +1584,7 @@
             const addOverlay = async (el) => {
                 //console.log(el);
                 const id = el.dataset.listingId;
+                //const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
                 const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
                 await createOverlayOnElement({
                     element: infoEl,
