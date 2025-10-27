@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.62
+// @version      1.63
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @match        https://www.etsy.com/your/orders/sold/*
@@ -274,8 +274,10 @@
         let textarea,translateButton
         textarea = document.querySelector('textarea.new-message-textarea-min-height');//injecktions button
         if (textarea) {
-            translateButton = document.querySelector(".inline-compose-container > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(1)");
+            //console.log("1. area")
+            translateButton = document.querySelector("div.wt-p-xs-1.wt-p-md-2.wt-z-index-1.inline-compose-container > div:nth-child(1) > div > div:nth-child(2) > div > div:nth-child(1)");
         }else{
+             //console.log("2. area")
             textarea = document.querySelector("textarea.textarea");
             if (textarea) {
                 translateButton = document.querySelector('#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div:nth-child(3) > div > div:nth-child(2) > div > div.display-flex-xs.justify-content-space-between.mt-xs-2 > div:nth-child(1)')
