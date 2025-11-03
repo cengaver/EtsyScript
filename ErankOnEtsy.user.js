@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.51
+// @version      3.52
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1071,9 +1071,9 @@
                 data: JSON.stringify(body),
                 onload: function (response) {
                     if (response.status === 200 || response.status === 201) {
-                        showToast(title + '\n Başarıyla eklendi!');
                         console.log("Başarıyla eklendi:", link);
                         console.log("Başarıyla resim eklendi:", img);
+                        showToast(title + '\n listeye eklendi!');
                     } else {
                         console.error("Ekleme hatası:", response.responseText);
                     }
@@ -1453,7 +1453,7 @@
                         await saveToGoogleSheet(config.sheetId, currentUrl, title, img, sales, age, tags);
                         resultEl.textContent = "❤️"
                         resultEl.style.backgroundColor = null
-                        showToast(title + '\n listeye eklendi!');
+                        //showToast(title + '\n listeye eklendi!');
                     });
                 } else {
                     if (gDrive) {
@@ -1553,7 +1553,7 @@
                         await saveToGoogleSheet(config.sheetId2, currentUrl, title, img, sales, age, tags);
                         resultEl2.textContent = "✅"
                         resultEl2.style.backgroundColor = null
-                        showToast(title + '\n listeye eklendi!');
+                        //showToast(title + '\n listeye eklendi!');
                     });
                 } else {
                     if (gDrive) {
