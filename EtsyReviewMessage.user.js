@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.76
+// @version      1.77
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -986,6 +986,15 @@
         if (buttons.length > 0 && !window.location.href.includes("https://www.etsy.com/your/orders/sold/new?search_query=")) {
             butonsAll(buttons);
             console.log("Butonlar bulundu:", buttons);
+            const nextBtn = document.querySelector('[data-testid="next-page"]');
+            if (nextBtn) {
+                console.log("nextBtn bulundu");
+                nextBtn.addEventListener('click', () => {
+                    console.log("nextBtn tıklandı");
+                    setTimeout(() => observeButtons(), 3000);
+                    setTimeout(() => console.log("nextBtn 3 sn geçti"), 3000);
+                });
+            }
             observer.disconnect(); // İlk gözlemi durdur
         }
     }
