@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.9
+// @version      1.91
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -46,7 +46,7 @@
         position: fixed;
         top: 100px;
         right: 20px;
-        width: 400px;
+        width: 450px;
         max-height: 500px;
         background: #ffffff;
         border: 1px solid #ccc;
@@ -86,7 +86,7 @@
         font-weight: bold;
         color: #333;
     }
-    :root {
+    /*:root {
         --primary-color: #4285f4;
         --primary-dark: #3367d6;
         --secondary-color: #34a853;
@@ -102,13 +102,13 @@
         --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         --transition: all 0.3s ease;
         --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-    }
+    }*/
 
     /* Toast Notifications */
     .toast-container {
         position: fixed;
         bottom: 20px;
-        right: 20px;
+        /*right: 20px;*/
         z-index: 9999;
         display: flex;
         flex-direction: column;
@@ -634,7 +634,7 @@
         if (duration > 0) {
             setTimeout(() => {
                 toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
+                setTimeout(() => toast.remove(), 30000);
             }, duration);
         }
 
@@ -893,7 +893,7 @@
         const stores = await response.json();
 
         // stores dizisinin yapısını kontrol et
-        //console.log("Original Stores:", stores);
+        console.log("Original Stores:", stores);
 
         // 307646 ID'li öğeyi sil (storeId'nin türünü kontrol et)
         const updatedStores = stores.filter(store => {
@@ -946,8 +946,10 @@
                 const status = await getShipData(pod);
                 if (status == 200) {
                     El.textContent = "❤️";
+                    showToast('Ship Stattions Order Alındı', 'info');
                 } else {
                     El.textContent = "🚨";
+                    showToast('Ship Stattions Order Alınamadı', 'error');
                     console.log("status:", status);
                 }
                 El.style.backgroundColor = null;
@@ -1285,7 +1287,7 @@
         initOverlay();
 
         // Show welcome message
-        showToast('Ship Stattions Tool yüklendi', 'info');
+        //showToast('Ship Stattions Tool yüklendi', 'info');
     }
 
     // Start the script
