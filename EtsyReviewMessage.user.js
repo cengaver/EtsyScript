@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.77
+// @version      1.79
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -787,7 +787,7 @@
 
 
 
-    function insertShortcutTable() {
+    async function insertShortcutTable() {
         const target = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div:nth-child(4) > div");
         if (!target) return;
 
@@ -819,16 +819,24 @@
             </table>
         </div>
     `;
-
         const container = document.createElement("div");
         container.innerHTML = tableHTML;
         target.parentNode.insertBefore(container, target);
+        await closedProme();
+    }
+    await insertShortcutTable();
+
+    async function closedProme(){
         const protection = document.getElementById("purchase-protection-seller-onsite-under-250")
+        const protect500 = document.getElementById("purchase-protection-seller-onsite-under-500")
         if(protection){
             protection.style.display = "none";
         }
+        if(protect500){
+            protect500.style.display = "none";
+        }
     }
-    insertShortcutTable();
+
     // helper: görünür ve tıklanabilir mi?
     function isVisibleAndEnabled(el){ return el && !el.disabled && (!!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)); }
 
@@ -917,6 +925,7 @@
         if(nextEl){
             try { nextEl.focus(); } catch(e){}
             setTimeout(()=> { try { nextEl.click(); console.log('Clicked tabindex', nextEl.getAttribute('tabindex')); } catch(e){ console.error(e); } }, 40);
+            setTimeout(()=> {closedProme();}, 400);
         }
     }
 
