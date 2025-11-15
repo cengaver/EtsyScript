@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.92
+// @version      1.93
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -822,7 +822,6 @@
     const getShipData = async (pod = null) => {
         let use_storeIds = {};
         const my_storeIds = JSON.parse(config.storeIds);
-
         if (pod == 1) {
             const stores = await getStores();
             if (Array.isArray(stores) && stores.length > 0) {
@@ -851,7 +850,7 @@
             if (i < store_ids.length - 1) await delay(2200);
         }
 
-        console.log("All stores refreshed successfully:", results);
+        //console.log("All stores refreshed successfully:", results);
         return results.every(status => status === 200) ? 200 : null;
     }
 
@@ -893,7 +892,7 @@
         const stores = await response.json();
 
         // stores dizisinin yapısını kontrol et
-        console.log("Original Stores:", stores);
+        //console.log("Original Stores:", stores);
 
         // 307646 ID'li öğeyi sil (storeId'nin türünü kontrol et)
         const updatedStores = stores.filter(store => {
@@ -1071,7 +1070,15 @@
         } catch (e) {
             console.error("Invalid JSON in config.storeIds", e);
         }
-
+        //console.log(config.pod)
+        if (pod == 1){
+            if(config?.pod == 1){
+                pod=1;
+            }else{
+                pod=0;
+            }
+        }
+        //console.log(pod)
         if (pod == 1) {
             const stores = await getStores();
             if (Array.isArray(stores) && stores.length > 0) {
@@ -1147,7 +1154,7 @@
 
         const ms = new Date(endDate) - new Date(startDate);
         const days = ms / (1000 * 60 * 60 * 24);
-        console.log(days); // 30
+        //console.log(days); // 30
 
         const rows = document.createElement('tr');
         rows.innerHTML = `
