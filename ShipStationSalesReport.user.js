@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.91
+// @version      1.92
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -1098,11 +1098,11 @@
           })
         ));
 
-        callback(salesData);
+        callback(salesData,startDate, endDate);
     };
 
 
-    const displaySalesTable = (salesData) => {
+    const displaySalesTable = (salesData,startDate, endDate) => {
         // Satış Ücretine göre azalan şekilde sırala
         salesData.sort((a, b) => {
             const totalSalesA = a.orders.reduce((sum, order) => sum + parseFloat(order.amountPaid || 0), 0);
@@ -1145,6 +1145,10 @@
             table.appendChild(row);
         });
 
+        const ms = new Date(endDate) - new Date(startDate);
+        const days = ms / (1000 * 60 * 60 * 24);
+        console.log(days); // 30
+
         const rows = document.createElement('tr');
         rows.innerHTML = `
         <th>Toplam</th>
@@ -1153,6 +1157,15 @@
         <th>${Math.ceil(GtotalSales/GtotalOrders)}</th>
     `;
         table.appendChild(rows);
+        const rows2 = document.createElement('tr');
+        rows2.innerHTML = `
+        <th>OrtGün</th>
+        <th>${(GtotalOrders/days).toFixed(0)}</th>
+        <th>${(GtotalSales/days).toFixed(2)}</th>
+        <th>${days} gün</th>
+    `;
+
+        table.appendChild(rows2);
         tableContainer.appendChild(table);
         tableContainer.style.display = 'block';
 
