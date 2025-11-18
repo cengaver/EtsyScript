@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.58
+// @version      4.59
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -3667,7 +3667,7 @@
         loadConfig();
         initUI();
         checkCheckboxes();
-        if (window.location.href.includes("/drop-ship/orders")) {
+        //if (window.location.href.includes("/drop-ship/orders")) {
             createFloatingPanelSystem();
             try {
                 const container = await waitForElement('div.mud-paper.navbar', 5000);
@@ -3675,7 +3675,7 @@
             } catch {
                 console.warn('Container element bulunamadı.');
             }
-        }
+        //}
     });
 
     function getLinkById(id) {
