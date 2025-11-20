@@ -57,7 +57,7 @@
             orderNoElement.dataset.gdAdded = "true";
             const orderNo = orderNoElement.textContent.match(/\d+/)[0];
             if (orderNo && !document.querySelector('.gdrive-icon')) {
-                const gdriveSearchUrl = `https://dashboard.k8s.customhub.io/orders/order-search?q=${orderNo}`;
+                const gdriveSearchUrl = `https://app.customhub.io/orders/order-search?q=${orderNo}`;
                 const linkElement = document.createElement('a');
                 linkElement.href = gdriveSearchUrl;
                 linkElement.target = "_blank";

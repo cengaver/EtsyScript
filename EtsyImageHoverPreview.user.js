@@ -7,7 +7,7 @@
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @match        https://www.etsy.com/your/shops/me/advertising*
 // @match        https://www.etsy.com/your/shops/me/dashboard*
-// @match        https://dashboard.k8s.customhub.io/p/batch/*
+// @match        https://*.customhub.io/p/batch/*
 // @match        https://www.etsy.com/people/*
 // @match        https://ehunt.ai/*
 // @match        https://erank.com/*

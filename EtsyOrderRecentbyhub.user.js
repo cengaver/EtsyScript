@@ -17,7 +17,7 @@
 // @connect      sheets.googleapis.com
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
-// @icon         https://dashboard.k8s.customhub.io/Modernize/assets/images/logos/favicon.png
+// @icon         https://app.customhub.io/Modernize/assets/images/logos/favicon.png
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @run-at       document-idle
