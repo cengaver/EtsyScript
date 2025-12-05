@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      1.14
+// @version      1.15
 // @description  Open all matching links with a 1-second delay
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -18,7 +18,7 @@
         const roassEl = document.querySelectorAll("#listings-header > table > tbody > tr");
         roassEl.forEach((roas, index) => {
             setTimeout(() => {
-                const roasValue = Number(roas.querySelector("td:nth-child(10) > span")?.textContent.trim() || 0);
+                const roasValue = Number(roas.querySelector("td:nth-child(11) > span")?.textContent.trim() || 0);
                 if (roasValue < 2){
                     roas.style.backgroundColor = "#ffa59e";
                 }else{
