@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.52
+// @version      3.53
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1172,8 +1172,11 @@
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
             if (!await isConfigured()) return;
-            //console.log("erankUserKey :", config.erankUserKey)
-            const url = `https://beta.erank.com/api/ext/listing/${id}`;
+            console.log("erankUserKey :", config.erankUserKey)
+            console.log("authorization :", config.authorization)
+            console.log("erankKey :", config.erankKey)
+            const url = `https://members.erank.com/api/ext/listing/${id}`;
+            //const url = `https://beta.erank.com/api/ext/listing/${id}`;
 
             try {
                 const headers = {
