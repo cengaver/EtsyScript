@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.59
+// @version      4.64
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -17,7 +17,7 @@
 // @connect      sheets.googleapis.com
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
-// @icon         https://app.customhub.io/Modernize/assets/images/logos/favicon.png
+// @icon         https://dashboard.k8s.customhub.io/Modernize/assets/images/logos/favicon.png
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyOrderRecentbyhub.user.js
 // @run-at       document-idle
@@ -331,93 +331,92 @@
     let toastContainer = null;
 
     var shirtColors = [
-        { name: "Heather Navy", ischecked: 0, hex: "#333F48" },
-        { name: "Heather Mauve", ischecked: 1, hex: "#C49BA3" },
-        { name: "Charcoal", ischecked: 0, hex: "#4D4D4D" },
-        { name: "Caroline Blue", ischecked: 1, hex: "#71B2DB" },
-        { name: "Comfort Colors Banana", ischecked: 1, hex: "#FCE9A6" },
-        { name: "Comfort Colors Blue Jean", ischecked: 0, hex: "#566D7E" },
-        { name: "Comfort Colors Butter", ischecked: 1, hex: "#F9E38C" },
-        { name: "Comfort Colors Chalky Mint", ischecked: 1, hex: "#A8D5BA" },
-        { name: "Comfort Colors Chambray", ischecked: 1, hex: "#A3BFD9" },
-        { name: "Comfort Colors Denim", ischecked: 0, hex: "#4F728E" },
-        { name: "Comfort Colors Burnt Orange", ischecked: 1, hex: "#CC5500" },
-        { name: "Comfort Colors Granite", ischecked: 0, hex: "#5F5F60" },
-        { name: "Comfort Colors Grey", ischecked: 0, hex: "#B2B2B2" },
-        { name: "Comfort Colors Hemp", ischecked: 0, hex: "#434b36" },
-        { name: "Comfort Colors Ice Blue", ischecked: 0, hex: "#85aac4" },
-        { name: "Comfort Colors Ivory", ischecked: 1, hex: "#F3F1DC" },
-        { name: "Comfort Colors Light Green", ischecked: 1, hex: "#BFD8B8" },
-        { name: "Comfort Colors Midnight", ischecked: 0, hex: "#2E3B4E" },
-        { name: "Comfort Colors Orchid", ischecked: 1, hex: "#C3A3BF" },
-        { name: "Comfort Colors Pepper", ischecked: 0, hex: "#4B4F52" },
-        { name: "Comfort Colors Pepper", ischecked: 0, hex: "#4B4F52" },
-        { name: "Comfort Colors Seafoam", ischecked: 1, hex: "#9FE2BF" },
-        { name: "Comfort Colors Watermelon", ischecked: 0, hex: "#FA6C6C" },
-        { name: "Comfort Colors White", ischecked: 1, hex: "#ffffff" },
-        { name: "Comfort Colors Yam", ischecked: 0, hex: "#FF8C42" },
-        { name: "Comfort Colors Terracotta", ischecked: 0, hex: "#E3775E" },
-        { name: "Comfort Colors Berry", ischecked: 0, hex: "#85394A" },
-        { name: "Comfort Colors Black", ischecked: 0, hex: "#1f1f1f" },
-        { name: "Comfort Colors Blue Spruce", ischecked: 0, hex: "#49796B" },
-        { name: "Comfort Colors Brick", ischecked: 0, hex: "#9C3E2E" },
-        { name: "Comfort Colors Blossom", ischecked: 1, hex: "#F4C2C2" },
-        { name: "Comfort Colors Boysenberry", ischecked: 0, hex: "#873260" },
-        { name: "Comfort Colors Crimson", ischecked: 0, hex: "#A91B0D" },
-        { name: "Comfort Colors Crunchberry", ischecked: 0, hex: "#DE5D83" },
-        { name: "Comfort Colors Espresso", ischecked: 0, hex: "#3B2F2F" },
-        { name: "Comfort Colors Grape", ischecked: 0, hex: "#6F42C1" },
-        { name: "Comfort Colors Lagoon Blue", ischecked: 0, hex: "#6DAEDB" },
-        { name: "Comfort Colors Moss", ischecked: 0, hex: "#8A9A5B" },
-        { name: "Comfort Colors Neon Red Orange", ischecked: 0, hex: "#FF5349" },
-        { name: "Comfort Colors Neon Yellow", ischecked: 0, hex: "#FFFF33" },
-        { name: "Comfort Colors Red", ischecked: 0, hex: "#C1272D" },
-        { name: "Comfort Colors Rose", ischecked: 1, hex: "#E7A2A2" },
-        { name: "Comfort Colors Seafoam Green", ischecked: 0, hex: "#9FE2BF" },
-        { name: "Comfort Colors Sunset", ischecked: 0, hex: "#FA8072" },
-        { name: "Comfort Colors Violet", ischecked: 0, hex: "#8F509D" },
-        { name: "Comfort Colors Washed Denim", ischecked: 0, hex: "#5D6D7E" },
-        { name: "Comfort Colors Wine", ischecked: 0, hex: "#722F37" },
-        { name: "Daisy", ischecked: 1, hex: "#FFD300" },
-        { name: "Dark Gray", ischecked: 0, hex: "#A9A9A9" },
-        { name: "Evergreen", ischecked: 0, hex: "#115740" },
-        { name: "Forest Green", ischecked: 0, hex: "#228B22" },
-        { name: "Heather Autumn", ischecked: 1, hex: "#C48447" },
-        { name: "Heather Deep Teal", ischecked: 0, hex: "#255E69" },
-        { name: "Heather Galapagos Blue", ischecked: 1, hex: "#496C8D" },
-        { name: "Heather Maroon", ischecked: 0, hex: "#4A1C2A" },
-        { name: "Heather Peach", ischecked: 1, hex: "#FFDAB9" },
-        { name: "Heather Prism Lilac", ischecked: 1, hex: "#D8B7DD" },
-        { name: "Azalea", ischecked: 1, hex: "#F78FA7" },
-        { name: "Irish Green", ischecked: 1, hex: "#1CA659" },
-        { name: "Light Pink", ischecked: 1, hex: "#FFB6C1" },
-        { name: "Kelly Green", ischecked: 0, hex: "#4CBB17" },
-        { name: "Light Blue", ischecked: 1, hex: "#ADD8E6" },
-        { name: "Comfort Colors Sage", ischecked: 0, hex: "#C1C8B6" },
-        { name: "Dark Grey Heather", ischecked: 0, hex: "#555555" },
-        { name: "Heather Indigo Blue", ischecked: 0, hex: "#395573" },
-        { name: "White", ischecked: 1, hex: "#FFFFFF" },
-        { name: "Tan", ischecked: 1, hex: "#D2B48C" },
-        { name: "Sage Green", ischecked: 1, hex: "#9CAF88" },
-        { name: "True Royal", ischecked: 0, hex: "#4169E1" },
-        { name: "Sport Grey", ischecked: 1, hex: "#C0C0C0" },
-        { name: "Navy", ischecked: 0, hex: "#202A44" },
-        { name: "Military Green", ischecked: 0, hex: "#4B5320" },
-        { name: "Heather True Royal", ischecked: 0, hex: "#3A5DAE" },
-        { name: "Maroon", ischecked: 0, hex: "#800000" },
-        { name: "Mauve", ischecked: 1, hex: "#E0B0FF" },
-        { name: "Natural", ischecked: 1, hex: "#F5F5DC" },
-        { name: "Orange", ischecked: 1, hex: "#FFA500" },
-        { name: "Purple", ischecked: 0, hex: "#800080" },
-        { name: "Red", ischecked: 0, hex: "#FF0000" },
-        { name: "Sand", ischecked: 1, hex: "#ECD9B0" },
-        { name: "Soft Cream", ischecked: 1, hex: "#FFFDD0" },
-        { name: "Heliconia", ischecked: 0, hex: "#FF69B4" },
-        { name: "Black", ischecked: 0, hex: "#000000" },
-        { name: "Comfort Colors Mustard", ischecked: 1, hex: "#e2bc75" },
-        { name: "Sapphire", ischecked: 0, hex: "#0067A0" },
-        { name: "Heather Berry", ischecked: 0, hex: "#db689d" }
-    ];
+  { "name": "Heather Navy", "ischecked": 0, "hex": "#333F48" },
+  { "name": "Heather Mauve", "ischecked": 1, "hex": "#C49BA3" },
+  { "name": "Charcoal", "ischecked": 0, "hex": "#4D4D4D" },
+  { "name": "Carolina Blue", "ischecked": 1, "hex": "#71B2DB" },
+  { "name": "Comfort Colors Banana", "ischecked": 1, "hex": "#FCE9A6" },
+  { "name": "Comfort Colors Blue Jean", "ischecked": 0, "hex": "#5C7FA4" },
+  { "name": "Comfort Colors Butter", "ischecked": 1, "hex": "#F6E39A" },
+  { "name": "Comfort Colors Chalky Mint", "ischecked": 1, "hex": "#A8D5BA" },
+  { "name": "Comfort Colors Chambray", "ischecked": 1, "hex": "#A6C8DD" },
+  { "name": "Comfort Colors Denim", "ischecked": 0, "hex": "#4F728E" },
+  { "name": "Comfort Colors Burnt Orange", "ischecked": 1, "hex": "#CC5500" },
+  { "name": "Comfort Colors Granite", "ischecked": 0, "hex": "#706C66" },
+  { "name": "Comfort Colors Grey", "ischecked": 0, "hex": "#B2B3B5" },
+  { "name": "Comfort Colors Hemp", "ischecked": 0, "hex": "#D5C8A6" },
+  { "name": "Comfort Colors Ice Blue", "ischecked": 0, "hex": "#D7EBF2" },
+  { "name": "Comfort Colors Ivory", "ischecked": 1, "hex": "#EFE8D2" },
+  { "name": "Comfort Colors Light Green", "ischecked": 1, "hex": "#BFD8B8" },
+  { "name": "Comfort Colors Midnight", "ischecked": 0, "hex": "#2E3B4E" },
+  { "name": "Comfort Colors Orchid", "ischecked": 1, "hex": "#C3A3BF" },
+  { "name": "Comfort Colors Pepper", "ischecked": 0, "hex": "#4D4D4F" },
+  { "name": "Comfort Colors Seafoam", "ischecked": 1, "hex": "#9FD7C1" },
+  { "name": "Comfort Colors Watermelon", "ischecked": 0, "hex": "#FA6C6C" },
+  { "name": "Comfort Colors White", "ischecked": 1, "hex": "#FFFFFF" },
+  { "name": "Comfort Colors Yam", "ischecked": 0, "hex": "#FF8C42" },
+  { "name": "Comfort Colors Terracotta", "ischecked": 0, "hex": "#C66A4C" },
+  { "name": "Comfort Colors Berry", "ischecked": 0, "hex": "#A43E64" },
+  { "name": "Comfort Colors Black", "ischecked": 0, "hex": "#000000" },
+  { "name": "Comfort Colors Blue Spruce", "ischecked": 0, "hex": "#2F4D40" },
+  { "name": "Comfort Colors Brick", "ischecked": 0, "hex": "#9C3E2E" },
+  { "name": "Comfort Colors Blossom", "ischecked": 1, "hex": "#F4C2C2" },
+  { "name": "Comfort Colors Boysenberry", "ischecked": 0, "hex": "#873260" },
+  { "name": "Comfort Colors Crimson", "ischecked": 0, "hex": "#8B1C2D" },
+  { "name": "Comfort Colors Crunchberry", "ischecked": 0, "hex": "#D96A82" },
+  { "name": "Comfort Colors Espresso", "ischecked": 0, "hex": "#3B2F2F" },
+  { "name": "Comfort Colors Grape", "ischecked": 0, "hex": "#6A3E80" },
+  { "name": "Comfort Colors Lagoon Blue", "ischecked": 0, "hex": "#0098A4" },
+  { "name": "Comfort Colors Moss", "ischecked": 0, "hex": "#8A9A5B" },
+  { "name": "Comfort Colors Neon Red Orange", "ischecked": 0, "hex": "#FF533F" },
+  { "name": "Comfort Colors Neon Yellow", "ischecked": 0, "hex": "#FFFF33" },
+  { "name": "Comfort Colors Red", "ischecked": 0, "hex": "#C1272D" },
+  { "name": "Comfort Colors Rose", "ischecked": 1, "hex": "#E7A2A2" },
+  { "name": "Comfort Colors Sunset", "ischecked": 0, "hex": "#FA8072" },
+  { "name": "Comfort Colors Violet", "ischecked": 0, "hex": "#8F509D" },
+  { "name": "Comfort Colors Washed Denim", "ischecked": 0, "hex": "#4A647E" },
+  { "name": "Comfort Colors Wine", "ischecked": 0, "hex": "#722F37" },
+  { "name": "Comfort Colors Sage", "ischecked": 0, "hex": "#C3C7B4" },
+  { "name": "Comfort Colors Mustard", "ischecked": 1, "hex": "#E2BC75" },
+
+  { "name": "Daisy", "ischecked": 1, "hex": "#FFE462" },
+  { "name": "Dark Gray", "ischecked": 0, "hex": "#A9A9A9" },
+  { "name": "Evergreen", "ischecked": 0, "hex": "#115740" },
+  { "name": "Forest Green", "ischecked": 0, "hex": "#214631" },
+  { "name": "Heather Autumn", "ischecked": 1, "hex": "#C48447" },
+  { "name": "Heather Deep Teal", "ischecked": 0, "hex": "#255E69" },
+  { "name": "Heather Galapagos Blue", "ischecked": 1, "hex": "#496C8D" },
+  { "name": "Heather Maroon", "ischecked": 0, "hex": "#4A1C2A" },
+  { "name": "Heather Peach", "ischecked": 1, "hex": "#FFDAB9" },
+  { "name": "Heather Prism Lilac", "ischecked": 1, "hex": "#D8B7DD" },
+  { "name": "Azalea", "ischecked": 1, "hex": "#F78FA7" },
+  { "name": "Irish Green", "ischecked": 1, "hex": "#009A44" },
+  { "name": "Light Pink", "ischecked": 1, "hex": "#FFB6C1" },
+  { "name": "Kelly Green", "ischecked": 0, "hex": "#4CBB17" },
+  { "name": "Light Blue", "ischecked": 1, "hex": "#ADD8E6" },
+  { "name": "Dark Grey Heather", "ischecked": 0, "hex": "#555555" },
+  { "name": "Heather Indigo Blue", "ischecked": 0, "hex": "#395573" },
+  { "name": "White", "ischecked": 1, "hex": "#FFFFFF" },
+  { "name": "Tan", "ischecked": 1, "hex": "#D2B48C" },
+  { "name": "Sage Green", "ischecked": 1, "hex": "#9CAF88" },
+  { "name": "True Royal", "ischecked": 0, "hex": "#4169E1" },
+  { "name": "Sport Grey", "ischecked": 1, "hex": "#B3B5B6" },
+  { "name": "Navy", "ischecked": 0, "hex": "#0C1E33" },
+  { "name": "Military Green", "ischecked": 0, "hex": "#545941" },
+  { "name": "Heather True Royal", "ischecked": 0, "hex": "#3A5DAE" },
+  { "name": "Maroon", "ischecked": 0, "hex": "#800000" },
+  { "name": "Mauve", "ischecked": 1, "hex": "#E0B0FF" },
+  { "name": "Natural", "ischecked": 1, "hex": "#F0E7D4" },
+  { "name": "Orange", "ischecked": 1, "hex": "#F46A1E" },
+  { "name": "Purple", "ischecked": 0, "hex": "#4F2C82" },
+  { "name": "Red", "ischecked": 0, "hex": "#C62536" },
+  { "name": "Sand", "ischecked": 1, "hex": "#D8C7A0" },
+  { "name": "Soft Cream", "ischecked": 1, "hex": "#FFFDD0" },
+  { "name": "Heliconia", "ischecked": 0, "hex": "#E10078" },
+  { "name": "Black", "ischecked": 0, "hex": "#000000" },
+  { "name": "Sapphire", "ischecked": 0, "hex": "#0099CC" },
+  { "name": "Heather Berry", "ischecked": 0, "hex": "#DB689D" }
+];
 
 
     // Config yönetimi
@@ -1223,7 +1222,7 @@
                         purple: "#6c35aa",
                         neon_orange: "#f3541c",
                         grey: "#646263",
-                        maroon: "#580018",
+                        maroon: "#650d0a",
                         orange: "#fea500",
                         yellow: "#fedd04",
                         vegas: "#c4b454",
@@ -1238,7 +1237,9 @@
                         magenta: "#ff00fe",
                         pink: "#ffbfcd",
                         burgundy: "#811930",
-                        kelly_green: "#4CBB17"
+                        kelly_green: "#4CBB17",
+                        blue: "#0000ff",
+                        forest_green: "#00452a",
                     };
 
                     const colorBtn = document.getElementById(`color-btn-${noteId}`);
@@ -3200,7 +3201,7 @@
         const triggerBtn = document.createElement('button');
         triggerBtn.textContent = 'Veri Yönetimi';
         triggerBtn.style.position = 'fixed';
-        triggerBtn.style.bottom = '20px';
+        triggerBtn.style.bottom = '150px';
         triggerBtn.style.right = '20px';
         triggerBtn.style.zIndex = '9999';
         triggerBtn.style.padding = '10px 15px';
