@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.70
+// @version      1.72
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -14,6 +14,7 @@
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
 // @connect      www.tcmb.gov.tr
+// @connect      api.exchangeratesapi.io
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyFinans.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyFinans.user.js
 // ==/UserScript==
@@ -32,6 +33,19 @@
         const url = await GM.getValue("sheet_url", "");
         return url;
     }
+
+    GM.registerMenuCommand("✨exchangeratesApi Ayarla", async () => {
+        const api = prompt(" Api Keyinizi girin:");
+        if (api) {
+            await GM.setValue("api_key", api.trim());
+            alert("✅ Kaydedildi.");
+        }
+    });
+    async function getApiKey() {
+        const api = await GM.getValue("api_key", "");
+        return api;
+    }
+
     GM.registerMenuCommand("⭐ Mağaza Adı", async () => {
         const name = prompt(" Mağaza Adını girin:");
         if (name) {
@@ -45,26 +59,47 @@
     }
     let isProcessing = false; // Flag to prevent multiple executions
 
-    const getExchangeRate = () => new Promise((resolve, reject) => {
-        GM.xmlHttpRequest({
-            method: "GET",
-            url: "https://www.tcmb.gov.tr/kurlar/today.xml",
-            onload: (response) => {
-                if (response.status === 200) {
-                    const xmlDoc = new DOMParser().parseFromString(response.responseText, "text/xml")
-                    const rateEl = xmlDoc.querySelector(`Currency[CurrencyCode="USD"] BanknoteSelling`)
-                    if (rateEl) {
-                        resolve(Number(rateEl.textContent))
-                    } else {
-                        reject("Kur bilgisi alınamadı")
-                    }
-                } else {
-                    reject(`Hata: ${response.statusText}`)
-                }
-            },
-            onerror: (error) => reject(error),
+    const getExchangeRate = async () => {
+
+        const getFromTCMB = () => new Promise((res, rej) => {
+            GM.xmlHttpRequest({
+                method: "GET",
+                url: "https://www.tcmb.gov.tr/kurlar/today.xml",
+                onload: r => {
+                    if (r.status !== 200) return rej("TCMB HTTP hata")
+                    const xml = new DOMParser().parseFromString(r.responseText, "text/xml")
+                    const el = xml.querySelector(`Currency[CurrencyCode="USD"] BanknoteSelling`)
+                    if (!el) return rej("TCMB veri yok")
+                    res(Number(el.textContent))
+                },
+                onerror: () => rej("TCMB bağlantı hatası")
+            })
         })
-    })
+
+        const getFromExchangeApi = apiKey => new Promise((res, rej) => {
+            GM.xmlHttpRequest({
+                method: "GET",
+                url: `https://api.exchangeratesapi.io/v1/latest?access_key=${apiKey}&symbols=USD,TRY`,
+                onload: r => {
+                    if (r.status !== 200) return rej("API HTTP hata")
+                    let d
+                    try { d = JSON.parse(r.responseText) } catch { return rej("API JSON hata") }
+                    if (!d.success) return rej(d.error?.info || "API başarısız")
+                    res(Number((d.rates.TRY / d.rates.USD).toFixed(4)))
+                },
+                onerror: () => rej("API bağlantı hatası")
+            })
+        })
+
+        try {
+            return await getFromTCMB()
+        } catch {
+            const apiKey = await getApiKey()
+            if (!apiKey) throw "API key yok"
+            return await getFromExchangeApi(apiKey)
+        }
+    }
+
 
     const unformatNumber = (str) => parseFloat(str.replace(/[^0-9.-]+/g, ""))
 
