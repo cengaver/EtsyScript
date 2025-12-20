@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Review Pie Chart with Badge
 // @namespace    https://github.com/cengaver
-// @version      1.34
+// @version      1.36
 // @description  Reviews yanına pie chart ve badge
 // @match        https://www.etsy.com/your/shops/me/dashboard*
 // @author       Cengaver
@@ -179,7 +179,7 @@
             sls: sales || "",
             active_listings: activeListings || "",
             reviews: reviews || "",
-            ratio: Math.floor(ratio*100) || "",
+            ratio: (ratio*100).toFixed(2) || "",
             sheetName: 'dashboard'
         };
 
