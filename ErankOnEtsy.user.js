@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.53
+// @version      3.54
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -15,6 +15,7 @@
 // @match        https://ehunt.ai/etsy-product-research*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
+// @grant       GM_xmlhttpRequest
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.registerMenuCommand
@@ -27,6 +28,7 @@
 // @connect      erank.com
 // @connect      script.google.com
 // @connect      developer.uspto.gov
+// @connect      raw.githubusercontent.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
 // ==/UserScript==
@@ -501,7 +503,7 @@
         apiKeyUspto: await GM.getValue('apiKeyUspto', ''),
         sheetId: await GM.getValue('sheetId', ''),
         sheetId2: await GM.getValue('sheetId2', ''),
-        erankUserKey: await GM.getValue('erankUserKey', ''),
+        //erankUserKey: await GM.getValue('erankUserKey', ''),
         authorization: await GM.getValue('authorization', ''),
         erankKey: await GM.getValue('erankKey', ''),
         range: await GM.getValue('range', ''),
@@ -510,6 +512,7 @@
         clientEmail: await GM.getValue('clientEmail', ''),
         team: await GM.getValue('team', 'X'),
         manager: await GM.getValue('manager', ''),
+        config_version: await GM.getValue('config_version', '1'),
     };
 
     // Global değişkenler
@@ -555,7 +558,7 @@
     }
 
     async function isConfigured() {
-        if (!config.erankUserKey || !config.erankKey || !config.authorization) {
+        if (!config.erankKey || !config.authorization) {
             //showToast('Erank Account credentials missing', 'error');
             return false;
         }
@@ -657,7 +660,7 @@
             { id: 'apiKeyUspto', label: 'KeyUspto', type: 'text', value: config.apiKeyUspto },
             { id: 'authorization', label: 'authorization', type: 'text', value: config.authorization },
             { id: 'erankKey', label: 'erankKey', type: 'text', value: config.erankKey },
-            { id: 'erankUserKey', label: 'erankUserKey', type: 'text', value: config.erankUserKey },
+            //{ id: 'erankUserKey', label: 'erankUserKey', type: 'text', value: config.erankUserKey },
             { id: 'clientEmail', label: 'Client Email', type: 'text', value: config.clientEmail },
             { id: 'privateKey', label: 'Private Key', type: 'textarea', value: config.privateKey },
             { id: 'rangeLink', label: 'Range Link', type: 'text', value: config.rangeLink },
@@ -665,7 +668,9 @@
             { id: 'range', label: 'Range ', type: 'text', value: config.range },
             { id: 'sheetId2', label: 'SheetId2', type: 'text', value: config.sheetId2 },
             { id: 'team', label: 'Team', type: 'text', value: config.team },
-            { id: 'manager', label: 'manager', type: 'text', value: config.manager }
+            { id: 'manager', label: 'manager', type: 'text', value: config.manager },
+            { id: 'config_version', label: 'config_version', type: 'text', value: config.config_version }
+
         ];
 
         fields.forEach(field => {
@@ -813,10 +818,52 @@
         });
     }
 
+    const CONFIG_URL = "https://raw.githubusercontent.com/cengaver/EtsyScript/refs/heads/main/config.json";
+    async function fetchConfig() {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: "GET",
+                url: CONFIG_URL + "?t=" + Date.now(),
+                onload: r => {
+                    if (r.status !== 200) return reject();
+                    resolve(JSON.parse(r.responseText));
+                },
+                onerror: reject
+            });
+        });
+    }
+
+    async function ensureBearer() {
+        showToast('Etsy Erank Authorization Güncelleniyor...', 'info');
+
+        const localVersion = config.config_version ?? null;
+        showToast('Local versiyon: ' + localVersion, 'info');
+
+        try {
+            const cfg = await fetchConfig();
+            showToast('Remote versiyon: ' + cfg.version, 'info');
+
+            if (cfg.version !== localVersion) {
+                config.authorization = cfg.bearer;
+                config.config_version = cfg.version;
+                await saveConfig();
+                showToast('Authorization güncellendi', 'success');
+            }
+
+            return config.authorization;
+        } catch {
+            return config.authorization;
+        }
+    }
+
     async function doTheThing(window) {
         // Önce config'in yüklendiğinden emin ol
         if (!await checkConfig()) {
             showToast('Config yüklenemedi', 'error');
+            return;
+        }
+        if (!await ensureBearer()) {
+            showToast('Erank Authorization Yüklenemedi', 'error');
             return;
         }
         const sheetName = config.rangeLink.split("!")[0];
@@ -1172,7 +1219,7 @@
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
             if (!await isConfigured()) return;
-            console.log("erankUserKey :", config.erankUserKey)
+            //console.log("erankUserKey :", config.erankUserKey)
             console.log("authorization :", config.authorization)
             console.log("erankKey :", config.erankKey)
             const url = `https://members.erank.com/api/ext/listing/${id}`;
@@ -1181,7 +1228,7 @@
             try {
                 const headers = {
                     accept: "application/json, text/plain, */*",
-                    authorization: `${config.erankUserKey}|${config.authorization}`,
+                    authorization: `${config.authorization}`,
                     "x-erank-key": config.erankKey,
                     "x-user-agent": "erank-bx/1.0",
                 }
