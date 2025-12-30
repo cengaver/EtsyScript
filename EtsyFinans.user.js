@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.75
+// @version      1.76
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -22,6 +22,24 @@
 ; (function () {
     "use strict"
     GM.addStyle(`
+       :root {
+            --primary-color: #4285f4;
+            --primary-dark: #3367d6;
+            --secondary-color: #34a853;
+            --secondary-dark: #2e7d32;
+            --danger-color: #ea4335;
+            --danger-dark: #c62828;
+            --warning-color: #fbbc05;
+            --warning-dark: #f57f17;
+            --light-color: #f8f9fa;
+            --dark-color: #202124;
+            --gray-color: #5f6368;
+            --border-radius: 4px;
+            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+
         /* Toast Notifications */
         .toast-container {
             position: fixed;
@@ -295,7 +313,7 @@
                 try {
                     const data = JSON.parse(response.responseText);
                     if (data.status === 'success') {
-                        showToast('Başarıyla kaydedildi', 'success');
+                        showToast('Başarıyla hesaplandı', 'success');
                         console.log('✅ Google Sheet gönderildi');
                     } else {
                         console.log('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
