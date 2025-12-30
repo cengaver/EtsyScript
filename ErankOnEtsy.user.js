@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.54
+// @version      3.56
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -15,7 +15,7 @@
 // @match        https://ehunt.ai/etsy-product-research*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
-// @grant       GM_xmlhttpRequest
+// @grant        GM_xmlhttpRequest
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.registerMenuCommand
@@ -862,10 +862,7 @@
             showToast('Config yüklenemedi', 'error');
             return;
         }
-        if (!await ensureBearer()) {
-            showToast('Erank Authorization Yüklenemedi', 'error');
-            return;
-        }
+
         const sheetName = config.rangeLink.split("!")[0];
         //console.log(sheetName);
         const document = null; // use window.document instead!
@@ -1276,6 +1273,9 @@
                 //console.log(erankLogData);
                 return erankData;
             } catch (error) {
+               if (!await ensureBearer()) {
+                showToast('Erank Authorization Yüklenemedi', 'error');
+                }
                 //showToast('Erank Login OL', 'error');
                 console.error("eRank data fetch error:", error);
             }
