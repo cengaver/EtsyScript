@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.74
+// @version      1.75
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -10,6 +10,7 @@
 // @grant        GM.registerMenuCommand
 // @grant        GM.setValue
 // @grant        GM.getValue
+// @grant        GM.addStyle
 // @connect      sheets.googleapis.com
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
