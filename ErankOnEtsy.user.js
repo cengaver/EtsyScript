@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.56
+// @version      3.57
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -834,20 +834,20 @@
     }
 
     async function ensureBearer() {
-        showToast('Etsy Erank Authorization Güncelleniyor...', 'info');
+        //showToast('Etsy Erank Authorization Güncelleniyor...', 'info');
 
         const localVersion = config.config_version ?? null;
-        showToast('Local versiyon: ' + localVersion, 'info');
+        //showToast('Local versiyon: ' + localVersion, 'info');
 
         try {
             const cfg = await fetchConfig();
-            showToast('Remote versiyon: ' + cfg.version, 'info');
+            //showToast('Remote versiyon: ' + cfg.version, 'info');
 
             if (cfg.version !== localVersion) {
                 config.authorization = cfg.bearer;
                 config.config_version = cfg.version;
                 await saveConfig();
-                showToast('Authorization güncellendi', 'success');
+                //showToast('Authorization güncellendi', 'success');
             }
 
             return config.authorization;
@@ -1216,11 +1216,9 @@
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
             if (!await isConfigured()) return;
-            //console.log("erankUserKey :", config.erankUserKey)
             console.log("authorization :", config.authorization)
             console.log("erankKey :", config.erankKey)
             const url = `https://members.erank.com/api/ext/listing/${id}`;
-            //const url = `https://beta.erank.com/api/ext/listing/${id}`;
 
             try {
                 const headers = {
