@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.73
+// @version      1.74
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -20,7 +20,72 @@
 
 ; (function () {
     "use strict"
+    GM.addStyle(`
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
 
+        .toast {
+            min-width: 280px;
+            padding: 12px 16px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            font-family: var(--font-family);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: var(--transition);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-success {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .toast-error {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .toast-warning {
+            background-color: var(--warning-color);
+            color: var(--dark-color);
+        }
+
+        .toast-info {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            opacity: 0.7;
+        }
+
+        .toast-close:hover {
+            opacity: 1;
+        }
+    `);
     GM.registerMenuCommand("⚙️ Sheet Url Ayarla", async () => {
         const currentUrl = await getSheetUrl();
         const url = prompt(" Sheet Url'nizi girin:" ,currentUrl);
@@ -46,6 +111,51 @@
         return name;
     }
     let isProcessing = false; // Flag to prevent multiple executions
+    let toastContainer = null;
+     // Modern Toast Notification System
+    function createToastContainer() {
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+        return toastContainer;
+    }
+
+    function showToast(message, type = 'success', duration = 3000) {
+        const container = createToastContainer();
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+
+        const messageSpan = document.createElement('span');
+        messageSpan.textContent = message;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', () => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        });
+
+        toast.appendChild(messageSpan);
+        toast.appendChild(closeBtn);
+        container.appendChild(toast);
+
+        // Show animation
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        // Auto dismiss
+        if (duration > 0) {
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        return toast;
+    }
 
     const getExchangeRate = () => new Promise((resolve, reject) => {
         GM.xmlHttpRequest({
@@ -184,6 +294,7 @@
                 try {
                     const data = JSON.parse(response.responseText);
                     if (data.status === 'success') {
+                        showToast('Başarıyla kaydedildi', 'success');
                         console.log('✅ Google Sheet gönderildi');
                     } else {
                         console.log('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
