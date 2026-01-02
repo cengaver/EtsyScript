@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.95
+// @version      1.96
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -79,7 +79,7 @@
         padding: 4px 9px;
         border: 1px solid #ccc;
         border-radius: 5px;
-        font-size: 13px;
+        font-size: 10px;
     }
     #loading-indicator {
         font-size: 16px;
