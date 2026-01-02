@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.93
+// @version      1.95
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -1124,6 +1124,7 @@
         table.id = 'sales-report-table';
         table.innerHTML = `
         <tr>
+            <th>Sr</th>
             <th>Mağaza Adı</th>
             <th>Satış Sayısı</th>
             <th>Satış Ücreti</th>
@@ -1134,6 +1135,10 @@
         let GtotalOrders = 0;
         let GtotalSales = 0;
         let GpercSales =0;
+        let Grow = 1;
+        let style;
+        const used_storeIds = JSON.parse(config.storeIds);
+        const storeNames = Object.values(used_storeIds);
 
         salesData.forEach(({ storeName, orders }) => {
             const totalOrders = orders.length;
@@ -1143,13 +1148,16 @@
             GtotalSales += parseFloat(totalSales);
 
             const row = document.createElement('tr');
+            style = storeNames.includes(storeName) ? ' style="font-weight:bold;"' : '';
             row.innerHTML = `
-            <td>${storeName}</td>
+            <td>${Grow}</td>
+            <td${style}>${storeName}</td>
             <td>${totalOrders}</td>
             <td>${totalSales}</td>
             <td>${percSales}</td>
         `;
             table.appendChild(row);
+            Grow++
         });
 
         const ms = new Date(endDate) - new Date(startDate);
@@ -1158,6 +1166,7 @@
 
         const rows = document.createElement('tr');
         rows.innerHTML = `
+        <th>SR</th>
         <th>Toplam</th>
         <th>${GtotalOrders}</th>
         <th>${GtotalSales.toFixed(2)}</th>
@@ -1166,6 +1175,7 @@
         table.appendChild(rows);
         const rows2 = document.createElement('tr');
         rows2.innerHTML = `
+        <th>SR</th>
         <th>OrtGün</th>
         <th>${(GtotalOrders/days).toFixed(0)}</th>
         <th>${(GtotalSales/days).toFixed(2)}</th>
