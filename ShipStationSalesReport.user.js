@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.96
+// @version      1.97
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -1236,7 +1236,7 @@
            <option value="last7">Last 7 Days</option>
            <option value="last30">Last 30 Days</option>
          </select>
-         <button id="fetch-sales-button">Get Sales</button>
+         <button id="fetch-sales-button">Sales</button>
          <span id="refresh-area"></span>
          <p id="loading-area"></p>
        `;
