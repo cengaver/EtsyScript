@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.1
+// @version      1.21
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -48,7 +48,7 @@
         return shop;
     }
 
-    const SENT_KEY="etsy_analyzer_sent_v1";
+    const SENT_KEY="etsy_analyzer_sent_v2";
     const sent=JSON.parse(localStorage.getItem(SENT_KEY)||"{}");
 
     const seen=new Set();
@@ -86,17 +86,18 @@
 
     async function analyze(card,actions,id){
         const t=card.innerText;
-
+        //console.log(actions)
         const sales=pick(t,/(\d+)\s+sales?/i);
         const favs=pick(t,/(\d+)\s+favorites?/i);
         const visits=pick(t,/(\d+)\s+visits?/i);
         const renewal=pick(t,/(\d+)\s+renewal?/i);
         const renewText=parseRenew(t);
         const renewDate=parseRenewDate(renewText);
-        const age=ageFromRenew(renewDate);
+        const age=ageFromRenew(renewDate,renewal,sales);
         const title=getTitleFromRow(card,id);
 
         const issues=buildIssues({age,visits,favs,sales});
+        const issues2=decision2({age,visits,favs,sales});
         const shop_name = await getShopName();
         const data ={
             id,
@@ -107,6 +108,7 @@
             sales,
             renewal,
             issues,
+            issues2,
             shopName:shop_name,
             sheetName: 'analiz'
         }
@@ -114,11 +116,13 @@
     }
 
     function inject(actions,data){
+        const badgeDiv = document.createElement('div');
+        badgeDiv.classList.add('wt-flex-xs-1');
         const badge=document.createElement('span');
         badge.textContent='●';
         badge.style.cssText=`
             margin-left:8px;
-            font-size:18px;
+            font-size:30px;
             cursor:pointer;
             color:${data.sales>0?'#2ecc71':data.issues.length>1?'#e67e22':'#f1c40f'};
         `;
@@ -144,7 +148,9 @@
             Age: ${data.age} gün<br>
             Renewal: ${data.renewal||'N/A'}<br><br>
             <b>Issues</b><br>
-            ${data.issues.map(i=>'• '+i).join('<br>')}
+            ${data.issues.map(i=>'• '+i).join('<br>')}<br>
+            <b>Issues2</b><br>
+            ${data.issues2.map(i=>'• '+i).join('<br>')}
         `;
 
         badge.onmouseenter=e=>{
@@ -169,15 +175,33 @@
         };
 
         badge.onmouseleave=()=>tip.style.display='none';
-
         document.body.appendChild(tip);
-        actions.appendChild(badge);
+        badgeDiv.appendChild(badge);
+        const target = actions.querySelector('.wt-display-flex-xs.wt-align-items-center');
+        target.appendChild(badgeDiv);
+        //actions.insertBefore(badge, actions.children[0]);
+        //actions.children[0]?.after(badge);
+        //actions.insertBefore(badge, actions.firstChild);
+        //actions.appendChild(badge);
         if(data.sales===0 && !sent[data.id]){
             sendToSheets(data);
             console.log(data)
             sent[data.id]=Date.now();
             localStorage.setItem(SENT_KEY,JSON.stringify(sent));
         }
+    }
+
+    function decision2({age,visits,favs,sales}){
+        const issues2=[];
+        if(sales>0){issues2.push("Satış almış – dokunma");return issues2;}
+        if(visits>3 && favs>=1)issues2.push("A. Yüksek trafik ve ilgi var, satış olmaması fiyat,<br> kargo veya güven/teklif kaynaklı bir dönüşüm sorunudur.<br> Eylem: Fiyat/Teklif Optimizasyonu.");
+        if(visits>3 && favs===0)issues2.push("B. Yüksek trafik var ancak ürün ilgiyi (favori) çekemiyor.<br> Sorun, listelemenin vitrininde (görsel, başlık) olmalı.<br> Eylem: Görsel/Başlık/Açıklama Optimizasyonu.");
+        if(visits>=1 && visits<=3 && favs>=1)issues2.push("C. Ortalama trafik ve ilgi var. <br>Hem görünürlük (SEO) hem de satışa dönüştürme (Fiyat/Teklif) sorunu.<br> Eylem: Dönüşüm Odaklı SEO ve İyileştirme.");
+        if(visits>=1 && visits<=3 && favs===0)issues2.push("D. Ortalama trafik var ancak ilgi (favori) çekemiyor.<br> Sorun, listelemenin vitrininde (görsel, başlık) olmalı.<br> Eylem: Başlık/Ana Görsel Testi ve SEO İncelemesi.");
+        if(visits<1 && favs>=1)issues2.push("E. Listeleme potansiyel (Fav) gösteriyor ancak trafik alamıyor.<br> Öncelikli sorun görünürlük (SEO/Yenileme).<br> Eylem: Acil SEO ve Yenileme.");
+        if(visits<1 && favs===0)issues2.push("F. En düşük öncelikli, hem trafik hem de ilgi yok.<br> Ya temel SEO eksik ya da ürün/pazar uyumu zayıf.<br> Eylem: Temel SEO Kontrolü ve Sil/Değiştir Kararı.");
+        if(!issues2.length)issues2.push("İzlenmeli");
+        return issues2;
     }
 
     function buildIssues({age,visits,favs,sales}){
@@ -231,10 +255,18 @@
         return new Date(text);
     }
 
-    function ageFromRenew(d){
+    function ageFromRenew(d,r,s){
         if(!d)return 0;
         const MS=86400000;
-        return Math.max(0,Math.floor((Date.now()-(d-MS*120))/MS));
+        const PERIOD=120;
+        const now=Date.now();
+        // base publish date (son yenilemeden geriye)
+        let publishedAt=d.getTime()-PERIOD*MS;
+        // satış yoksa renewal sayısını yaşa ekle
+        if(s===0 && r>0){
+            publishedAt-=r*PERIOD*MS;
+        }
+        return Math.max(0,Math.floor((now-publishedAt)/MS));
     }
 
     function getTitleFromRow(card){
