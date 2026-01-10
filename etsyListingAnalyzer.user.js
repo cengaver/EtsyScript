@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.21
+// @version      1.3
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -48,7 +48,7 @@
         return shop;
     }
 
-    const SENT_KEY="etsy_analyzer_sent_v2";
+    const SENT_KEY="etsy_analyzer_sent_v3";
     const sent=JSON.parse(localStorage.getItem(SENT_KEY)||"{}");
 
     const seen=new Set();
@@ -95,6 +95,7 @@
         const renewDate=parseRenewDate(renewText);
         const age=ageFromRenew(renewDate,renewal,sales);
         const title=getTitleFromRow(card,id);
+        const sku=getSkuFromRow(card,id);
 
         const issues=buildIssues({age,visits,favs,sales});
         const issues2=decision2({age,visits,favs,sales});
@@ -102,6 +103,7 @@
         const data ={
             id,
             title,
+            sku,
             age,
             visits,
             favs,
@@ -179,10 +181,6 @@
         badgeDiv.appendChild(badge);
         const target = actions.querySelector('.wt-display-flex-xs.wt-align-items-center');
         target.appendChild(badgeDiv);
-        //actions.insertBefore(badge, actions.children[0]);
-        //actions.children[0]?.after(badge);
-        //actions.insertBefore(badge, actions.firstChild);
-        //actions.appendChild(badge);
         if(data.sales===0 && !sent[data.id]){
             sendToSheets(data);
             console.log(data)
@@ -267,6 +265,12 @@
             publishedAt-=r*PERIOD*MS;
         }
         return Math.max(0,Math.floor((now-publishedAt)/MS));
+    }
+
+    function getSkuFromRow(card){
+        const span=card.querySelector('.card-meta-row-sku span');
+        if(!span)return "";
+        return (span.getAttribute("title")||span.textContent||"").trim();
     }
 
     function getTitleFromRow(card){
