@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.3
+// @version      1.32
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -48,12 +48,25 @@
         return shop;
     }
 
-    const SENT_KEY="etsy_analyzer_sent_v3";
+    const SENT_KEY="etsy_analyzer_sent_v4";
     const sent=JSON.parse(localStorage.getItem(SENT_KEY)||"{}");
 
     const seen=new Set();
     new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
     scan();
+
+    cleanupOldAnalyzerKeys(SENT_KEY);
+    
+    function cleanupOldAnalyzerKeys(CURRENT_KEY){
+
+        const PREFIX = "etsy_analyzer_sent_";
+
+        Object.keys(localStorage).forEach(k=>{
+            if(k.startsWith(PREFIX) && k!==CURRENT_KEY){
+                localStorage.removeItem(k);
+            }
+        });
+    }
 
     function scan(){
         document.querySelectorAll('.card-actions.card-actions-3').forEach(actions=>{
