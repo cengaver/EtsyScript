@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.3
+// @version      1.31
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -202,14 +202,55 @@
         return issues2;
     }
 
-    function buildIssues({age,visits,favs,sales}){
+    function buildIssues({age,visits,favs,sales}) {
         const issues=[];
-        if(sales>0){issues.push("Satış almış – dokunma");return issues;}
-        if(age>=30&&visits>=100)issues.push("30+ gün / yüksek trafik / satış yok");
-        if(age>=14&&visits>=50&&favs===0)issues.push("Favori yok – görsel/title zayıf");
-        if(age>=14&&favs>0)issues.push("Favori var satış yok – fiyat/güven");
-        if(age>=14&&visits<20)issues.push("Düşük trafik – SEO");
-        if(!issues.length)issues.push("İzlenmeli");
+
+        // 1️⃣ Satış varsa net bitir
+        if(sales>0){
+            issues.push("Satış almış – dokunma");
+            return issues;
+        }
+
+        // 2️⃣ 0–14 gün: satmıyor sayılmaz
+        if(age<=14){
+            issues.push("Yeni listing (0–14 gün)");
+            issues.push("Öneri: Dokunma, veri birikmesini bekle");
+            return issues;
+        }
+
+        // 3️⃣ 15–30 gün: izleme + hafif sinyal analizi
+        if(age<=30){
+            if(visits>=50 && favs===0){
+                issues.push("İlgi çekmiyor (favori yok)");
+                issues.push("Öneri: Ana görsel / başlık hafif test");
+            } else {
+                issues.push("15–30 gün – izleme aşaması");
+                issues.push("Öneri: Küçük testler (görsel veya fiyat)");
+            }
+            return issues;
+        }
+
+        // 4️⃣ 30–60 gün: artık satmıyor sayılır
+        if(age<=60){
+            if(visits>=100 && favs===0){
+                issues.push("Yüksek trafik var, ilgi yok");
+                issues.push("Öneri: Görsel + başlık köklü değişim");
+            } else if(favs>0){
+                issues.push("Favori var, satış yok");
+                issues.push("Öneri: Fiyat / kargo / güven optimizasyonu");
+            } else if(visits<30){
+                issues.push("Düşük trafik");
+                issues.push("Öneri: SEO ve yenileme");
+            } else {
+                issues.push("30–60 gün – satış yok");
+                issues.push("Öneri: Güçlü genel optimizasyon");
+            }
+            return issues;
+        }
+
+        // 5️⃣ 60+ gün: başarısız kabul edilir
+        issues.push("60+ gün – satış yok (başarısız)");
+        issues.push("Öneri: Yeniden aç, varyasyon değiştir veya kapat");
         return issues;
     }
 
