@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.32
+// @version      1.33
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -56,7 +56,7 @@
     scan();
 
     cleanupOldAnalyzerKeys(SENT_KEY);
-    
+
     function cleanupOldAnalyzerKeys(CURRENT_KEY){
 
         const PREFIX = "etsy_analyzer_sent_";
@@ -131,15 +131,16 @@
     }
 
     function inject(actions,data){
-        const badgeDiv = document.createElement('div');
+        const level=getLevel(data.age,data.sales);
+        const badgeDiv=document.createElement('div');
         badgeDiv.classList.add('wt-flex-xs-1');
         const badge=document.createElement('span');
-        badge.textContent='●';
+        badge.textContent=level.icon;
         badge.style.cssText=`
             margin-left:8px;
             font-size:30px;
             cursor:pointer;
-            color:${data.sales>0?'#2ecc71':data.issues.length>1?'#e67e22':'#f1c40f'};
+            color:${level.color};
         `;
 
         const tip=document.createElement('div');
@@ -156,15 +157,24 @@
         `;
 
         tip.innerHTML=`
-            <b>${data.title||'Untitled'}</b><br><br>
+            <div style="font-weight:bold;font-size:13px;margin-bottom:6px;">
+                ${level.icon} ${level.label}
+            </div>
+
+            <div style="font-weight:bold;margin-bottom:6px;">
+                ${data.title||'Untitled'}
+            </div>
+
             Sales: ${data.sales}<br>
             Favorites: ${data.favs}<br>
             Visits: ${data.visits}<br>
             Age: ${data.age} gün<br>
             Renewal: ${data.renewal||'N/A'}<br><br>
+
             <b>Issues</b><br>
-            ${data.issues.map(i=>'• '+i).join('<br>')}<br>
-            <b>Issues2</b><br>
+            ${data.issues.map(i=>'• '+i).join('<br>')}<br><br>
+
+            <b>Issues 2</b><br>
             ${data.issues2.map(i=>'• '+i).join('<br>')}
         `;
 
@@ -200,6 +210,14 @@
             sent[data.id]=Date.now();
             localStorage.setItem(SENT_KEY,JSON.stringify(sent));
         }
+    }
+
+    function getLevel(age,sales){
+        if(sales>0) return {icon:"🟢",color:"#2ecc71",label:"Satış Var"};
+        if(age<=14) return {icon:"🟡",color:"#f1c40f",label:"Yeni – Dokunma"};
+        if(age<=30) return {icon:"🟠",color:"#e67e22",label:"İzleme Aşaması"};
+        if(age<=60) return {icon:"🔴",color:"#e74c3c",label:"Güçlü Optimizasyon"};
+        return {icon:"🚨",color:"#8e44ad",label:"Başarısız – Kapat/Yenile"};
     }
 
     function decision2({age,visits,favs,sales}){
