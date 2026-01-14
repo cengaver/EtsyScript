@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.57
+// @version      3.58
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -10,8 +10,8 @@
 // @match        https://www.etsy.com/listing/*
 // @match        https://www.etsy.com/people/*
 // @match        https://www.etsy.com/c/*
-// @match        https://ehunt.ai/product-detail/*
 // @match        https://www.etsy.com/your/purchases*
+// @match        https://ehunt.ai/product-detail/*
 // @match        https://ehunt.ai/etsy-product-research*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
@@ -660,7 +660,6 @@
             { id: 'apiKeyUspto', label: 'KeyUspto', type: 'text', value: config.apiKeyUspto },
             { id: 'authorization', label: 'authorization', type: 'text', value: config.authorization },
             { id: 'erankKey', label: 'erankKey', type: 'text', value: config.erankKey },
-            //{ id: 'erankUserKey', label: 'erankUserKey', type: 'text', value: config.erankUserKey },
             { id: 'clientEmail', label: 'Client Email', type: 'text', value: config.clientEmail },
             { id: 'privateKey', label: 'Private Key', type: 'textarea', value: config.privateKey },
             { id: 'rangeLink', label: 'Range Link', type: 'text', value: config.rangeLink },
@@ -1386,10 +1385,6 @@
 
         async function logToGoogleSheets(data) {
             const sheetUrl = "https://script.google.com/macros/s/AKfycbxuh_lJRDY4ZCVY3js2JVlIdusGmb3RtDd4IlH82hisewmwR13PUogxW9pUuX8h0C-e/exec";
-
-            //console.log("Gönderilen veri:", JSON.stringify(data, null, 2));
-            //console.log("ID türü:", typeof data.id, "Değer:", data.id);
-
             try {
                 const response = await fetch(sheetUrl, {
                     method: "POST",
@@ -1534,6 +1529,7 @@
             const salesEl = window.document.createElement("div");
             salesEl.textContent = `Satış: ${sales}`;
             if (Number(sales) / 1.5 > Number(age)) salesEl.style.backgroundColor = "green";
+            else if (Number(sales) == 0 ) salesEl.style.backgroundColor = "red";
             overlay.appendChild(salesEl);
 
             const ageEl = window.document.createElement("div");
@@ -1554,7 +1550,7 @@
             }
 
             const buttonEl = window.document.createElement("button")
-            buttonEl.textContent = "S"
+            buttonEl.textContent = "C"
             buttonEl.title = "Tag copy erank"
             buttonEl.style = "cursor: grab"
             buttonEl.onclick = () => copyTextToClipboard(tags.join(", "))
@@ -1688,14 +1684,6 @@
 
             const addOverlay = async (el) => {
                 const info = readTransaction(el)
-                /*transactionId: li.getAttribute('data-transaction-id') || null,
-                receiptId: li.getAttribute('data-receipt-id') || null,
-                title: titleEl?.innerText?.trim() || null,
-                link: titleEl?.href || null,
-                image: imgEl?.src || imgEl?.getAttribute('data-src') || null,
-                priceText,
-                priceNumber: parsePriceToNumber(priceText)*/
-
                 const imgUrl = info.image.replace("/il_300x300","/il_600x600");
                 const infoEl = el.querySelector('.transaction-download.transaction-data') || el.querySelector('.transaction-downloads') || el.querySelector('.transaction-download');
                 const url = info.link;
@@ -1775,45 +1763,6 @@
                 priceNumber: parsePriceToNumber(priceText)
             };
         }
-
-        /*function attachButton(li){
-            if(li.querySelector('.tx-get-info-btn')) {
-                console.log('[TX-DEBUG] button already exists for', li.getAttribute('data-transaction-id'));
-                return;
-            }
-
-            const target = li.querySelector('.transaction-download.transaction-data') || li.querySelector('.transaction-downloads') || li.querySelector('.transaction-download');
-            const container = target || li;
-
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'tx-get-info-btn btn btn-small';
-            btn.textContent = 'Bilgileri Al';
-            btn.style.marginLeft = '8px';
-            btn.style.cursor = 'pointer';
-
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const info = readTransaction(li);
-                console.log('[TX-DEBUG] clicked info:', info);
-                const blob = new Blob([JSON.stringify(info, null, 2)], {type: 'application/json'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `transaction-${info.transactionId||info.receiptId||'unknown'}.json`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-                btn.textContent = 'İndirildi';
-                btn.disabled = true;
-                li.setAttribute('data-last-exported', new Date().toISOString());
-            });
-
-            container.appendChild(btn);
-            console.log('[TX-DEBUG] attached button to', li.getAttribute('data-transaction-id') || li);
-        }*/
-
 
         if (window.location.href.includes("/listing/")) {
             handleListingPage();
