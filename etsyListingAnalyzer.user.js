@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.33
+// @version      1.34
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -48,7 +48,7 @@
         return shop;
     }
 
-    const SENT_KEY="etsy_analyzer_sent_v4";
+    const SENT_KEY="etsy_analyzer_sent_v5";
     const sent=JSON.parse(localStorage.getItem(SENT_KEY)||"{}");
 
     const seen=new Set();
@@ -127,6 +127,7 @@
             shopName:shop_name,
             sheetName: 'analiz'
         }
+        console.table(data)
         inject(actions,data);
     }
 
@@ -316,7 +317,7 @@
     }
 
     function parseRenew(t){
-        const m=t.match(/Auto[-\s]?renews?\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+        const m=t.match(/(?:Auto[-\s]?renews?|Expires)\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
         return m?m[1]:null;
     }
 
