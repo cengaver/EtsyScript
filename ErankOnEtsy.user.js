@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.58
+// @version      3.59
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1528,7 +1528,7 @@
             // Satış ve yaş elementleri
             const salesEl = window.document.createElement("div");
             salesEl.textContent = `Satış: ${sales}`;
-            if (Number(sales) / 1.5 > Number(age)) salesEl.style.backgroundColor = "green";
+            if (Number(sales) / 1.3 > Number(age)) salesEl.style.backgroundColor = "green";
             else if (Number(sales) == 0 ) salesEl.style.backgroundColor = "red";
             overlay.appendChild(salesEl);
 
