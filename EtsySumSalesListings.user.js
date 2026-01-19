@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Sum Sales Listings
 // @namespace    https://github.com/cengaver
-// @version      0.4
+// @version      0.5
 // @description  Etsy Sum Sales Listings
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings*
@@ -26,6 +26,7 @@
         const items = document.querySelectorAll('.wt-block-grid__item');
         items.forEach(item => {
             const salesElements = item.querySelectorAll('.card-meta-row-item.text-gray-lighter.selected-color');
+            const renewElements = item.querySelectorAll('.card-meta-row.card-meta-row-status.text-gray-lighter');
             salesElements.forEach(el => {
                  //console.log(el.innerText);
                 if (el.innerText.includes("sale")) {
@@ -51,6 +52,13 @@
                             el.style.color = "#fff";
                         }
                     }
+                }
+            });
+            renewElements.forEach(el => {
+                //console.log(el.innerText);
+                if (el.innerText.includes("Expires")) {
+                    el.style.backgroundColor = "red";
+                    el.style.color = "#fff";
                 }
             });
         });
