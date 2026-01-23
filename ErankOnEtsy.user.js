@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.60
+// @version      3.62
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1587,7 +1587,7 @@
                 resultEl2.textContent = result2;
                 resultEl2.title = tooltipText2;
                 resultEl2.style.marginLeft = "1px";
-                resultEl2.style.fontSize = "1.1rem";
+                resultEl2.style.fontSize = "1.6rem";
 
                 if (!dnoValue) {
                     resultEl2.style.cursor = "cell";
@@ -1613,7 +1613,8 @@
         const handleListingPage = async () => {
             const urlParts = window.location.pathname.split('/');
             const id = urlParts[urlParts.indexOf('listing') + 1];
-            const titleElement = window.document.querySelector("#listing-page-cart > div.wt-mt-xs-1.wt-mb-xs-3")
+            //const titleElement = window.document.querySelector("#listing-page-cart > div.wt-mt-xs-1.wt-mb-xs-3 > h1")
+            const titleElement = window.document.querySelector("#listing-page-cart > div.wt-mt-xs-1.wt-mb-xs-1 > h1")
             const imgElement = window.document.querySelector("#photos > div > div > ul > li > img")
             if (titleElement && id) {
                 await createOverlayOnElement({
