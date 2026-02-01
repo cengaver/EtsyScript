@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      3.62
+// @version      4.00
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -496,6 +496,64 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+
+        #erank-table-modal{
+          position:fixed;inset:0;z-index:999999;
+          background:rgba(0,0,0,.6);
+          display:flex;align-items:center;justify-content:center;
+          font-family:Arial,sans-serif
+        }
+        .erank-box{
+          background:#fff;width:95%;max-width:1400px;
+          max-height:90vh;overflow:hidden;
+          border-radius:12px;display:flex;flex-direction:column
+        }
+        .erank-header{
+          padding:12px 16px;border-bottom:1px solid #ddd;
+          display:flex;align-items:center;gap:12px
+        }
+        .erank-header input{
+          padding:6px 10px;width:260px
+        }
+        .erank-close{margin-left:auto;cursor:pointer;font-size:20px}
+        .erank-table-wrap{overflow:auto}
+        table{border-collapse:collapse;width:100%}
+        thead th{
+          position:sticky;top:0;background:#f6f6f6;
+          cursor:pointer;border-bottom:1px solid #ccc;
+          padding:8px;font-size:12px;white-space:nowrap
+        }
+        tbody td{
+          border-bottom:1px solid #eee;
+          padding:8px;font-size:12px;vertical-align:middle
+        }
+        tbody tr:hover{background:#fafafa}
+        #erank-table-modal img{
+          width:42px;
+          height:42px;
+          object-fit:cover;
+          border-radius:6px;
+        }
+        .num{text-align:right}
+        .erank-table-wrap img{cursor:pointer}
+        .erank-table-wrap a:hover img{opacity:.85}
+        .erank-preview{
+          position:fixed;
+          z-index:1000000;
+          pointer-events:none;
+          background:#fff;
+          border-radius:10px;
+          box-shadow:0 10px 30px rgba(0,0,0,.35);
+          padding:6px;
+          display:none
+        }
+       .erank-preview img{
+         max-width:300px;
+         max-height:300px;
+         width:auto;
+         height:auto;
+       }
+
     `);
 
     // Config yapısı
@@ -862,6 +920,7 @@
             return;
         }
 
+        await getErankButtons();
         const sheetName = config.rangeLink.split("!")[0];
         //console.log(sheetName);
         const document = null; // use window.document instead!
@@ -1216,7 +1275,7 @@
             if (cachedData) { localStorage.removeItem(cacheKey) }
             if (!await isConfigured()) return;
             console.log("authorization :", config.authorization)
-            console.log("erankKey :", config.erankKey)
+            //console.log("erankKey :", config.erankKey)
             const url = `https://members.erank.com/api/ext/listing/${id}`;
 
             try {
@@ -1246,7 +1305,13 @@
                     age: age,
                     title: response.data.title,
                     timestamp: now.toString(),
-                    tags: Object.keys(response.data.tags)
+                    tags: Object.keys(response.data.tags),
+                    link: link,
+                    img: imgUrl,
+                    quantity: convertToNumber(response.data.stats.quantity),
+                    views: convertToNumber(response.data.stats.views),
+                    favorers: convertToNumber(response.data.stats.favorers),
+                    est_conversion_rate: response.data.stats.est_conversion_rate.value
                 };
                 const erankLogData = {
                     id: id,
@@ -1277,6 +1342,149 @@
                 console.error("eRank data fetch error:", error);
             }
         };
+
+        function openErankTableModal(){
+           if(window.document.getElementById("erank-table-modal")) return
+
+           let data=getAllErankItems()
+           let sortKey=null, sortDir=1
+
+           const modal=window.document.createElement("div")
+           modal.id="erank-table-modal"
+
+           modal.innerHTML=`
+           <div class="erank-box">
+             <div class="erank-header">
+               <strong>eRank Cache</strong>
+               <input id="erank-search" placeholder="Title ara…">
+               <span id="erank-count"></span>
+               <span class="erank-close" id="erank-close">✕</span>
+             </div>
+
+             <div class="erank-table-wrap">
+               <table>
+                 <thead>
+                   <tr>
+                     <th>Img</th>
+                     <th data-k="title">Title</th>
+                     <th data-k="sales">Sales</th>
+                     <th data-k="views">Views</th>
+                     <th data-k="favorers">Fav</th>
+                     <th data-k="quantity">Qty</th>
+                     <th data-k="est_conversion_rate">Conv %</th>
+                     <th data-k="age">Age</th>
+                   </tr>
+                 </thead>
+                 <tbody id="erank-body"></tbody>
+               </table>
+             </div>
+           </div>
+           `
+           window.document.body.appendChild(modal)
+
+           const body=modal.querySelector("#erank-body")
+           const count=modal.querySelector("#erank-count")
+           const search=modal.querySelector("#erank-search")
+
+           function render(rows){
+             body.innerHTML=rows.map(d=>`
+               <tr>
+                 <td>
+                   ${d.link
+                     ? `<a href="${d.link}" target="_blank" class="erank-img-link">
+                          <img src="${d.img||""}" data-previews="${toFullImg(d.img||"")}">
+                        </a>`
+                     : `<img src="${d.img||""}" data-previews="${toFullImg(d.img||"")}">`
+                   }
+                 </td>
+                 <td>${d.title||"-"}</td>
+                 <td class="num">${d.sales??""}</td>
+                 <td class="num">${d.views??""}</td>
+                 <td class="num">${d.favorers??""}</td>
+                 <td class="num">${d.quantity??""}</td>
+                 <td class="num">${d.est_conversion_rate??""}</td>
+                 <td class="num">${d.age??""}</td>
+               </tr>
+             `).join("")
+             count.textContent=`(${rows.length})`
+           }
+
+           render(data)
+
+           modal.querySelectorAll("thead th[data-k]").forEach(th=>{
+             th.onclick=()=>{
+               const k=th.dataset.k
+               sortDir=(sortKey===k)?-sortDir:1
+               sortKey=k
+               data.sort((a,b)=>(Number(a[k]||0)-Number(b[k]||0))*sortDir)
+               render(data)
+             }
+           })
+
+           search.oninput=()=>{
+             const q=search.value.toLowerCase()
+             render(data.filter(d=>(d.title||"").toLowerCase().includes(q)))
+           }
+
+           const preview=window.document.createElement("div")
+           preview.className="erank-preview"
+           preview.innerHTML="<img>"
+           window.document.body.appendChild(preview)
+           window.document.body.addEventListener("mousemove",e=>{
+                const t=e.target
+                if(t.tagName==="IMG" && t.dataset.previews){
+                    const img=preview.querySelector("img")
+                    if(img.src!==t.dataset.previews) img.src=t.dataset.previews
+
+                    preview.style.display="block"
+
+                    const pad=20
+                    const pw=preview.offsetWidth
+                    const ph=preview.offsetHeight
+                    const vw=window.innerWidth
+                    const vh=window.innerHeight
+
+                    let x=e.clientX+pad
+                    let y=e.clientY+pad
+
+                    if(x+pw>vw) x=e.clientX-pw-pad
+                    if(y+ph>vh) y=e.clientY-ph-pad
+
+                    preview.style.left=x+"px"
+                    preview.style.top=y+"px"
+                }else{
+                    preview.style.display="none"
+                }
+            })
+
+            modal.querySelector("#erank-close").onclick=()=>modal.remove()
+         }
+
+        function toFullImg(url){
+            if(!url) return url
+            return url.replace(/il_\d+x\d+|il_\d+xN|il_\d+x\d+_|\b\d+x\d+\b/,"il_fullxfull")
+        }
+
+        async function getErankButtons(){
+            const b=window.document.createElement("button")
+            b.textContent="📊 eRank Table"
+            b.style.cssText="position:fixed;bottom:20px;right:20px;z-index:999999"
+            b.onclick=openErankTableModal
+            window.document.body.appendChild(b)
+        }
+
+        function getAllErankItems(){
+            const rows=[]
+            for(let i=0;i<localStorage.length;i++){
+                const k=localStorage.key(i)
+                if(k.startsWith("erank_")){
+                    try{
+                        rows.push(JSON.parse(localStorage.getItem(k)))
+                    }catch(e){}
+                }
+            }
+            return rows
+        }
 
         function simplifyEtsyUrl(url) {
             try {
