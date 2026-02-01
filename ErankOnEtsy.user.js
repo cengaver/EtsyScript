@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.00
+// @version      4.01
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -552,6 +552,65 @@
          max-height:300px;
          width:auto;
          height:auto;
+       }
+       .erank-box{
+         background:#ffffff;
+         color:#222;
+       }
+       .erank-box thead th{
+         background:#f6f6f6;
+         color:#222;
+       }
+       .erank-box tbody tr:hover{
+         background:#f2f2f2;
+       }
+       .erank-dark{
+         background:#121212;
+         color:#e6e6e6;
+       }
+       .erank-dark .erank-header{
+         background:#181818;
+         border-bottom:1px solid #2a2a2a;
+       }
+       .erank-dark input{
+         background:#1f1f1f;
+         color:#eee;
+         border:1px solid #333;
+       }
+       .erank-dark table{
+         background:#121212;
+       }
+       .erank-dark thead th{
+         background:#1a1a1a;
+         color:#ddd;
+         border-bottom:1px solid #333;
+       }
+       .erank-dark tbody td{
+         border-bottom:1px solid #242424;
+         color:#e0e0e0;
+       }
+       .erank-dark tbody tr:hover{
+         background:#1e1e1e;
+       }
+       .erank-dark .num{
+         color:#bdbdbd;
+       }
+       .erank-dark .erank-table-wrap img{
+         box-shadow:0 0 0 1px #333;
+       }
+       .erank-dark .erank-close{
+         color:#aaa;
+       }
+       .erank-dark .erank-close:hover{
+         color:#fff;
+       }
+       .erank-dark td[style]{
+        box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+       }
+
+       /* preview dark uyumu */
+       .erank-preview{
+         background:#111;
        }
 
     `);
@@ -1354,12 +1413,18 @@
 
            modal.innerHTML=`
            <div class="erank-box">
-             <div class="erank-header">
-               <strong>eRank Cache</strong>
-               <input id="erank-search" placeholder="Title ara…">
-               <span id="erank-count"></span>
-               <span class="erank-close" id="erank-close">✕</span>
-             </div>
+              <div class="erank-header">
+                <strong>eRank Cache</strong>
+                <input id="erank-search" placeholder="Title ara…">
+                <span id="erank-count"></span>
+
+                <button id="erank-theme-toggle"
+                  style="margin-left:auto;padding:4px 10px;cursor:pointer">
+                  🌙 Dark
+                </button>
+
+                <span class="erank-close" id="erank-close">✕</span>
+              </div>
 
              <div class="erank-table-wrap">
                <table>
@@ -1398,17 +1463,28 @@
                    }
                  </td>
                  <td>${d.title||"-"}</td>
-                 <td class="num">${d.sales??""}</td>
+                 <td class="num"
+                   style="background:${salesColor(d.sales||0,salesMin,salesMax)}">
+                   ${d.sales??""}
+                 </td>
                  <td class="num">${d.views??""}</td>
                  <td class="num">${d.favorers??""}</td>
                  <td class="num">${d.quantity??""}</td>
-                 <td class="num">${d.est_conversion_rate??""}</td>
+                 <td class="num"
+                   style="background:${convColor(d.est_conversion_rate||0,convMin,convMax)}">
+                   ${d.est_conversion_rate??""}
+                 </td>
                  <td class="num">${d.age??""}</td>
                </tr>
              `).join("")
              count.textContent=`(${rows.length})`
            }
-
+           const salesVals=data.map(d=>Number(d.sales)||0)
+           const convVals=data.map(d=>Number(d.est_conversion_rate)||0)
+           const salesMin=Math.min(...salesVals)
+           const salesMax=Math.max(...salesVals)
+           const convMin=Math.min(...convVals)
+           const convMax=Math.max(...convVals)
            render(data)
 
            modal.querySelectorAll("thead th[data-k]").forEach(th=>{
@@ -1456,9 +1532,37 @@
                     preview.style.display="none"
                 }
             })
+            const box=modal.querySelector(".erank-box")
+            const toggle=modal.querySelector("#erank-theme-toggle")
 
+            const savedTheme=localStorage.getItem("erank_theme")||"dark"
+            if(savedTheme==="dark"){
+                box.classList.add("erank-dark")
+                toggle.textContent="☀️ Light"
+            }
+            toggle.onclick=()=>{
+                const dark=box.classList.toggle("erank-dark")
+                localStorage.setItem("erank_theme",dark?"dark":"light")
+                toggle.textContent=dark?"☀️ Light":"🌙 Dark"
+            }
             modal.querySelector("#erank-close").onclick=()=>modal.remove()
          }
+
+        function norm(v,min,max){
+            if(max===min) return 0
+            return (v-min)/(max-min)
+        }
+
+        function salesColor(v,min,max){
+            const t=norm(v,min,max)
+            return `rgba(76,175,80,${0.15+0.6*t})`
+        }
+
+        function convColor(v,min,max){
+            const t=norm(v,min,max)
+            return `rgba(${Math.round(33*(1-t))},${Math.round(150+80*t)},243,${0.15+0.6*t})`
+        }
+
 
         function toFullImg(url){
             if(!url) return url
