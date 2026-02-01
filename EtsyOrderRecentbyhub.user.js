@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      4.64
+// @version      4.66
 // @description  Etsy Order Recent
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -683,14 +683,14 @@
             checkCheckboxesFromLocalStorage('orderNumbersWait');
             btnAwait.style.backgroundColor = 'olive';
         });
-        const btnDelay= document.createElement('button');
+        /*const btnDelay= document.createElement('button');
         btnDelay.textContent = 'Delay';
         btnDelay.className = btnApprove.className;
         btnDelay.style.cssText = btnApprove.style.cssText + 'border-right: none;';
         btnDelay.addEventListener('click', () => {
             checkCheckboxesFromLocalStorage('orderNumbersDelay');
             btnDelay.style.backgroundColor = 'blue';
-        });
+        });*/
         const btnClear = document.createElement('button');
         btnClear.textContent = 'ClearApp';
         btnClear.className = btnApprove.className;
@@ -709,7 +709,7 @@
             btnClearwait.style.backgroundColor = 'red';
             btnAwait.style.backgroundColor = '';
         });
-        const btnCleardelay = document.createElement('button');
+        /*const btnCleardelay = document.createElement('button');
         btnCleardelay.textContent = 'ClearDelay';
         btnCleardelay.className = btnApprove.className;
         btnCleardelay.style.cssText = btnApprove.style.cssText + 'border-right: none;';
@@ -717,11 +717,11 @@
             localStorage.removeItem('orderNumbersDelay');// sadece localStorage'ı temizle
             btnCleardelay.style.backgroundColor = 'red';
             btnAwait.style.backgroundColor = '';
-        });
-        container.insertBefore(btnCleardelay, container.firstChild);
+        });*/
+        //container.insertBefore(btnCleardelay, container.firstChild);
         container.insertBefore(btnClearwait, container.firstChild);
         container.insertBefore(btnClear, container.firstChild);
-        container.insertBefore(btnDelay, container.firstChild);
+        //container.insertBefore(btnDelay, container.firstChild);
         container.insertBefore(btnAwait, container.firstChild);
         container.insertBefore(btnApprove, container.firstChild);
     };
@@ -894,7 +894,7 @@
             const addressText = mapAdressNode.cloneNode(true);
             addressText.querySelector('button')?.remove();
             const address = addressText.textContent.trim();
-            const targetMapUrl = `https://www.google.com/maps/dir/${encodeURIComponent(address)}`;
+            const targetMapUrl = `https://www.google.com/maps/place/${encodeURIComponent(address)}`;
             window.open(targetMapUrl, "_blank");
         });
     }
