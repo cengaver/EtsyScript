@@ -65,7 +65,7 @@
             });
             viewsElements.forEach(el => {
                 //console.log(el.innerText);
-                if (el.innerText.includes("visits")) {
+                if (el.innerText.includes("visit")) {
                     const match = el.innerText.match(/\d+/);
                     if (match) {
                         const count = Number(match[0]);
