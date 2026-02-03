@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Sum Sales Listings
 // @namespace    https://github.com/cengaver
-// @version      0.5
+// @version      1.0
 // @description  Etsy Sum Sales Listings
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings*
@@ -27,6 +27,8 @@
         items.forEach(item => {
             const salesElements = item.querySelectorAll('.card-meta-row-item.text-gray-lighter.selected-color');
             const renewElements = item.querySelectorAll('.card-meta-row.card-meta-row-status.text-gray-lighter');
+            const viewsElements = item.querySelectorAll('.card-meta-row.wt-mb-xs-2 > div:nth-child(1)');
+            const favorElements = item.querySelectorAll('.card-meta-row.wt-mb-xs-2 > div:nth-child(2)');
             salesElements.forEach(el => {
                  //console.log(el.innerText);
                 if (el.innerText.includes("sale")) {
@@ -59,6 +61,58 @@
                 if (el.innerText.includes("Expires")) {
                     el.style.backgroundColor = "red";
                     el.style.color = "#fff";
+                }
+            });
+            viewsElements.forEach(el => {
+                //console.log(el.innerText);
+                if (el.innerText.includes("visits")) {
+                    const match = el.innerText.match(/\d+/);
+                    if (match) {
+                        const count = Number(match[0]);
+                        //console.log(count);
+                        if (count == 0) {
+                            el.style.backgroundColor = "red";
+                            el.style.color = "#fff";
+                        } else if (count == 1) {
+                            el.style.backgroundColor = "orange";
+                            el.style.color = "#000";
+                        } else if (count > 1 && count <= 10) {
+                            el.style.backgroundColor = "yellow";
+                            el.style.color = "#000";
+                        } else if (count > 10 && count <= 100) {
+                            el.style.backgroundColor = "lightgreen";
+                            el.style.color = "#000";
+                        } else if (count > 100) {
+                            el.style.backgroundColor = "green";
+                            el.style.color = "#fff";
+                        }
+                    }
+                }
+            });
+            favorElements.forEach(el => {
+                //console.log(el.innerText);
+                if (el.innerText.includes("favorite")) {
+                    const match = el.innerText.match(/\d+/);
+                    if (match) {
+                        const count = Number(match[0]);
+                        //console.log(count);
+                        if (count == 0) {
+                            el.style.backgroundColor = "red";
+                            el.style.color = "#fff";
+                        } else if (count == 1) {
+                            el.style.backgroundColor = "orange";
+                            el.style.color = "#000";
+                        } else if (count > 1 && count <= 3) {
+                            el.style.backgroundColor = "yellow";
+                            el.style.color = "#000";
+                        } else if (count > 3 && count <= 10) {
+                            el.style.backgroundColor = "lightgreen";
+                            el.style.color = "#000";
+                        } else if (count > 10) {
+                            el.style.backgroundColor = "green";
+                            el.style.color = "#fff";
+                        }
+                    }
                 }
             });
         });
