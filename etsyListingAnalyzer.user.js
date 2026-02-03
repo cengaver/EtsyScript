@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.34
+// @version      1.35
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -139,7 +139,7 @@
         badge.textContent=level.icon;
         badge.style.cssText=`
             margin-left:8px;
-            font-size:30px;
+            font-size:18px;
             cursor:pointer;
             color:${level.color};
         `;
