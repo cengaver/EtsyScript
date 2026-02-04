@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.01
+// @version      4.03
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -521,16 +521,16 @@
         thead th{
           position:sticky;top:0;background:#f6f6f6;
           cursor:pointer;border-bottom:1px solid #ccc;
-          padding:8px;font-size:12px;white-space:nowrap
+          padding:8px;font-size:14px;white-space:nowrap
         }
         tbody td{
           border-bottom:1px solid #eee;
-          padding:8px;font-size:12px;vertical-align:middle
+          padding:8px;font-size:16px;vertical-align:middle
         }
         tbody tr:hover{background:#fafafa}
         #erank-table-modal img{
-          width:42px;
-          height:42px;
+          width:72px;
+          height:72px;
           object-fit:cover;
           border-radius:6px;
         }
@@ -607,12 +607,22 @@
        .erank-dark td[style]{
         box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
        }
-
+       .erank-dark span[style*="border-radius"]{
+         box-shadow:0 0 0 1px rgba(255,255,255,.15);
+       }
        /* preview dark uyumu */
        .erank-preview{
          background:#111;
        }
-
+       .erank-filter-row input{
+         padding:2px 4px;
+         font-size:11px;
+       }
+       .erank-dark .erank-filter-row input{
+         background:#1f1f1f;
+         color:#eee;
+         border:1px solid #333;
+       }
     `);
 
     // Config yapısı
@@ -1403,10 +1413,12 @@
         };
 
         function openErankTableModal(){
-           if(window.document.getElementById("erank-table-modal")) return
+            if(window.document.getElementById("erank-table-modal")) return
 
-           let data=getAllErankItems()
-           let sortKey=null, sortDir=1
+            let data=getAllErankItems()
+            const stats = buildStats(data)
+            let filteredData=[...data]
+            let sortKey=null, sortDir=1
 
            const modal=window.document.createElement("div")
            modal.id="erank-table-modal"
@@ -1417,7 +1429,14 @@
                 <strong>eRank Cache</strong>
                 <input id="erank-search" placeholder="Title ara…">
                 <span id="erank-count"></span>
-
+                <span class="erank-filter-row">Sales:
+                  <input id="sales-min" placeholder="min" type="number" style="width:60px">
+                  <input id="sales-max" placeholder="max" type="number" style="width:60px">
+                </span>
+                <span class="erank-filter-row">Age:
+                  <input id="age-min" placeholder="min" type="number" style="width:50px">
+                  <input id="age-max" placeholder="max" type="number" style="width:50px">
+                </span>
                 <button id="erank-theme-toggle"
                   style="margin-left:auto;padding:4px 10px;cursor:pointer">
                   🌙 Dark
@@ -1433,6 +1452,7 @@
                      <th>Img</th>
                      <th data-k="title">Title</th>
                      <th data-k="sales">Sales</th>
+                     <th data-k="rank">Rank</th>
                      <th data-k="views">Views</th>
                      <th data-k="favorers">Fav</th>
                      <th data-k="quantity">Qty</th>
@@ -1451,56 +1471,89 @@
            const count=modal.querySelector("#erank-count")
            const search=modal.querySelector("#erank-search")
 
-           function render(rows){
-             body.innerHTML=rows.map(d=>`
-               <tr>
-                 <td>
-                   ${d.link
-                     ? `<a href="${d.link}" target="_blank" class="erank-img-link">
-                          <img src="${d.img||""}" data-previews="${toFullImg(d.img||"")}">
-                        </a>`
-                     : `<img src="${d.img||""}" data-previews="${toFullImg(d.img||"")}">`
-                   }
-                 </td>
-                 <td>${d.title||"-"}</td>
-                 <td class="num"
-                   style="background:${salesColor(d.sales||0,salesMin,salesMax)}">
-                   ${d.sales??""}
-                 </td>
-                 <td class="num">${d.views??""}</td>
-                 <td class="num">${d.favorers??""}</td>
-                 <td class="num">${d.quantity??""}</td>
-                 <td class="num"
-                   style="background:${convColor(d.est_conversion_rate||0,convMin,convMax)}">
-                   ${d.est_conversion_rate??""}
-                 </td>
-                 <td class="num">${d.age??""}</td>
-               </tr>
-             `).join("")
-             count.textContent=`(${rows.length})`
+           function render(rows,stats){
+               body.innerHTML = rows.map(d => {
+                   const s=trendScore(d,stats)
+                   const b=trendBadge(s,p50,p75,p90)
+                   return `
+                 <tr>
+                   <td>
+                     ${d.link
+                       ? `<a href="${d.link}" target="_blank" class="erank-img-link">
+                            <img src="${toFullImg(d.img||"")}" data-previews="${toFullImg(d.img||"",200)}">
+                          </a>`
+                       : `<img src="${toFullImg(d.img||"")}" data-previews="${toFullImg(d.img||"",200)}">`
+                     }
+                   </td>
+
+                   <td>${d.title||"-"}</td>
+
+                   <td class="num"
+                     style="background:${salesColor(d.sales||0,salesMin,salesMax)}">
+                     ${d.sales??""}
+                   </td>
+                   <td>
+                    <span style="
+                      display:inline-flex;
+                      align-items:center;
+                      gap:4px;
+                      padding:2px 8px;
+                      border-radius:12px;
+                      font-size:11px;
+                      font-weight:600;
+                      line-height:1;
+                      white-space:nowrap;
+                      background:${b.c};
+                      color:#fff">
+                      ${b.t}
+                    </span>
+                   </td>
+                   <td class="num">${d.views??""}</td>
+                   <td class="num">${d.favorers??""}</td>
+                   <td class="num">${d.quantity??""}</td>
+
+                   <td class="num"
+                     style="background:${convColor(d.est_conversion_rate||0,convMin,convMax)}">
+                     ${d.est_conversion_rate??""}
+                   </td>
+
+                   <td class="num">${d.age??""}</td>
+                 </tr>
+               `
+             }).join("")
+
+             count.textContent = `(${rows.length})`
            }
+
            const salesVals=data.map(d=>Number(d.sales)||0)
            const convVals=data.map(d=>Number(d.est_conversion_rate)||0)
+
            const salesMin=Math.min(...salesVals)
            const salesMax=Math.max(...salesVals)
            const convMin=Math.min(...convVals)
            const convMax=Math.max(...convVals)
-           render(data)
+           const trendScores=data.map(d=>trendScore(d,stats)).sort((a,b)=>a-b)
+           const p50=trendScores[Math.floor(trendScores.length*0.50)]
+           const p75=trendScores[Math.floor(trendScores.length*0.75)]
+           const p90=trendScores[Math.floor(trendScores.length*0.90)]
 
-           modal.querySelectorAll("thead th[data-k]").forEach(th=>{
+           render(data,stats)
+
+            modal.querySelectorAll("thead th[data-k]").forEach(th=>{
              th.onclick=()=>{
                const k=th.dataset.k
                sortDir=(sortKey===k)?-sortDir:1
                sortKey=k
                data.sort((a,b)=>(Number(a[k]||0)-Number(b[k]||0))*sortDir)
-               render(data)
+               render(data,stats)
              }
            })
 
-           search.oninput=()=>{
-             const q=search.value.toLowerCase()
-             render(data.filter(d=>(d.title||"").toLowerCase().includes(q)))
-           }
+            search.oninput=()=>{
+                const q=search.value.toLowerCase()
+                filteredData=data.filter(d=>(d.title||"").toLowerCase().includes(q))
+                applyFilters()
+            }
 
            const preview=window.document.createElement("div")
            preview.className="erank-preview"
@@ -1545,12 +1598,107 @@
                 localStorage.setItem("erank_theme",dark?"dark":"light")
                 toggle.textContent=dark?"☀️ Light":"🌙 Dark"
             }
+            function applyFilters(){
+                const sMin=getNum("sales-min")
+                const sMax=getNum("sales-max")
+                const aMin=getNum("age-min")
+                const aMax=getNum("age-max")
+
+                let rows=data.filter(d=>{
+                    const s=Number(d.sales)||0
+                    const a=Number(d.age)||0
+
+                    if(!Number.isNaN(sMin) && s<sMin) return false
+                    if(!Number.isNaN(sMax) && s>sMax) return false
+                    if(!Number.isNaN(aMin) && a<aMin) return false
+                    if(!Number.isNaN(aMax) && a>aMax) return false
+
+                    return true
+                })
+                filteredData=rows
+                render(filteredData,stats)
+            }
+
+            ["sales-min","sales-max","age-min","age-max"].forEach(id=>{
+                const el=window.document.getElementById(id)
+                if(el) el.oninput=applyFilters
+            })
+
             modal.querySelector("#erank-close").onclick=()=>modal.remove()
          }
+
+        function buildStats(data){
+            const num=(v)=>Number(v)||0
+            const arr=f=>data.map(d=>num(f(d)))
+
+            return {
+                salesMin:Math.min(...arr(d=>d.sales)),
+                salesMax:Math.max(...arr(d=>d.sales)),
+
+                viewsMin:Math.min(...arr(d=>d.views)),
+                viewsMax:Math.max(...arr(d=>d.views)),
+
+                favMin:  Math.min(...arr(d=>d.favorers)),
+                favMax:  Math.max(...arr(d=>d.favorers)),
+
+                convMin: Math.min(...arr(d=>d.est_conversion_rate)),
+                convMax: Math.max(...arr(d=>d.est_conversion_rate)),
+
+                spdMin:  Math.min(...arr(d=>salesPerDay(d))),
+                spdMax:  Math.max(...arr(d=>salesPerDay(d)))
+
+            }
+        }
+        function getNum(id){
+            const v=window.document.getElementById(id)?.value
+            return v===""||v==null ? NaN : Number(v)
+        }
+
+        function logNorm(v,min,max){
+            if(v<=0) return 0
+            return (Math.log(v)-Math.log(min+1)) /
+                (Math.log(max+1)-Math.log(min+1))
+        }
+
+        function trendBadge(score,p50,p75,p90){
+            //return {t:score,c:"#6b7280"}
+            if(score>=p90) return {t:"🔥 Breakout",c:"#15803d"}
+            if(score>=p75) return {t:"🚀 Rising",c:"#f44336"}
+            if(score>=p50) return {t:"👀 Watch",c:"#ca8a04"}
+            return {t:"⏸ Cold",c:"#b91c1c"}
+        }
+
+        function trendScore(d,stats){
+            if(d.age<3||d.age>60) return 0
+
+            const sales = logNorm(d.sales,stats.salesMin,stats.salesMax)
+            const spd   = logNorm(d.sales/(d.age||1),stats.spdMin,stats.spdMax)
+            const conv  = norm(d.est_conversion_rate,stats.convMin,stats.convMax)
+            const views = logNorm(d.views,stats.viewsMin,stats.viewsMax)
+            const favScore =norm(d.favorers,stats.favMin,stats.favMax)
+
+            return (
+                sales*0.35 +
+                spd  *0.35 +
+                conv *0.15 +
+                views*0.10+
+                favScore * 0.05
+            )
+        }
+
+        function salesPerDay(d){
+            if(!d.age||d.age<=0) return 0
+            return d.sales/d.age
+        }
 
         function norm(v,min,max){
             if(max===min) return 0
             return (v-min)/(max-min)
+        }
+
+        function invNorm(v,min,max){
+            if(max===min) return 1
+            return 1-(v-min)/(max-min)
         }
 
         function salesColor(v,min,max){
@@ -1564,9 +1712,9 @@
         }
 
 
-        function toFullImg(url){
+        function toFullImg(url,size=120){
             if(!url) return url
-            return url.replace(/il_\d+x\d+|il_\d+xN|il_\d+x\d+_|\b\d+x\d+\b/,"il_fullxfull")
+            return url.replace(/il_\d+x\d+|il_\d+xN|il_\d+x\d+_|\b\d+x\d+\b/,`il_${size}x${size}`)
         }
 
         async function getErankButtons(){
@@ -1583,7 +1731,8 @@
                 const k=localStorage.key(i)
                 if(k.startsWith("erank_")){
                     try{
-                        rows.push(JSON.parse(localStorage.getItem(k)))
+                        const row = JSON.parse(localStorage.getItem(k));
+                        if (row && "img" in row) rows.push(row);
                     }catch(e){}
                 }
             }
