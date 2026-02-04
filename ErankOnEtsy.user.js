@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.03
+// @version      4.04
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1670,6 +1670,7 @@
 
         function trendScore(d,stats){
             if(d.age<3||d.age>60) return 0
+            if(d.sales==0) return 0
 
             const sales = logNorm(d.sales,stats.salesMin,stats.salesMax)
             const spd   = logNorm(d.sales/(d.age||1),stats.spdMin,stats.spdMax)
@@ -1678,11 +1679,11 @@
             const favScore =norm(d.favorers,stats.favMin,stats.favMax)
 
             return (
-                sales*0.35 +
-                spd  *0.35 +
+                sales*0.55 +
+                spd *0.15 +
                 conv *0.15 +
-                views*0.10+
-                favScore * 0.05
+                views*0.05+
+                favScore * 0.10
             )
         }
 
