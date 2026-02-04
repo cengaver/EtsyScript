@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.04
+// @version      4.05
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1546,6 +1546,7 @@
                sortKey=k
                data.sort((a,b)=>(Number(a[k]||0)-Number(b[k]||0))*sortDir)
                render(data,stats)
+               applyFilters()
              }
            })
 
