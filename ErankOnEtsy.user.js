@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.05
+// @version      4.11
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1396,7 +1396,7 @@
                     est_conversion_rate: response.data.stats.est_conversion_rate.value
                 };
                 safeSetItem(cacheKey, JSON.stringify(erankData));
-                if ((age >= 1 && age <= 50) && ( sales / 1.5 > age) ){
+                if ((age >= 1 && age <= 50) && ( sales / 1.3 > age) ){
                     //console.log("age",age);
                     //console.log(response.data);
                     await logToGoogleSheets(erankLogData);
@@ -1486,7 +1486,36 @@
                      }
                    </td>
 
-                   <td>${d.title||"-"}</td>
+                   <td>
+                     ${
+                       d.dnoValue
+                       ? `
+                         <a href="${d.gDrive||"#"}"
+                            title="${(d.teamname||"-")+" - "+(d.dnoValue||"-")}"
+                            target="_blank"
+                            style="text-decoration:none;margin-left:6px;">
+                            ❤️
+                         </a>
+                         `
+                       : `
+                   <div class="heartWrapper"
+                        data-currenturl="${d.link}"
+                        data-title="${d.title}"
+                        data-img="${toFullImg(d.img||"",200)}"
+                        data-sales="${d.sales}"
+                        data-age="${d.age}"
+                        data-tags="${encodeURIComponent(JSON.stringify(d.tags||[]))}"
+                        style="display:inline-block;position:relative;margin-left:6px;">
+                     <a href="#"
+                        title="Listeye EKLE!"
+                        style="text-decoration:none;cursor:cell;">
+                        🤍
+                     </a>
+                   </div>
+                         `
+                     }
+                     ${d.title||"-"}
+                   </td>
 
                    <td class="num"
                      style="background:${salesColor(d.sales||0,salesMin,salesMax)}">
@@ -1524,6 +1553,28 @@
 
              count.textContent = `(${rows.length})`
            }
+            window.document.addEventListener("click",async e=>{
+                const w=e.target.closest(".heartWrapper")
+                if(!w)return
+                e.preventDefault()
+
+                const a=w.querySelector("a")
+                a.style.backgroundColor="orange"
+
+                await saveToGoogleSheet(
+                    config.sheetId,
+                    w.dataset.currenturl,
+                    w.dataset.title,
+                    w.dataset.img,
+                    w.dataset.sales,
+                    w.dataset.age,
+                    JSON.parse(decodeURIComponent(w.dataset.tags))
+                )
+
+                a.textContent="❤️"
+                a.style.backgroundColor=null
+            })
+
 
            const salesVals=data.map(d=>Number(d.sales)||0)
            const convVals=data.map(d=>Number(d.est_conversion_rate)||0)
@@ -1733,11 +1784,21 @@
                 const k=localStorage.key(i)
                 if(k.startsWith("erank_")){
                     try{
-                        const row = JSON.parse(localStorage.getItem(k));
-                        if (row && "img" in row) rows.push(row);
+                        const row=JSON.parse(localStorage.getItem(k))
+                        if(row&&"img"in row){
+                            const id=k.slice(6)
+                            if(config.sheetId!==""){
+                                const {dnoValue,gDrive,teamname}=findEValueById(id)
+                                row.dnoValue=dnoValue
+                                row.gDrive=gDrive
+                                row.teamname=teamname
+                            }
+                            rows.push(row)
+                        }
                     }catch(e){}
                 }
             }
+
             return rows
         }
 
