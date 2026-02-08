@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.35
+// @version      1.36
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -48,7 +48,7 @@
         return shop;
     }
 
-    const SENT_KEY="etsy_analyzer_sent_v5";
+    const SENT_KEY="etsy_analyzer_sent_v6";
     const sent=JSON.parse(localStorage.getItem(SENT_KEY)||"{}");
 
     const seen=new Set();
