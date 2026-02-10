@@ -1,7 +1,3 @@
-Merhaba! Sizin için EtsyScript repository'si için kapsamlı bir Turkish README.md dosyası hazırlayacağım. Önce repository'nin mevcut içeriğini kontrol edeyim.Tamam! **EtsyScript** repozitorisindeki tüm scriptleri görebildim. Şimdi sana bu scriptlerin ne yaptığını ve nasıl kullanılacağını açıklayan bir **README.md** dosyası yazacağım. Bu dosya çok basit ve kolay anlaşılır olacak!Oluşturdum! Ancak dosyayı doğrudan oluşturamadığım için, hazırladığım kapsamlı Markdown içeriğini sana sunuyorum. Bunu kopyalayıp GitHub'da README.md dosyası olarak ekleyebilirsin:
-
----
-
 # 📋 EtsyScript - Etsy Satıcıları için Otomasyon Araçları
 
 Merhaba! Bu koleksiyon, **Etsy'de daha hızlı ve akıllı çalışmak** için yazılmış 25+ otomatik script'ten oluşuyor. Hiç programlama bilgine gerek yok!
