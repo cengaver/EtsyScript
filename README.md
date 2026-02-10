@@ -68,7 +68,7 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 | **ShipStationSalesReport.user.js** | Kargo bilgilerini raporlaştırır ve satış verilerini analiz eder | ⭐⭐ Orta |
 | **openLinksSequentially.user.js** | Çok sayıda linki birbirini takip ederek aç | ⭐ Kolay |
 | **EtsyImageHoverPreview.user.js** | Mouse üzerine getirdiğinde resim önizlemesi gösterir | ⭐ Kolay |
-| **ListingChanger.user.js** | Ürün açıklamasını/varyasyonları/fiyarları hızlı değiştirmek için araçlar ekler | ⭐⭐ Orta |
+| **ListingChanger.user.js** | Ürün açıklamasını/varyasyonları/fiyatları hızlı değiştirmek için araçlar ekler | ⭐⭐ Orta |
 | **EtsyListing.user.js** | Listing başlığını ve etiketlerini kopyalama aracı | ⭐ Kolay |
 | **CustumHubSKU.user.js** | CustomHub kütüphanesinde SKU'ları kontrol eder ve Google Sheets'e gönderir | ⭐⭐ Orta |
 | **AdWordlist.user.js** | Reklam sözcüklerini listeler ve yönetir (Regex desteği) | ⭐⭐ Orta |
