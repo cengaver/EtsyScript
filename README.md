@@ -58,8 +58,6 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 
 ## 🚀 Script'ler Hakkında (Kısaca)
 
-## 🚀 Script'ler Hakkında (Kısaca)
-
 | Script Adı | Ne Yapıyor | Kullanıcı Seviyesi |
 |------------|-----------|-------------------|
 | **EtsyFinans.user.js** | Satış gelirini otomatik hesaplar, toplam kazancını ve reklam/fee yüzdelerini gösterir | ⭐ Kolay |
