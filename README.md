@@ -58,19 +58,26 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 
 ## 🚀 Script'ler Hakkında (Kısaca)
 
+## 🚀 Script'ler Hakkında (Kısaca)
+
 | Script Adı | Ne Yapıyor | Kullanıcı Seviyesi |
 |------------|-----------|-------------------|
-| **EtsyFinans.user.js** | Satış gelirini otomatik hesaplar, toplam kazancını gösterir | ⭐ Kolay |
-| **EtsyReviewMessage.user.js** | Müşteri yorumlarına hızlı cevap vermek için şablonlar ekler | ⭐ Kolay |
-| **EtsyOrderRecentbyhub.user.js** | Siparişleri kategorilere göre gruplandırır | ⭐⭐ Orta |
+| **EtsyFinans.user.js** | Satış gelirini otomatik hesaplar, toplam kazancını ve reklam/fee yüzdelerini gösterir | ⭐ Kolay |
+| **EtsyReviewMessage.user.js** | Müşteri mesajlarına hızlı cevap vermek için şablonlar ekler | ⭐ Kolay |
+| **EtsyOrderRecentbyhub.user.js** | CustomHub'daki siparişleri kategorilere göre gruplandırır ve bir sürü ek özellik katar. | ⭐⭐ Orta |
 | **ErankOnEtsy.user.js** | Ürünlerin Etsy'deki sıralamalarını gösterir (SEO analizi) | ⭐⭐ Orta |
 | **EtsyDiscountAdjust.user.js** | İndirim oranlarını hızlı hesaplar ve uygular | ⭐⭐ Orta |
-| **ShipStationSalesReport.user.js** | Kargo bilgilerini raporlaştırır | ⭐⭐ Orta |
+| **ShipStationSalesReport.user.js** | Kargo bilgilerini raporlaştırır ve satış verilerini analiz eder | ⭐⭐ Orta |
 | **openLinksSequentially.user.js** | Çok sayıda linki birbirini takip ederek aç | ⭐ Kolay |
 | **EtsyImageHoverPreview.user.js** | Mouse üzerine getirdiğinde resim önizlemesi gösterir | ⭐ Kolay |
-| **ListingChanger.user.js** | Ürün açıklamasını hızlı değiştirmek için araçlar ekler | ⭐⭐ Orta |
+| **ListingChanger.user.js** | Ürün açıklamasını/varyasyonları/fiyarları hızlı değiştirmek için araçlar ekler | ⭐⭐ Orta |
+| **EtsyListing.user.js** | Listing başlığını ve etiketlerini kopyalama aracı | ⭐ Kolay |
+| **CustumHubSKU.user.js** | CustomHub kütüphanesinde SKU'ları kontrol eder ve Google Sheets'e gönderir | ⭐⭐ Orta |
+| **AdWordlist.user.js** | Reklam sözcüklerini listeler ve yönetir (Regex desteği) | ⭐⭐ Orta |
+| **etsyListingAnalyzer.user.js** | Etsy listinglerini inline olarak analiz eder ve raporlar | ⭐⭐⭐ İleri |
+| **EtsySumPurchases.user.js** | Satın alma işlemlerini analiz eder ve harcama bilgilerini gösterir | ⭐⭐ Orta |
 
-> 💡 **İlk başlayanlar için:** EtsyFinans, openLinksSequentially ve EtsyImageHoverPreview ile başlayın!
+> 💡 **İlk başlayanlar için:** EtsyFinans, openLinksSequentially, EtsyImageHoverPreview ve EtsyListing ile başlayın!
 
 ---
 
