@@ -41,7 +41,7 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 ### Adım 2: Script'i Kopyala
 
 1. GitHub'da bir script dosyasına tıkla (örnek: `EtsyFinans.user.js`)
-2. "Raw" butonuna bas (aslında Raw a basınca otomatik yükler, eğer yüklmeze soraki adım.)
+2. "Raw" butonuna bas (aslında Raw a basınca otomatik yükler, eğer yüklmeze sonraki adım.)
 3. Sayfanın tamamını seç (Ctrl+A veya Cmd+A)
 4. Kopyala (Ctrl+C veya Cmd+C)
 
