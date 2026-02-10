@@ -27,6 +27,9 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 1. [Tampermonkey Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobp775) linkini aç
 2. "Chrome'a ekle" butonuna bas
 3. "Uzantıyı ekle" diyerek onayla
+4. Uzantılardan geliştirici modunu aç
+5. Yine uzantılardan tampermonkey ayrıntılarına tıklayıp "Kullanıcı komut dosyalarına izin ver"
+6. Tampermonkey ayarlar dan Yapılandırma modu: Gelişmiş seç
 
 **Firefox için:**
 1. [Tampermonkey Firefox](https://addons.mozilla.org/firefox/addon/tampermonkey/) linkini aç
@@ -38,7 +41,7 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 ### Adım 2: Script'i Kopyala
 
 1. GitHub'da bir script dosyasına tıkla (örnek: `EtsyFinans.user.js`)
-2. "Raw" butonuna bas
+2. "Raw" butonuna bas (aslında Raw a basınca otomatik yükler, eğer yüklmeze soraki adım.)
 3. Sayfanın tamamını seç (Ctrl+A veya Cmd+A)
 4. Kopyala (Ctrl+C veya Cmd+C)
 
@@ -79,10 +82,9 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 
 **Adımlar:**
 1. Script'i kurunca Tampermonkey'deki listede görürsün
-2. Etsy hesabında "Siparişlerim" (Orders) sayfasına git
-3. Sayfanın üstünde yeni bir buton görürsün: "Tüm Satışları Hesapla"
-4. Buna tıkla
-5. Sonuç: Seçtiğin tarihler arasında kaç lira kazandığını göreceksin ✨
+2. Etsy hesabında "Finans /Monthley Statements" sayfasına git
+3. Sayfayı yenile
+4. Sonuç: Seçtiğin ay kaç lira kazandığını,reklam ve fee yüzdelerini göreceksin ✨
 
 ---
 
@@ -92,11 +94,12 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 
 **Adımlar:**
 1. EtsyReviewMessage script'i kur
-2. Etsy'de "Yorumlar" (Reviews) sayfasına git
-3. Bir yoruma cevap vermek istediğinde, yanında "Şablon Ekle" butonu göreceksin
-4. Beğendiğin cevap şablonunu seç
-5. İhtiyacına göre düzenle ve gönder
-6. **Zaman kazan:** Her yorum için 5 dakika yerine 30 saniye! ⚡
+2. Etsy'de "Orders/comlated delivered" sayfasına git. Review mesajı göndermek istiyorsan şablonu tampermonkey simgesinden ayarlarından mesaj şablonları ayarla.
+3. Sırayla review mesajı gmndermek için ctrl+spaca (mesaj yazar) , ctrl+alt (mesaj gönderir), ctrl+ sağ tuş(diğer siparişe geçer)
+4. Orders sayfasında müşteri mesajını seçince 10 çeşit mesaj gönderebilirsin. ctrl + sayı. 
+5. Beğendiğin cevap şablonunu seç
+6. İhtiyacına göre düzenle ve gönder
+7. **Zaman kazan:** Her yorum için 5 dakika yerine 30 saniye! ⚡
 
 ---
 
@@ -106,10 +109,10 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 
 **Adımlar:**
 1. AdWordlist script'i kur
-2. Ürün listelerinizin bulunduğu sayfaya git
-3. Sayfanın altında "Arama Kelimeleri" (Keywords) başlıklı yeni bir bölüm görürsün
-4. Her ürünün hangi kelimelerle aranıp bulunduğunu görebilirsin
-5. **Fayda:** Hangi kelimeler daha iyi sıralamaya sahip bilirsin 🎯
+2. Ürün reklamlarnın bulunduğu sayfaya git
+3. Sayfasaki listingleri aç.
+4. ctrl+alt otomatik gereksiz kelimeleri kapatır.
+5. **Fayda:** gereksiz harcama yapan kelimeleri kapatmış olursun. Ayarlarından bunları düzenleyebilirsin. Biliyorsan regex de yapabilirsin. 🎯
 
 ---
 
@@ -125,27 +128,13 @@ Script'ler Tampermonkey adlı tarayıcı eklentisi ile çalışır. Bu eklenti C
 
 ---
 
-## ⚙️ Gerekli Ayarlamalar
-
-### Konfigürasyon Dosyası (config.json)
-
-Bazı script'ler ayar dosyası kullanır. Bunu nasıl kullanacağını öğrenmek için:
-
-1. **config.json** dosyasını açıp oku
-2. İçinde senin bilgilerine uygun ayarlar bulunur
-3. Script içine bu dosyayı entegre etmen gerekebilir
-
-> ⚠️ **Önemli:** Duyarlı bilgiler (şifreler vs.) config.json'a yazma!
-
----
-
 ## 🐛 Sorun Giderme
 
 **Soru: Script çalışmıyor, hiçbir şey olmuyor?**
 - ✅ Tampermonkey kurulu mu? (Tarayıcı simgelerine bak)
 - ✅ Script'i doğru mu kopyaladın? (Tüm kodu kopyala, başından sonuna)
-- ✅ Tarayıcıyı yeniledin mi? (F5 tuşu)
-- ✅ Doğru sayfadamı sın? (EtsyFinans sadece Orders sayfasında çalışır)
+- ✅ Tarayıcıyı yeniledin mi? Burası çok önemli.  (F5 tuşu)
+- ✅ Doğru sayfadamı sın? (Herbiri sayfasında çalışır)
 
 **Soru: Script'ler benim verilerimi çalıyor mu?**
 - ❌ Hayır! Tüm script'ler sadece **tarayıcında çalışır**
