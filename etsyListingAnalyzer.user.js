@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.36
+// @version      1.40
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -17,7 +17,7 @@
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/etsyListingAnalyzer.user.js
 // ==/UserScript==
 
-(function(){
+(async function(){
     'use strict';
 
     GM.registerMenuCommand("⚙️ Sheet Url Ayarla", async () => {
@@ -43,12 +43,27 @@
         }
     });
 
+    GM.registerMenuCommand("⚙️ Versiyon", async () => {
+        const current_version = await getVersion();
+        const ver = prompt(" Versiyon Numarası:" ,current_version);
+        if (ver) {
+            await GM.setValue("version", ver.trim());
+            alert("✅ Kaydedildi.");
+        }
+    });
+
     async function getShopName() {
         const shop = await GM.getValue("shop_name", "");
         return shop;
     }
 
-    const SENT_KEY="etsy_analyzer_sent_v6";
+    async function getVersion() {
+        const ver = await GM.getValue("version", "7");
+        return ver;
+    }
+
+    const version_number = await getVersion();
+    const SENT_KEY="etsy_analyzer_sent_v"+version_number;
     const sent=JSON.parse(localStorage.getItem(SENT_KEY)||"{}");
 
     const seen=new Set();
