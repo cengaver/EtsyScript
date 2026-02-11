@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.79
+// @version      1.80
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -739,8 +739,8 @@
         const orderName = document.querySelector("#order-details-header-text > span")?.innerText;
         if (!orderName) return;
         const userName = orderName.replace("Order from ", "").split(" ")[0];
-        const capitalizedUserName = userName[0].toUpperCase() + userName.slice(1).toLowerCase();
-
+        let capitalizedUserName = userName[0].toUpperCase() + userName.slice(1).toLowerCase();
+        capitalizedUserName = capitalizedUserName == "Sign" ? "" : capitalizedUserName;
         const savedMessage = config[messageKey];
         if (!savedMessage) return;
 
