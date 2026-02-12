@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.40
+// @version      1.41
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -220,9 +220,9 @@
         badgeDiv.appendChild(badge);
         const target = actions.querySelector('.wt-display-flex-xs.wt-align-items-center');
         target.appendChild(badgeDiv);
-        if(data.sales===0 && !sent[data.id]){
+        if(!sent[data.id]){
             sendToSheets(data);
-            console.log(data)
+            //console.log(data)
             sent[data.id]=Date.now();
             localStorage.setItem(SENT_KEY,JSON.stringify(sent));
         }
