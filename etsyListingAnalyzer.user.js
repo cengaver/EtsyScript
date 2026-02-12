@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.41
+// @version      1.42
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -124,6 +124,7 @@
         const age=ageFromRenew(renewDate,renewal,sales);
         const title=getTitleFromRow(card,id);
         const sku=getSkuFromRow(card,id);
+        const img=getImgFromRow(card,id);
 
         const issues=buildIssues({age,visits,favs,sales});
         const issues2=decision2({age,visits,favs,sales});
@@ -139,6 +140,7 @@
             renewal,
             issues,
             issues2,
+            img,
             shopName:shop_name,
             sheetName: 'analiz'
         }
@@ -359,6 +361,12 @@
         const span=card.querySelector('.card-meta-row-sku span');
         if(!span)return "";
         return (span.getAttribute("title")||span.textContent||"").trim();
+    }
+
+    function getImgFromRow(card){
+        const img=card.querySelector('.card-img-wrap img');
+        if(!img)return "";
+        return (img.src||"").trim();
     }
 
     function getTitleFromRow(card){
