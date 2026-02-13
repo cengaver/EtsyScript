@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.21
+// @version      4.22
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1586,8 +1586,8 @@
                     w.dataset.currenturl,
                     w.dataset.title,
                     w.dataset.img,
-                    w.dataset.sales,
-                    w.dataset.age,
+                    Number(w.dataset.sales),
+                    Number(w.dataset.age),
                     JSON.parse(decodeURIComponent(w.dataset.tags))
                 )
 
