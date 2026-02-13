@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.11
+// @version      4.13
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -973,7 +973,7 @@
                 config.authorization = cfg.bearer;
                 config.config_version = cfg.version;
                 await saveConfig();
-                //showToast('Authorization güncellendi', 'success');
+                showToast('Authorization güncellendi', 'success');
             }
 
             return config.authorization;
@@ -1355,45 +1355,52 @@
                     "x-user-agent": "erank-bx/1.0",
                 }
 
-                const { response } = await GM.xmlHttpRequest({
+                const response = await GM.xmlHttpRequest({
                     url,
                     headers,
                     responseType: "json",
                 });
-
-                if (!response.data) {
-                    console.error("eRank API error:", response.error.code, response.error.message);
+                const data = response.response?.data;
+                //console.log(data)
+                if (response.status==401) {
+                    if (!await ensureBearer()) {
+                        showToast('Erank Authorization Yüklenemedi <br>SAYFAYI YENİLEYİN!!!', 'error');
+                    }
+                    return
+                }
+                if (!data) {
+                    console.error("eRank API error:", response.error?.code, response.error?.message);
                     return {
                         error: response.error.code == 404 ? "Not found" : "Error",
                     }
                 }
-                const age = convertToNumber(response.data.stats.listing_age);
-                const sales = convertToNumber(response.data.stats.est_sales.label);
+                const age = convertToNumber(data.stats.listing_age);
+                const sales = convertToNumber(data.stats.est_sales.label);
                 const erankData = {
                     sales: sales,
                     age: age,
-                    title: response.data.title,
+                    title: data.title,
                     timestamp: now.toString(),
-                    tags: Object.keys(response.data.tags),
+                    tags: Object.keys(data.tags),
                     link: link,
                     img: imgUrl,
-                    quantity: convertToNumber(response.data.stats.quantity),
-                    views: convertToNumber(response.data.stats.views),
-                    favorers: convertToNumber(response.data.stats.favorers),
-                    est_conversion_rate: response.data.stats.est_conversion_rate.value
+                    quantity: convertToNumber(data.stats.quantity),
+                    views: convertToNumber(data.stats.views),
+                    favorers: convertToNumber(data.stats.favorers),
+                    est_conversion_rate: data.stats.est_conversion_rate.value
                 };
                 const erankLogData = {
                     id: id,
                     link: link,
                     img: imgUrl,
-                    title: response.data.title,
-                    tag: Object.keys(response.data.tags),
+                    title: data.title,
+                    tag: Object.keys(data.tags),
                     sls: sales,
                     day: age,
-                    quantity: convertToNumber(response.data.stats.quantity),
-                    views: convertToNumber(response.data.stats.views),
-                    favorers: convertToNumber(response.data.stats.favorers),
-                    est_conversion_rate: response.data.stats.est_conversion_rate.value
+                    quantity: convertToNumber(data.stats.quantity),
+                    views: convertToNumber(data.stats.views),
+                    favorers: convertToNumber(data.stats.favorers),
+                    est_conversion_rate: data.stats.est_conversion_rate.value
                 };
                 safeSetItem(cacheKey, JSON.stringify(erankData));
                 if ((age >= 1 && age <= 50) && ( sales / 1.3 > age) ){
@@ -1404,10 +1411,7 @@
                 //console.log(erankLogData);
                 return erankData;
             } catch (error) {
-               if (!await ensureBearer()) {
-                showToast('Erank Authorization Yüklenemedi', 'error');
-                }
-                //showToast('Erank Login OL', 'error');
+                showToast('Erank Login OL', 'error');
                 console.error("eRank data fetch error:", error);
             }
         };
