@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.13
+// @version      4.21
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -36,7 +36,7 @@
 (async function () {
     "use strict";
 
-   // Modern UI Styles
+    // Modern UI Styles
     GM.addStyle(`
         :root {
             --primary-color: #4285f4;
@@ -610,6 +610,18 @@
        .erank-dark span[style*="border-radius"]{
          box-shadow:0 0 0 1px rgba(255,255,255,.15);
        }
+       th.sort-active{
+         background:#2b2b2b;
+         color:#fff;
+       }
+       th.sort-active::after{
+         content:" ▴▾";
+         font-size:10px;
+         opacity:.8;
+       }
+       th.sort-active.asc::after{content:" ▲"}
+       th.sort-active.desc::after{content:" ▼"}
+
        /* preview dark uyumu */
        .erank-preview{
          background:#111;
@@ -623,6 +635,7 @@
          color:#eee;
          border:1px solid #333;
        }
+       .erank-dark th.sort-active{background:#444}
     `);
 
     // Config yapısı
@@ -630,7 +643,6 @@
         apiKeyUspto: await GM.getValue('apiKeyUspto', ''),
         sheetId: await GM.getValue('sheetId', ''),
         sheetId2: await GM.getValue('sheetId2', ''),
-        //erankUserKey: await GM.getValue('erankUserKey', ''),
         authorization: await GM.getValue('authorization', ''),
         erankKey: await GM.getValue('erankKey', ''),
         range: await GM.getValue('range', ''),
@@ -655,7 +667,7 @@
         return configLoaded;
     }
 
-       // Config yönetimi
+    // Config yönetimi
     async function loadConfig() {
         try {
             const savedConfig = await GM.getValue('Config');
@@ -686,7 +698,7 @@
 
     async function isConfigured() {
         if (!config.erankKey || !config.authorization) {
-            //showToast('Erank Account credentials missing', 'error');
+            showToast('Erank Account credentials missing', 'error');
             return false;
         }
         return true;
@@ -698,13 +710,13 @@
         }
 
         if (!config.clientEmail || !config.privateKey) {
-            //showToast('Google Service Account credentials missing', 'error');
+            showToast('Google Service Account credentials missing', 'error');
             return false;
         }
         return true;
     }
 
-   // Modern Toast Notification System
+    // Modern Toast Notification System
     function createToastContainer() {
         if (!toastContainer) {
             toastContainer = document.createElement('div');
@@ -960,11 +972,7 @@
     }
 
     async function ensureBearer() {
-        //showToast('Etsy Erank Authorization Güncelleniyor...', 'info');
-
         const localVersion = config.config_version ?? null;
-        //showToast('Local versiyon: ' + localVersion, 'info');
-
         try {
             const cfg = await fetchConfig();
             //showToast('Remote versiyon: ' + cfg.version, 'info');
@@ -990,10 +998,6 @@
         }
 
         await getErankButtons();
-        const sheetName = config.rangeLink.split("!")[0];
-        //console.log(sheetName);
-        const document = null; // use window.document instead!
-        const location = null; // use window.location instead!
         const tokenUri = "https://oauth2.googleapis.com/token";
 
         // Then call this before attempting to create JWT
@@ -1185,7 +1189,6 @@
             // Eğer link zaten varsa, işlem yapılmasın ve uyarı verilsin
             if (linkAlreadyExists) {
                 showToast(title + '\n zaten var!', 'error');
-                //alert("Bu link zaten eklenmiş.");
                 return; // İşlem sonlanır, link eklenmez
             }
             // 2. Linki en son satırın altına ekle
@@ -1269,7 +1272,6 @@
             }
             const cacheTimestampKey = `${cacheKey}_timestamp`;
             const now = Date.now();
-            //console.log("cacheKeyFetch",cacheKey);
             const cachedData = JSON.parse(localStorage.getItem(cacheKey));
             const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
 
@@ -1319,7 +1321,6 @@
             } else {
                 cacheKey = 'cachedData';
             }
-            //console.log("cacheKeyFind",cacheKey);
             const cachedData = JSON.parse(localStorage.getItem(cacheKey)) || [];
             const match = cachedData.find(row => row.id === id);
             const dnoValue = match ? match.dnoValue : null;
@@ -1343,8 +1344,6 @@
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
             if (!await isConfigured()) return;
-            console.log("authorization :", config.authorization)
-            //console.log("erankKey :", config.erankKey)
             const url = `https://members.erank.com/api/ext/listing/${id}`;
 
             try {
@@ -1361,7 +1360,6 @@
                     responseType: "json",
                 });
                 const data = response.response?.data;
-                //console.log(data)
                 if (response.status==401) {
                     if (!await ensureBearer()) {
                         showToast('Erank Authorization Yüklenemedi <br>SAYFAYI YENİLEYİN!!!', 'error');
@@ -1404,11 +1402,8 @@
                 };
                 safeSetItem(cacheKey, JSON.stringify(erankData));
                 if ((age >= 1 && age <= 50) && ( sales / 1.3 > age) ){
-                    //console.log("age",age);
-                    //console.log(response.data);
                     await logToGoogleSheets(erankLogData);
                 }
-                //console.log(erankLogData);
                 return erankData;
             } catch (error) {
                 showToast('Erank Login OL', 'error');
@@ -1420,14 +1415,21 @@
             if(window.document.getElementById("erank-table-modal")) return
 
             let data=getAllErankItems()
+            const baseData=[...data]
+            const state={
+                q:"",
+                sMin:NaN,sMax:NaN,
+                aMin:NaN,aMax:NaN,
+                rank:NaN,
+                sortKey:null,
+                sortDir:1
+            }
+
             const stats = buildStats(data)
-            let filteredData=[...data]
-            let sortKey=null, sortDir=1
+            const modal=window.document.createElement("div")
+            modal.id="erank-table-modal"
 
-           const modal=window.document.createElement("div")
-           modal.id="erank-table-modal"
-
-           modal.innerHTML=`
+            modal.innerHTML=`
            <div class="erank-box">
               <div class="erank-header">
                 <strong>eRank Cache</strong>
@@ -1441,6 +1443,18 @@
                   <input id="age-min" placeholder="min" type="number" style="width:50px">
                   <input id="age-max" placeholder="max" type="number" style="width:50px">
                 </span>
+                <span class="erank-filter-row">
+                  Rank:
+                  <select id="rank-filter">
+                    <option value="">All</option>
+                    <option value="hot">🔥 HOT</option>
+                    <option value="rising">🚀 RISING</option>
+                    <option value="stable">✅ STABLE</option>
+                    <option value="sat">⚠️ SATURATED</option>
+                    <option value="dead">❌ DEAD</option>
+                  </select>
+                </span>
+
                 <button id="erank-theme-toggle"
                   style="margin-left:auto;padding:4px 10px;cursor:pointer">
                   🌙 Dark
@@ -1469,31 +1483,29 @@
              </div>
            </div>
            `
-           window.document.body.appendChild(modal)
+            window.document.body.appendChild(modal)
+            const body=modal.querySelector("#erank-body")
+            const count=modal.querySelector("#erank-count")
+            const search=modal.querySelector("#erank-search")
 
-           const body=modal.querySelector("#erank-body")
-           const count=modal.querySelector("#erank-count")
-           const search=modal.querySelector("#erank-search")
-
-           function render(rows,stats){
-               body.innerHTML = rows.map(d => {
-                   const s=trendScore(d,stats)
-                   const b=trendBadge(s,p50,p75,p90)
-                   return `
+            function render(rows,stats){
+                body.innerHTML = rows.map(d => {
+                    const s=trendScore(d,stats)
+                    const b = trendBadgeV3(d,stats,rankIndex)
+                    return `
                  <tr>
                    <td>
                      ${d.link
-                       ? `<a href="${d.link}" target="_blank" class="erank-img-link">
+                        ? `<a href="${d.link}" target="_blank" class="erank-img-link">
                             <img src="${toFullImg(d.img||"")}" data-previews="${toFullImg(d.img||"",200)}">
                           </a>`
-                       : `<img src="${toFullImg(d.img||"")}" data-previews="${toFullImg(d.img||"",200)}">`
-                     }
+                    : `<img src="${toFullImg(d.img||"")}" data-previews="${toFullImg(d.img||"",200)}">`
+                }
                    </td>
-
                    <td>
                      ${
-                       d.dnoValue
-                       ? `
+                    d.dnoValue
+                        ? `
                          <a href="${d.gDrive||"#"}"
                             title="${(d.teamname||"-")+" - "+(d.dnoValue||"-")}"
                             target="_blank"
@@ -1501,7 +1513,7 @@
                             ❤️
                          </a>
                          `
-                       : `
+                    : `
                    <div class="heartWrapper"
                         data-currenturl="${d.link}"
                         data-title="${d.title}"
@@ -1517,7 +1529,7 @@
                      </a>
                    </div>
                          `
-                     }
+                }
                      ${d.title||"-"}
                    </td>
 
@@ -1544,19 +1556,16 @@
                    <td class="num">${d.views??""}</td>
                    <td class="num">${d.favorers??""}</td>
                    <td class="num">${d.quantity??""}</td>
-
                    <td class="num"
                      style="background:${convColor(d.est_conversion_rate||0,convMin,convMax)}">
                      ${d.est_conversion_rate??""}
                    </td>
-
                    <td class="num">${d.age??""}</td>
                  </tr>
                `
-             }).join("")
-
-             count.textContent = `(${rows.length})`
-           }
+                }).join("")
+                count.textContent = `(${rows.length})`
+            }
             window.document.addEventListener("click",async e=>{
                 const w=e.target.closest(".heartWrapper")
                 if(!w)return
@@ -1580,42 +1589,49 @@
             })
 
 
-           const salesVals=data.map(d=>Number(d.sales)||0)
-           const convVals=data.map(d=>Number(d.est_conversion_rate)||0)
+            const salesVals=data.map(d=>Number(d.sales)||0)
+            const convVals=data.map(d=>Number(d.est_conversion_rate)||0)
+            const salesMin=Math.min(...salesVals)
+            const salesMax=Math.max(...salesVals)
+            const convMin=Math.min(...convVals)
+            const convMax=Math.max(...convVals)
+            const rankIndex = buildRankIndex(baseData,stats)
 
-           const salesMin=Math.min(...salesVals)
-           const salesMax=Math.max(...salesVals)
-           const convMin=Math.min(...convVals)
-           const convMax=Math.max(...convVals)
-           const trendScores=data.map(d=>trendScore(d,stats)).sort((a,b)=>a-b)
-           const p50=trendScores[Math.floor(trendScores.length*0.50)]
-           const p75=trendScores[Math.floor(trendScores.length*0.75)]
-           const p90=trendScores[Math.floor(trendScores.length*0.90)]
-
-           render(data,stats)
+            function updateSortHeader(){
+                modal.querySelectorAll("thead th").forEach(th=>{
+                    th.classList.remove("sort-active","asc","desc")
+                    if(th.dataset.k===state.sortKey){
+                        th.classList.add("sort-active",state.sortDir>0?"asc":"desc")
+                    }
+                })
+            }
+            applyPipeline()
 
             modal.querySelectorAll("thead th[data-k]").forEach(th=>{
-             th.onclick=()=>{
-               const k=th.dataset.k
-               sortDir=(sortKey===k)?-sortDir:1
-               sortKey=k
-               data.sort((a,b)=>(Number(a[k]||0)-Number(b[k]||0))*sortDir)
-               render(data,stats)
-               applyFilters()
-             }
-           })
+                th.onclick=()=>{
+                    const k=th.dataset.k
+                    state.sortDir=(state.sortKey===k)?-state.sortDir:1
+                    state.sortKey=k
+                    applyPipeline()
+                }
+            })
 
             search.oninput=()=>{
-                const q=search.value.toLowerCase()
-                filteredData=data.filter(d=>(d.title||"").toLowerCase().includes(q))
-                applyFilters()
+                state.q=search.value.toLowerCase()
+                applyPipeline()
             }
 
-           const preview=window.document.createElement("div")
-           preview.className="erank-preview"
-           preview.innerHTML="<img>"
-           window.document.body.appendChild(preview)
-           window.document.body.addEventListener("mousemove",e=>{
+            const rankSelect=window.document.getElementById("rank-filter")
+            rankSelect.onchange=()=>{
+                state.rank=rankSelect.value
+                applyPipeline()
+            }
+
+            const preview=window.document.createElement("div")
+            preview.className="erank-preview"
+            preview.innerHTML="<img>"
+            window.document.body.appendChild(preview)
+            window.document.body.addEventListener("mousemove",e=>{
                 const t=e.target
                 if(t.tagName==="IMG" && t.dataset.previews){
                     const img=preview.querySelector("img")
@@ -1654,108 +1670,211 @@
                 localStorage.setItem("erank_theme",dark?"dark":"light")
                 toggle.textContent=dark?"☀️ Light":"🌙 Dark"
             }
-            function applyFilters(){
-                const sMin=getNum("sales-min")
-                const sMax=getNum("sales-max")
-                const aMin=getNum("age-min")
-                const aMax=getNum("age-max")
 
-                let rows=data.filter(d=>{
+            function applyPipeline(){
+                let rows=baseData
+
+                if(state.q)
+                    rows=rows.filter(d=>(d.title||"").toLowerCase().includes(state.q))
+
+                if(state.rank){
+                    rows = rows.filter(d=>{
+                        const b = trendBadgeV3(d,stats,rankIndex).t
+                        if(state.rank==="hot") return b.includes("HOT")
+                        if(state.rank==="rising") return b.includes("RISING")
+                        if(state.rank==="stable") return b.includes("STABLE")
+                        if(state.rank==="sat") return b.includes("SATURATED")
+                        if(state.rank==="dead") return b.includes("DEAD")
+
+                        return true
+                    })
+                }
+
+                rows=rows.filter(d=>{
                     const s=Number(d.sales)||0
                     const a=Number(d.age)||0
-
-                    if(!Number.isNaN(sMin) && s<sMin) return false
-                    if(!Number.isNaN(sMax) && s>sMax) return false
-                    if(!Number.isNaN(aMin) && a<aMin) return false
-                    if(!Number.isNaN(aMax) && a>aMax) return false
-
+                    if(!Number.isNaN(state.sMin)&&s<state.sMin) return false
+                    if(!Number.isNaN(state.sMax)&&s>state.sMax) return false
+                    if(!Number.isNaN(state.aMin)&&a<state.aMin) return false
+                    if(!Number.isNaN(state.aMax)&&a>state.aMax) return false
                     return true
                 })
-                filteredData=rows
-                render(filteredData,stats)
+
+                if(state.sortKey)
+                    rows=[...rows].sort((a,b)=>{
+                        let av,bv
+                        if(state.sortKey==="rank"){
+                            av=trendScore(a,stats)
+                            bv=trendScore(b,stats)
+                        }else{
+                            av=Number(a[state.sortKey]||0)
+                            bv=Number(b[state.sortKey]||0)
+                        }
+                        return (av-bv)*state.sortDir
+                    })
+
+                render(rows,stats)
+                updateSortHeader()
+            }
+
+            function readFilters(){
+                state.sMin=getNum("sales-min")
+                state.sMax=getNum("sales-max")
+                state.aMin=getNum("age-min")
+                state.aMax=getNum("age-max")
+                applyPipeline()
             }
 
             ["sales-min","sales-max","age-min","age-max"].forEach(id=>{
                 const el=window.document.getElementById(id)
-                if(el) el.oninput=applyFilters
+                if(el) el.oninput=readFilters
             })
-
             modal.querySelector("#erank-close").onclick=()=>modal.remove()
-         }
+        }
 
         function buildStats(data){
-            const num=(v)=>Number(v)||0
-            const arr=f=>data.map(d=>num(f(d)))
+            const salesArr = data.map(d=>d.sales||0).sort((a,b)=>a-b)
+            const spdArr   = data.map(d=>(d.sales||0)/(d.age||1)).sort((a,b)=>a-b)
+            const convArr  = data.map(d=>d.est_conversion_rate||0).sort((a,b)=>a-b)
+            const viewsArr = data.map(d=>d.views||0).sort((a,b)=>a-b)
+
+            const p = (arr,x)=>arr[Math.floor(arr.length*x)]||0
 
             return {
-                salesMin:Math.min(...arr(d=>d.sales)),
-                salesMax:Math.max(...arr(d=>d.sales)),
+                salesMedian: p(salesArr,0.50),
+                salesP75:    p(salesArr,0.75),
 
-                viewsMin:Math.min(...arr(d=>d.views)),
-                viewsMax:Math.max(...arr(d=>d.views)),
+                spdP20: p(spdArr,0.20),
+                spdP30: p(spdArr,0.30),
+                spdP40: p(spdArr,0.40),
+                spdP50: p(spdArr,0.50),
+                spdP75: p(spdArr,0.75),
 
-                favMin:  Math.min(...arr(d=>d.favorers)),
-                favMax:  Math.max(...arr(d=>d.favorers)),
-
-                convMin: Math.min(...arr(d=>d.est_conversion_rate)),
-                convMax: Math.max(...arr(d=>d.est_conversion_rate)),
-
-                spdMin:  Math.min(...arr(d=>salesPerDay(d))),
-                spdMax:  Math.max(...arr(d=>salesPerDay(d)))
-
+                convP30: p(convArr,0.30),
+                viewsP75:p(viewsArr,0.75)
             }
         }
+
         function getNum(id){
             const v=window.document.getElementById(id)?.value
             return v===""||v==null ? NaN : Number(v)
         }
 
-        function logNorm(v,min,max){
-            if(v<=0) return 0
-            return (Math.log(v)-Math.log(min+1)) /
-                (Math.log(max+1)-Math.log(min+1))
+        function convScore(v){
+            if(!v||v<=0) return 0.3
+            if(v<0.5) return 0.5
+            if(v<1) return 0.7
+            if(v<2) return 0.85
+            return 1
         }
 
-        function trendBadge(score,p50,p75,p90){
-            //return {t:score,c:"#6b7280"}
-            if(score>=p90) return {t:"🔥 Breakout",c:"#15803d"}
-            if(score>=p75) return {t:"🚀 Rising",c:"#f44336"}
-            if(score>=p50) return {t:"👀 Watch",c:"#ca8a04"}
-            return {t:"⏸ Cold",c:"#b91c1c"}
+        function trendBadgeV3(d,stats,rankIndex){
+            const score = trendScore(d,stats)
+            const delta = trendDelta(d,stats)
+            const age = d.age||0
+            const sales = d.sales||0
+            const spd = sales/(age||1)
+            const bucket = rankBucket(d,rankIndex)
+
+            if(sales===0 && age>30)
+                return {t:"❌ DEAD",c:"#991b1b"}
+
+            if(score>=0.75 && delta>0.5 && bucket<=0.10)
+                return {t:"🔥 HOT",c:"#15803d"}
+
+            if(score>=0.6 && delta>0.35 && age<=60)
+                return {t:"🚀 RISING",c:"#f97316"}
+
+            if(score>=0.45)
+                return {t:"✅ STABLE",c:"#2563eb"}
+
+            if(age>180 && spd<0.04)
+                return {t:"⚠️ SATURATED",c:"#a855f7"}
+
+            if(score<0.15)
+                return {t:"❌ DEAD",c:"#991b1b"}
+
+            return {t:"🧪 LOW SIGNAL",c:"#6b7280"}
         }
 
         function trendScore(d,stats){
-            if(d.age<3||d.age>60) return 0
-            if(d.sales==0) return 0
+            const age=d.age||1
+            const sales=d.sales||0
+            const views=d.views||0
+            const fav=d.favorers||0
+            const conv=d.est_conversion_rate||0
 
-            const sales = logNorm(d.sales,stats.salesMin,stats.salesMax)
-            const spd   = logNorm(d.sales/(d.age||1),stats.spdMin,stats.spdMax)
-            const conv  = norm(d.est_conversion_rate,stats.convMin,stats.convMax)
-            const views = logNorm(d.views,stats.viewsMin,stats.viewsMax)
-            const favScore =norm(d.favorers,stats.favMin,stats.favMax)
+            if(sales===0){
+                if(age<=14) return 0.15
+                return 0.03
+            }
 
-            return (
-                sales*0.55 +
-                spd *0.15 +
-                conv *0.15 +
-                views*0.05+
-                favScore * 0.10
+            const spd = sales/age
+
+            const velocity = norm(
+                spd,
+                stats.spdP30 || 0,
+                stats.spdP75 || Math.max(spd,1)
             )
+
+            const convW = convScore(conv)
+            const favRate = norm(fav/(views||1),0,0.2)
+
+            const momentum =
+                  velocity*0.50 +
+                  convW*0.35 +
+                  favRate*0.15
+
+            let ageBias=1
+            if(age<7) ageBias=0.85
+            else if(age<=30) ageBias=1
+            else if(age<=120) ageBias=0.9
+            else ageBias=0.75
+
+            let decay=1
+            if(age>120 && velocity<0.25) decay=0.4
+            if(age>240 && velocity<0.15) decay=0.2
+
+            const score = momentum * ageBias * decay
+
+            return Number(Math.min(1,Math.max(0,score)).toFixed(4))
         }
 
-        function salesPerDay(d){
-            if(!d.age||d.age<=0) return 0
-            return d.sales/d.age
+        function trendDelta(d,stats){
+            const age=d.age||1
+            const sales=d.sales||0
+            if(sales===0) return 0
+
+            const spd = sales/age
+            const v = norm(spd, stats.spdP30||0, stats.spdP75||Math.max(spd,1))
+
+            if(age<=14) return v*0.6
+            if(age<=45) return v*0.8
+            if(age<=120) return v*0.4
+            return v*0.15
+        }
+
+        function buildRankIndex(data,stats){
+            return [...data]
+                .map(d=>({d,score:trendScore(d,stats)}))
+                .sort((a,b)=>b.score-a.score)
+                .map(x=>x.d)
+        }
+
+        function rankBucket(d,rankIndex){
+            const i = rankIndex.indexOf(d)
+            if(i<0) return 1
+            const p = i / rankIndex.length
+            if(p<=0.10) return 0.10
+            if(p<=0.25) return 0.25
+            if(p<=0.50) return 0.50
+            return 1
         }
 
         function norm(v,min,max){
-            if(max===min) return 0
-            return (v-min)/(max-min)
-        }
-
-        function invNorm(v,min,max){
-            if(max===min) return 1
-            return 1-(v-min)/(max-min)
+            if(max<=min) return 0
+            const n=(v-min)/(max-min)
+            return Math.min(1,Math.max(0,n))
         }
 
         function salesColor(v,min,max){
@@ -1767,7 +1886,6 @@
             const t=norm(v,min,max)
             return `rgba(${Math.round(33*(1-t))},${Math.round(150+80*t)},243,${0.15+0.6*t})`
         }
-
 
         function toFullImg(url,size=120){
             if(!url) return url
@@ -1946,16 +2064,7 @@
                 return result;
             } catch (error) {
                 //console.error("İletişim hatası:", error);
-                // Fallback mekanizması (localStorage veya başka bir loglama)
-                //saveFailedRequest(data, error);
-                //throw error;
             }
-        }
-
-        function saveFailedRequest(data, error) {
-            const failedRequests = JSON.parse(localStorage.getItem('failedSheetRequests') || '[]');
-            failedRequests.push({ data, error, timestamp: new Date().toISOString() });
-            localStorage.setItem('failedSheetRequests', JSON.stringify(failedRequests));
         }
 
         const createOverlayOnElement = async ({
@@ -2024,7 +2133,6 @@
                         await saveToGoogleSheet(config.sheetId, currentUrl, title, img, sales, age, tags);
                         resultEl.textContent = "❤️"
                         resultEl.style.backgroundColor = null
-                        //showToast(title + '\n listeye eklendi!');
                     });
                 } else {
                     if (gDrive) {
@@ -2141,7 +2249,6 @@
         const handleListingPage = async () => {
             const urlParts = window.location.pathname.split('/');
             const id = urlParts[urlParts.indexOf('listing') + 1];
-            //const titleElement = window.document.querySelector("#listing-page-cart > div.wt-mt-xs-1.wt-mb-xs-3 > h1")
             const titleElement = window.document.querySelector("#listing-page-cart > div.wt-mt-xs-1.wt-mb-xs-1 > h1")
             const imgElement = window.document.querySelector("#photos > div > div > ul > li > img")
             if (titleElement && id) {
@@ -2157,14 +2264,12 @@
             const addOverlay = async (el) => {
                 //console.log(el);
                 const id = el.dataset.listingId;
-                //const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
                 const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
                 await createOverlayOnElement({
                     element: infoEl,
                     id,
                 });
             };
-
             observeElements("[data-listing-id][data-listing-card-v2]", addOverlay, window.document);
         };
 
@@ -2217,7 +2322,6 @@
                 const infoEl = el.querySelector('.transaction-download.transaction-data') || el.querySelector('.transaction-downloads') || el.querySelector('.transaction-download');
                 const url = info.link;
                 const id = /https:\/\/www\.etsy\.com\/listing\/(\d+)\/.+/.exec(url)[1];
-                const title = info.title;
 
                 await createOverlayOnElement({
                     element: infoEl,
@@ -2230,24 +2334,17 @@
         }
 
         const ehuntOverlayDetail = async () => {
-            //console.log("ehuntOverlay Detail is working");
             const urlParts = window.location.pathname.split('/');
             const id = urlParts[3];
-            //console.log("id :",id);
-            //console.log("urlParts :",urlParts);
             const addOverlay = async (el) => {
-                //console.log("imgEl :",imgEl);
                 await waitFor(() => el.querySelector("#indexCarImg")?.src); // wait for img tag to load
                 const imgEl = el.querySelector("#indexCarImg")
                 const titleElement = el.querySelector('#header_container > div:nth-child(2) > div:nth-child(2)');
-                //console.log("Waited imgEl src :",imgEl.src);
-                //console.log("titleElement :",titleElement);
                 if (titleElement && id) {
                     await createOverlayOnElement({
                         element: titleElement,
                         id,
                         imgUrl: imgEl.src,
-                        //url:??
                     });
                 }
             }
@@ -2255,7 +2352,6 @@
         }
 
         async function waitForValidEHuntDocument() {
-            //console.log(window.document.location.href);
             while (
                 !(window.document.location.href.startsWith('https://ehunt.ai/iframe/etsy-product-research?') ||
                   window.document.location.href.startsWith('https://ehunt.ai/iframe/product-detail'))
@@ -2263,7 +2359,6 @@
             ) {
                 await new Promise(resolve => requestAnimationFrame(resolve));
             }
-            //console.log("Document is ready:", window.document.location.href);
         }
 
         function parsePriceToNumber(s){
@@ -2295,24 +2390,19 @@
 
         if (window.location.href.includes("/listing/")) {
             handleListingPage();
-            //console.log("handleListingPage");
         } else if (window.location.href.includes("etsy.com/your/purchases")) {
             purchasesOverlay()
         } else if (window.name == "zbaseiframe") {
-            //console.log("window.name ? zbaseiframe :", window.name);
             await waitForValidEHuntDocument();
             if(window.location.href.includes("/product-detail/")){
                 ehuntOverlayDetail();
-                //console.log("ehuntOverlayDetail");
                 showToast("Ehunt Detail");
             }else{
                 ehuntOverlay();
-                //console.log("ehuntOverlay");
                 showToast("Ehunt");
             }
 
         } else {
-            //console.log("initOverlay");
             initOverlay();
         }
     }
@@ -2326,12 +2416,10 @@
     }
 
     function runInIframe(iframeEl) {
-        //console.log("runInIframe:", iframeEl);
         const iframeWin = iframeEl.contentWindow;
         const iframeDoc = iframeEl.contentDocument;
 
         onLoaded(iframeDoc, () => {
-            //console.log("running doTheThing() with iframe", iframeWin);
             doTheThing(iframeWin, iframeDoc);
         });
     }
@@ -2342,10 +2430,9 @@
         observeElements("iframe#zbaseiframe", runInIframe, window.document)
     } else { // In etsy
         onLoaded(window.document, () => doTheThing(window, window.document))
-        //console.log("In Etsy")
     }
 
-        // Initialize
+    // Initialize
     async function initialize() {
         // Load config
         await loadConfig();
@@ -2357,5 +2444,4 @@
 
     // Start the script
     initialize();
-
 })();
