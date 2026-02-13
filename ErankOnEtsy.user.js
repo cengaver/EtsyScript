@@ -1421,6 +1421,7 @@
                 sMin:NaN,sMax:NaN,
                 aMin:NaN,aMax:NaN,
                 rank:NaN,
+                titleType:"all", // all | with | without
                 sortKey:null,
                 sortDir:1
             }
@@ -1442,6 +1443,14 @@
                 <span class="erank-filter-row">Age:
                   <input id="age-min" placeholder="min" type="number" style="width:50px">
                   <input id="age-max" placeholder="max" type="number" style="width:50px">
+                </span>
+                <span class="erank-filter-row">
+                  Title:
+                  <select id="title-type-filter">
+                    <option value="all">Hepsi</option>
+                    <option value="with">PNG / SVG</option>
+                    <option value="without">Fiziksel</option>
+                  </select>
                 </span>
                 <span class="erank-filter-row">
                   Rank:
@@ -1627,6 +1636,11 @@
                 state.q=search.value.toLowerCase()
                 applyPipeline()
             }
+            const titleTypeSelect = window.document.getElementById("title-type-filter")
+            titleTypeSelect.onchange=()=>{
+                state.titleType = titleTypeSelect.value
+                applyPipeline()
+            }
 
             const rankSelect=window.document.getElementById("rank-filter")
             rankSelect.onchange=()=>{
@@ -1706,6 +1720,14 @@
                     if(!Number.isNaN(state.aMax)&&a>state.aMax) return false
                     return true
                 })
+
+                if(state.titleType!=="all"){
+                    rows = rows.filter(d=>{
+                        const t=(d.title||"").toLowerCase()
+                        const has = t.includes("png") || t.includes("svg") || t.includes("design") || t.includes("template") ||  t.includes("dtf") ||  t.includes("pdf") || t.includes("mockup") || t.includes("Digital") || t.includes("pattern") || t.includes("download")
+                        return state.titleType==="with" ? has : !has
+                    })
+                }
 
                 if(state.sortKey)
                     rows=[...rows].sort((a,b)=>{
