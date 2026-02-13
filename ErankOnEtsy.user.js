@@ -1504,35 +1504,42 @@
                    </td>
                    <td>
                      ${
-                    d.dnoValue
-                        ? `
-                         <a href="${d.gDrive||"#"}"
-                            title="${(d.teamname||"-")+" - "+(d.dnoValue||"-")}"
-                            target="_blank"
-                            style="text-decoration:none;margin-left:6px;">
-                            ❤️
-                         </a>
-                         `
-                    : `
-                   <div class="heartWrapper"
-                        data-currenturl="${d.link}"
-                        data-title="${d.title}"
-                        data-img="${toFullImg(d.img||"",200)}"
-                        data-sales="${d.sales}"
-                        data-age="${d.age}"
-                        data-tags="${encodeURIComponent(JSON.stringify(d.tags||[]))}"
-                        style="display:inline-block;position:relative;margin-left:6px;">
-                     <a href="#"
-                        title="Listeye EKLE!"
-                        style="text-decoration:none;cursor:cell;">
-                        🤍
-                     </a>
-                   </div>
-                         `
-                }
+                       d.gDrive
+                         ? `
+                           <a href="${d.gDrive}"
+                              title="${(d.teamname||"-")+" - "+(d.dnoValue||"-")}"
+                              target="_blank"
+                              style="text-decoration:none;margin-left:6px;">
+                              💖
+                           </a>
+                           `
+                         : d.dnoValue
+                           ? `
+                           <span
+                             title="${(d.teamname||"-")+" - "+(d.dnoValue||"-")}"
+                             style="margin-left:6px;">
+                             ❤️
+                           </span>
+                           `
+                           : `
+                           <div class="heartWrapper"
+                                data-currenturl="${d.link}"
+                                data-title="${d.title}"
+                                data-img="${toFullImg(d.img||"",200)}"
+                                data-sales="${d.sales}"
+                                data-age="${d.age}"
+                                data-tags="${encodeURIComponent(JSON.stringify(d.tags||[]))}"
+                                style="display:inline-block;position:relative;margin-left:6px;">
+                             <a href="#"
+                                title="Listeye EKLE!"
+                                style="text-decoration:none;cursor:cell;">
+                                🤍
+                             </a>
+                           </div>
+                           `
+                     }
                      ${d.title||"-"}
                    </td>
-
                    <td class="num"
                      style="background:${salesColor(d.sales||0,salesMin,salesMax)}">
                      ${d.sales??""}
@@ -1703,15 +1710,24 @@
                 if(state.sortKey)
                     rows=[...rows].sort((a,b)=>{
                         let av,bv
+
                         if(state.sortKey==="rank"){
                             av=trendScore(a,stats)
                             bv=trendScore(b,stats)
-                        }else{
-                            av=Number(a[state.sortKey]||0)
-                            bv=Number(b[state.sortKey]||0)
+                            return (av-bv)*state.sortDir
                         }
+
+                        if(state.sortKey==="title"){
+                            av=(a.title||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase()
+                            bv=(b.title||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase()
+                            return av.localeCompare(bv)*state.sortDir
+                        }
+
+                        av=Number(a[state.sortKey]||0)
+                        bv=Number(b[state.sortKey]||0)
                         return (av-bv)*state.sortDir
                     })
+
 
                 render(rows,stats)
                 updateSortHeader()
