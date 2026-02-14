@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.42
+// @version      1.43
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -121,6 +121,7 @@
         const renewal=pick(t,/(\d+)\s+renewal?/i);
         const renewText=parseRenew(t);
         const renewDate=parseRenewDate(renewText);
+        const expires=isExpires(t)
         const age=ageFromRenew(renewDate,renewal,sales);
         const title=getTitleFromRow(card,id);
         const sku=getSkuFromRow(card,id);
@@ -141,6 +142,7 @@
             issues,
             issues2,
             img,
+            expires,
             shopName:shop_name,
             sheetName: 'analiz'
         }
@@ -331,6 +333,10 @@
                 //toast('❌ Gönderilemedi: ' + (error.message || 'Bilinmeyen hata'));
             }
         });
+    }
+
+    function isExpires(t){
+        return /\bExpires\b/i.test(t);
     }
 
     function parseRenew(t){
