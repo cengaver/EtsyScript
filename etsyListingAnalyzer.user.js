@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.43
+// @version      1.44
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -9,6 +9,7 @@
 // @grant        GM.registerMenuCommand
 // @grant        GM.setValue
 // @grant        GM.getValue
+// @grant        GM.addStyle
 // @connect      sheets.googleapis.com
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
@@ -19,13 +20,143 @@
 
 (async function(){
     'use strict';
+    // Modern UI Styles
+    GM.addStyle(`
+        :root {
+            --primary-color: #4285f4;
+            --primary-dark: #3367d6;
+            --secondary-color: #34a853;
+            --secondary-dark: #2e7d32;
+            --danger-color: #ea4335;
+            --danger-dark: #c62828;
+            --warning-color: #fbbc05;
+            --warning-dark: #f57f17;
+            --light-color: #f8f9fa;
+            --dark-color: #202124;
+            --gray-color: #5f6368;
+            --border-radius: 4px;
+            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            min-width: 280px;
+            padding: 12px 16px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            font-family: var(--font-family);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: var(--transition);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-success {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .toast-error {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .toast-warning {
+            background-color: var(--warning-color);
+            color: var(--dark-color);
+        }
+
+        .toast-info {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            opacity: 0.7;
+        }
+
+        .toast-close:hover {
+            opacity: 1;
+        }
+    `);
+    let toastContainer = null;
+    // Modern Toast Notification System
+    async function createToastContainer() {
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+        return toastContainer;
+    }
+
+    async function showToast(message, type = 'success', duration = 3000) {
+        const container = await createToastContainer();
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+
+        const messageSpan = document.createElement('span');
+        messageSpan.textContent = message;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', () => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        });
+
+        toast.appendChild(messageSpan);
+        toast.appendChild(closeBtn);
+        container.appendChild(toast);
+
+        // Show animation
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        // Auto dismiss
+        if (duration > 0) {
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        return toast;
+    }
 
     GM.registerMenuCommand("⚙️ Sheet Url Ayarla", async () => {
         const currentUrl = await getSheetUrl();
         const url = prompt(" Sheet Url'nizi girin:" ,currentUrl);
         if (url) {
             await GM.setValue("sheet_url", url.trim());
-            alert("✅ Kaydedildi.");
+            showToast('✅ Kaydedildi','info');
         }
     });
 
@@ -39,16 +170,7 @@
         const shop = prompt(" Mağaza adı girin:" ,current_shop);
         if (shop) {
             await GM.setValue("shop_name", shop.trim());
-            alert("✅ Kaydedildi.");
-        }
-    });
-
-    GM.registerMenuCommand("⚙️ Versiyon", async () => {
-        const current_version = await getVersion();
-        const ver = prompt(" Versiyon Numarası:" ,current_version);
-        if (ver) {
-            await GM.setValue("version", ver.trim());
-            alert("✅ Kaydedildi.");
+            showToast('✅ Kaydedildi','info');
         }
     });
 
@@ -56,6 +178,15 @@
         const shop = await GM.getValue("shop_name", "");
         return shop;
     }
+
+    GM.registerMenuCommand("⚙️ Versiyon", async () => {
+        const current_version = await getVersion();
+        const ver = prompt(" Versiyon Numarası:" ,current_version);
+        if (ver) {
+            await GM.setValue("version", ver.trim());
+            showToast('✅ Kaydedildi','info');
+        }
+    });
 
     async function getVersion() {
         const ver = await GM.getValue("version", "7");
@@ -67,8 +198,10 @@
     const sent=JSON.parse(localStorage.getItem(SENT_KEY)||"{}");
 
     const seen=new Set();
-    new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
-    scan();
+
+    const obs=new MutationObserver(scan)
+    obs.observe(document.body,{childList:true,subtree:true})
+    setTimeout(scan,2000)
 
     cleanupOldAnalyzerKeys(SENT_KEY);
 
@@ -146,7 +279,7 @@
             shopName:shop_name,
             sheetName: 'analiz'
         }
-        console.table(data)
+        //console.table(data)
         inject(actions,data);
     }
 
@@ -306,10 +439,11 @@
     }
 
     function pick(t,r){const m=t.match(r);return m?+m[1]:0;}
-    // Google Sheets log fonksiyonun
+     // Google Sheets log fonksiyonun
     async function sendToSheets(payload) {
         const sheetUrl = await getSheetUrl();
         if (!sheetUrl) return;
+        console.log(payload)
         GM.xmlHttpRequest({
             method: "POST",
             url: sheetUrl,
@@ -321,16 +455,16 @@
             try {
                 const data = JSON.parse(response.responseText);
                 if (data.status === 'success') {
-                        //toast('✅ Link gönderildi');
+                        showToast('✅ Güncellendi','success');
                     } else {
-                        //toast('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
+                        showToast('❌ Hata: ' + (data.message || 'Bilinmeyen hata'),'error');
                     }
                 } catch (e) {
-                   // toast('❌ Yanıt işlenemedi');
+                   showToast('❌ Yanıt işlenemedi','error');
                 }
             },
             onerror: function(error) {
-                //toast('❌ Gönderilemedi: ' + (error.message || 'Bilinmeyen hata'));
+                showToast('❌ Güncellenmedi: ' + (error.message || 'Bilinmeyen hata'),'error');
             }
         });
     }
