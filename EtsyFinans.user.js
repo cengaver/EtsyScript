@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.76
+// @version      1.77
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -283,11 +283,11 @@
 
             const data = {
                 shopName: await getShopName() || "",
-                sales: (sales / exchangeRate).toFixed(0) || "",
-                fees: (fees / exchangeRate).toFixed(0) || "",
-                marketing: (marketing / exchangeRate).toFixed(0) || "",
-                feesProfit: feesProfit.toFixed(2) || "",
-                marketingProfit: marketingProfit.toFixed(2) || "",
+                sales:Math.round(sales / exchangeRate) || 0,
+                fees: Math.abs(Math.round(fees / exchangeRate)) || 0,
+                marketing: Math.abs(Math.round(marketing / exchangeRate)) || 0,
+                feesProfit: feesProfit.toFixed(2) || 0,
+                marketingProfit: marketingProfit.toFixed(2) || 0,
                 period: periodText,
                 sheetName: 'finans'
             };
