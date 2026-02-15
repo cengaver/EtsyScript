@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer
-// @version      1.44
+// @version      1.45
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -284,7 +284,7 @@
     }
 
     function inject(actions,data){
-        const level=getLevel(data.age,data.sales);
+        const level=getLevel(data.age,data.sales,data.expires);
         const badgeDiv=document.createElement('div');
         badgeDiv.classList.add('wt-flex-xs-1');
         const badge=document.createElement('span');
@@ -365,11 +365,12 @@
         }
     }
 
-    function getLevel(age,sales){
+    function getLevel(age,sales,expires){
         if(sales>0) return {icon:"🟢",color:"#2ecc71",label:"Satış Var"};
         if(age<=14) return {icon:"🟡",color:"#f1c40f",label:"Yeni – Dokunma"};
         if(age<=30) return {icon:"🟠",color:"#e67e22",label:"İzleme Aşaması"};
         if(age<=60) return {icon:"🔴",color:"#e74c3c",label:"Güçlü Optimizasyon"};
+        if(expires) return {icon:"🚧",color:"#8e44ad",label:"Başarısız – Kapat/Yenile"};
         return {icon:"🚨",color:"#8e44ad",label:"Başarısız – Kapat/Yenile"};
     }
 
@@ -455,7 +456,7 @@
             try {
                 const data = JSON.parse(response.responseText);
                 if (data.status === 'success') {
-                        showToast('✅ Güncellendi','success');
+                        showToast('✅ Analiz edildi','success');
                     } else {
                         showToast('❌ Hata: ' + (data.message || 'Bilinmeyen hata'),'error');
                     }
