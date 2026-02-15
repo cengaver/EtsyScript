@@ -110,7 +110,7 @@
         const url = prompt(" Sheet Url'nizi girin:" ,currentUrl);
         if (url) {
             await GM.setValue("sheet_url", url.trim());
-            alert("✅ Kaydedildi.");
+            showToast('✅ Kaydedildi','info');
         }
     });
     async function getSheetUrl() {
@@ -122,7 +122,7 @@
         const name = prompt(" Mağaza Adını girin:" ,currentName);
         if (name) {
             await GM.setValue("shop_name", name.trim());
-            alert("✅ Kaydedildi.");
+            showToast('✅ Kaydedildi','info');
         }
     });
     async function getShopName() {
@@ -314,7 +314,7 @@
                     const data = JSON.parse(response.responseText);
                     if (data.status === 'success') {
                         showToast('Başarıyla hesaplandı', 'success');
-                        console.log('✅ Google Sheet gönderildi');
+                        console.log('✅ Gönderildi');
                     } else {
                         console.log('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
                     }
