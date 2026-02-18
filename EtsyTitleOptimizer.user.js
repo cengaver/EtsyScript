@@ -2,9 +2,9 @@
 // @name         Etsy Title GEM Optimizer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
-// @version      1.0.3
+// @version      1.0.4
 // @description  Etsy listing title GEM ile yeniden yazma butonu
-// @match        https://www.etsy.com/your/shops/me/listing-editor/edit/*
+// @match        https://www.etsy.com/your/shops/me/listing-editor/*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @connect      generativelanguage.googleapis.com
 // @grant        GM.xmlHttpRequest
