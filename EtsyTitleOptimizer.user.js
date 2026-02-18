@@ -2,7 +2,7 @@
 // @name         Etsy Title GEM Optimizer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
-// @version      1.0.2
+// @version      1.0.3
 // @description  Etsy listing title GEM ile yeniden yazma butonu
 // @match        https://www.etsy.com/your/shops/me/listing-editor/edit/*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
@@ -220,7 +220,7 @@ Output STRICT JSON:
             const GEM_API_KEY= await getApiKey()
             if(!GEM_API_KEY) return;
             const GEM_ENDPOINT=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEM_API_KEY}`
-            console.log(GEM_ENDPOINT);
+            //console.log(GEM_ENDPOINT);
             GM.xmlHttpRequest({
                 method:"POST",
                 url:GEM_ENDPOINT,
@@ -234,7 +234,7 @@ Output STRICT JSON:
                         let raw=j.candidates?.[0]?.content?.parts?.[0]?.text;
                         if(!raw) throw 'empty';
 
-                        raw=cleanJson(raw); // 🔴 KRİTİK SATIR
+                        raw=cleanJson(raw);
 
                         const data=JSON.parse(raw);
 
