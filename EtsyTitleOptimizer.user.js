@@ -2,7 +2,7 @@
 // @name         Etsy Title GEM Optimizer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
-// @version      1.0.0
+// @version      1.0.1
 // @description  Etsy listing title GEM ile yeniden yazma butonu
 // @match        https://www.etsy.com/your/shops/me/listing-editor/edit/*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
@@ -178,7 +178,7 @@
     const createButton=()=>{
         const btn=document.createElement('button')
         btn.type='button'
-        btn.innerHTML='✨ Optimize (GEM)'
+        btn.innerHTML='✨ Optimize Title(GEM)'
         btn.className='wt-btn wt-btn--small wt-btn--secondary'
         btn.style.marginBottom='8px'
         btn.onclick=async()=>{
