@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.23
+// @version      4.24
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -2439,10 +2439,13 @@
         }
 
         function pastDateFromText(v){
-            const m=String(v).toLowerCase().match(/(\d+)\s*month/)
-            if(!m)return ""
+            const s=String(v).toLowerCase()
+            const y=s.match(/(\d+)\s*year/)
+            const m=s.match(/(\d+)\s*month/)
+            if(!y && !m) return ""
             const d=new Date()
-            d.setMonth(d.getMonth()-Number(m[1]))
+            if(y) d.setFullYear(d.getFullYear()-Number(y[1]))
+            if(m) d.setMonth(d.getMonth()-Number(m[1]))
             const yyyy=d.getFullYear()
             const MM=String(d.getMonth()+1).padStart(2,"0")
             const dd=String(d.getDate()).padStart(2,"0")
