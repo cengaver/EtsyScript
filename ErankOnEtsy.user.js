@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.22
+// @version      4.23
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1962,6 +1962,26 @@
             return rows
         }
 
+        function shopDataFetch() {
+            if (!window.document.location.href.startsWith('https://www.etsy.com/shop/')) return
+            if (!window.document.querySelector('h1.shop-name')) return
+            return {
+                name: window.document.querySelector('h1.shop-name')?.innerText.trim(),
+                location: window.document.querySelector('.sb-shop-location')?.innerText.trim(),
+                icon: window.document.querySelector('img.shop-icon-external')?.src,
+                starSeller: !!window.document.querySelector('.star-seller-badge'),
+                rating: window.document.querySelector('[data-review-ratings-count]')?.getAttribute('data-rating'),
+                reviews: toInt(window.document.querySelector('.rating-and-reviews-count__reviews-count')?.innerText.replace(/[()]/g,'')?.trim()),
+                sales: toInt(window.document.querySelector('[data-highlight="sales"] .highlight__primary-content')?.innerText.trim()),
+                onEtsy: pastDateFromText(window.document.querySelector('[data-highlight="on_etsy"] .highlight__primary-content')?.innerText.trim()),
+                latestActivity: window.document.querySelector('[data-latest-activity-date]')?.innerText.replace('Latest activity:','').trim(),
+                latestActivityTs: window.document.querySelector('[data-latest-activity-date]')?.getAttribute('data-latest-activity-date'),
+                link: 'https://www.etsy.com/shop/' + window.document.querySelector('h1.shop-name')?.innerText.trim(),
+                team: config.team || "",
+                sheetName:'Shop'
+            }
+        }
+
         function simplifyEtsyUrl(url) {
             try {
                 let urlObj = new URL(url);
@@ -2069,36 +2089,38 @@
 
         async function logToGoogleSheets(data) {
             const sheetUrl = "https://script.google.com/macros/s/AKfycbxuh_lJRDY4ZCVY3js2JVlIdusGmb3RtDd4IlH82hisewmwR13PUogxW9pUuX8h0C-e/exec";
+            const body = (data.sheetName) ? JSON.stringify(data) : JSON.stringify({
+                id: String(data.id), // ID'yi string'e kesin olarak dönüştür
+                link: data.link || "",
+                img: data.img || "",
+                title: data.title || "",
+                tag: data.tag || "",
+                sls: data.sls || "",
+                day: data.day || "",
+                quantity: data.quantity || "",
+                views: data.views || "",
+                favorers: data.favorers || "",
+                est_conversion_rate: data.est_conversion_rate || "",
+                team: config.team || ""
+            })
+            console.log(body)
             try {
                 const response = await fetch(sheetUrl, {
                     method: "POST",
                     mode: 'no-cors', //KALDIRILDI (CORS sorunu için alternatif çözüm aşağıda)
-                    body: JSON.stringify({
-                        id: String(data.id), // ID'yi string'e kesin olarak dönüştür
-                        link: data.link || "",
-                        img: data.img || "",
-                        title: data.title || "",
-                        tag: data.tag || "",
-                        sls: data.sls || "",
-                        day: data.day || "",
-                        quantity: data.quantity || "",
-                        views: data.views || "",
-                        favorers: data.favorers || "",
-                        est_conversion_rate: data.est_conversion_rate || "",
-                        team: config.team || ""
-                    }),
+                    body,
                     headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Bearer " + getAccessToken() // Opsiyonel güvenlik
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + getAccessToken() // Opsiyonel güvenlik
                 }
+        });
 
-                const result = await response.text();
-                console.log("Sunucu yanıtı:", result);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.text();
+        console.log("Sunucu yanıtı:", result);
                 return result;
             } catch (error) {
                 //console.error("İletişim hatası:", error);
@@ -2410,6 +2432,23 @@
             const v = parseFloat(s); return Number.isFinite(v)? v : null;
         }
 
+        function toInt(v){
+            v=String(v).trim().toLowerCase()
+            if(v.endsWith("k"))return Math.round(parseFloat(v)*1000)
+            return Math.round(parseFloat(v))||0
+        }
+
+        function pastDateFromText(v){
+            const m=String(v).toLowerCase().match(/(\d+)\s*month/)
+            if(!m)return ""
+            const d=new Date()
+            d.setMonth(d.getMonth()-Number(m[1]))
+            const yyyy=d.getFullYear()
+            const MM=String(d.getMonth()+1).padStart(2,"0")
+            const dd=String(d.getDate()).padStart(2,"0")
+            return `${yyyy}:${MM}:${dd}`
+        }
+
         function readTransaction(li){
             const titleEl = li.querySelector('.transaction-title a');
             const imgEl = li.querySelector('.transaction-image img');
@@ -2424,6 +2463,11 @@
                 priceText,
                 priceNumber: parsePriceToNumber(priceText)
             };
+        }
+
+        async function shopOverlay(){
+            const shopData = shopDataFetch()
+            if(shopData) await logToGoogleSheets(shopData)
         }
 
         if (window.location.href.includes("/listing/")) {
@@ -2442,6 +2486,7 @@
 
         } else {
             initOverlay();
+            if (window.location.href.includes("etsy.com/shop/")) shopOverlay()
         }
     }
 
