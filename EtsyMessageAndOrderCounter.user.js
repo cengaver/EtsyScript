@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy MesssageOrder CounterIndicator
 // @namespace    https://github.com/cengaver
-// @version      0.04
+// @version      0.05
 // @description  Message and Order CounterIndicator panel
 // @match        https://www.etsy.com/your/shops/*
 // @match        https://www.etsy.com/messages*
@@ -221,7 +221,7 @@
 
         const messageEl = container.querySelector('a[data-app-key="messages"] span[data-clg-id="WtCounterIndicator"]');
         const orderEl = container.querySelector('a[data-app-key="orders"] span[data-clg-id="WtCounterIndicator"]');
-        if (!messageEl && !orderEl) return;
+        //if (!messageEl && !orderEl) return;
 
         const message = normalizeNumber(messageEl?.textContent);
         const order = normalizeNumber(orderEl?.textContent);
