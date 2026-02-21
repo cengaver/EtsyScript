@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         Etsy MesssageOrder CounterIndicator
 // @namespace    https://github.com/cengaver
-// @version      0.05
+// @version      0.10
 // @description  Message and Order CounterIndicator panel
 // @match        https://www.etsy.com/your/shops/*
 // @match        https://www.etsy.com/messages*
+// @exclude      https://www.etsy.com/your/shops/me/advertising/*
+// @exclude      https://www.etsy.com/your/shops/me/listing-editor/*
 // @author       Cengaver
 // @grant        GM.xmlHttpRequest
 // @grant        GM.registerMenuCommand
