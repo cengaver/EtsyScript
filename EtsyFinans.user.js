@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.77
+// @version      1.78
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -177,26 +177,36 @@
     }
 
     const getExchangeRate = () => new Promise((resolve, reject) => {
+        const cacheKey = 'excData'
+        const cacheTimestampKey = `${cacheKey}_timestamp`
+        const now = Date.now()
+
+        const cachedData = Number(localStorage.getItem(cacheKey))
+        const cacheTimestamp = Number(localStorage.getItem(cacheTimestampKey))
+
+        if (cachedData && cacheTimestamp && now - cacheTimestamp < 7 * 60 * 60 * 1000)
+            return resolve(cachedData)
+
         GM.xmlHttpRequest({
             method: "GET",
             url: "https://www.tcmb.gov.tr/kurlar/today.xml",
-            onload: (response) => {
-                if (response.status === 200) {
-                    const xmlDoc = new DOMParser().parseFromString(response.responseText, "text/xml")
-                    const rateEl = xmlDoc.querySelector(`Currency[CurrencyCode="USD"] BanknoteSelling`)
-                    if (rateEl) {
-                        resolve(Number(rateEl.textContent))
-                    } else {
-                        reject("Kur bilgisi alınamadı")
-                    }
-                } else {
-                    reject(`Hata: ${response.statusText}`)
-                }
+            onload: r => {
+                if (r.status !== 200) return reject(r.statusText)
+
+                const xml = new DOMParser().parseFromString(r.responseText, "text/xml")
+                const el = xml.querySelector(`Currency[CurrencyCode="USD"] BanknoteSelling`)
+                if (!el) return reject("Kur bulunamadı")
+
+                const rate = Number(el.textContent.replace(',', '.'))
+                if (!rate) return reject("Kur parse edilemedi")
+
+                localStorage.setItem(cacheKey, rate)
+                localStorage.setItem(cacheTimestampKey, now)
+                resolve(rate)
             },
-            onerror: (error) => reject(error),
+            onerror: reject
         })
     })
-
     const unformatNumber = (str) => parseFloat(str.replace(/[^0-9.-]+/g, ""))
 
     // set param: 1 -> Google Sheets'e gönder (bir kez veya period değişince)
@@ -309,19 +319,20 @@
             headers: {
                 "Content-Type": "application/json"
             },
-            onload: function(response) {
+            onload: function (response) {
                 try {
-                    const data = JSON.parse(response.responseText);
+                    const data = JSON.parse(response.response);
                     if (data.status === 'success') {
                         showToast('Başarıyla hesaplandı', 'success');
                         console.log('✅ Gönderildi');
                     } else {
-                        console.log('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
+                        console.log('❌ Hata:', data.message || 'Bilinmeyen hata');
                     }
                 } catch (e) {
-                    console.log('❌ Yanıt işlenemedi');
+                    console.log('❌ JSON parse edilemedi', response.response);
                 }
-            },
+            }
+            ,
             onerror: function(error) {
                 console.log('❌ Gönderilemedi: ' + (error.message || 'Bilinmeyen hata'));
             }
