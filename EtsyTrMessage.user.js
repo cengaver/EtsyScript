@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Message Translator (Hover Translate)
 // @namespace    https://github.com/cengaver
-// @version      1.63
+// @version      1.64
 // @description  Etsy mesajlarının üzerine gelince çeviri gösterir (DeepL veya Google Translate)
 // @match        https://www.etsy.com/messages/*
 // @match        https://www.etsy.com/your/orders/sold/*
@@ -27,7 +27,7 @@
         }
     });
 
-    GM.registerMenuCommand("🌐 Çeviri Servisi Seç (DeepL / Google)", async () => {
+    GM.registerMenuCommand("🌐 Çeviri Servisi Seç (deepL / google)", async () => {
         const choice = prompt("Kullanmak istediğiniz servisi yazın: deepl veya google");
         if (choice === "deepl" || choice === "google") {
             await GM.setValue("translator", choice);
@@ -98,6 +98,7 @@
 
     async function translateText(text, targetLang, callback) {
         const service = await getTranslator();
+        console.log(text)
         if (service === 'google') {
             GM.xmlHttpRequest({
                 method: 'GET',
@@ -105,7 +106,8 @@
                 onload: res => {
                     try {
                         const data = JSON.parse(res.responseText);
-                        callback(data[0][0][0]);
+                        const translated = data[0].map(segment => segment[0]).join('');
+                        callback(translated);
                     } catch (e) {
                         console.error("Google çeviri hatası:", e);
                     }
