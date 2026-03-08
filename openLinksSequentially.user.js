@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      1.18
+// @version      1.20
 // @description  Open all matching links with a 1-second delay
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -25,25 +25,30 @@
                     roas.style.backgroundColor = "";
                 }
                 //console.log(roas);
-            }, index * 200);
+            }, index * 400);
         });
     }
 
-    function openLinks() {
+    function openLinks(mod) {
         //const links = document.querySelectorAll("#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-no-wrap > div.wt-pt-xs-1.wt-display-flex-xs > div > a")
         //const links = document.querySelectorAll("#manage_advertised_listings_wt_tab_panel > div > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-no-wrap > div.wt-pt-xs-1.wt-display-flex-xs > div > a");
+        const timer = mod==1?200000:80000
         const links = document.querySelectorAll("#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-z-index-1 > div > div > a")
         links.forEach((link, index) => {
             setTimeout(() => {
-                //console.log(link.href)
-                window.open(link.href, '_blank');
-            }, index * 5000);
+                console.log(`${link.href}&mod=${mod}`)
+                window.open(`${link.href}&mod=${mod}`, '_blank');
+            }, index * timer);
         });
     }
 
     document.addEventListener('keydown', function(event) {
         if (event.ctrlKey && event.altKey) {
-            openLinks();
+            openLinks(0);
+            console.log("yeni sekmeler çalıştı")
+        }
+        if (event.ctrlKey && event.code === "Space") {
+            openLinks(1);
             console.log("yeni sekmeler çalıştı")
         }
     });
