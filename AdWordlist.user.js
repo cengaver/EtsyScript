@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      1.39
+// @version      1.40
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -20,15 +20,6 @@
 
 (function () {
     "use strict"
-    GM_addStyle(`
-.wt-table__row__cell.wt-no-wrap.wt-pl-xs-2.wt-width-auto-lg.wt-width-full-xs {
-    max-width: 700px; /* Genişliği ihtiyaca göre ayarla */
-    white-space: nowrap; /* Metnin satırları taşmasın */
-    overflow: hidden; /* Taşan metni gizle */
-    text-overflow: ellipsis; /* Taşan metnin sonuna "..." ekle */
-}
-
-`);
 
     let isToastCssInjected = false
     let _Notyf = null
@@ -315,6 +306,14 @@ socks
 
         popup.document.body.appendChild(scriptTag)
     })
+    const params = new URLSearchParams(window.location.search);
+    const mod = params.get("mod");
+
+    if(mod==1){
+        setTimeout(() => toggleRows(false,true), 3000);
+        console.log("mod:", mod);
+    }
+
     document.addEventListener("keydown", (event) => {
         if (event.ctrlKey && event.code === "Space") {
             toggleRows(false)
