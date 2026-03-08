@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      1.21
+// @version      1.22
 // @description  Open all matching links with a 1-second delay
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -34,13 +34,12 @@
         //const links = document.querySelectorAll("#manage_advertised_listings_wt_tab_panel > div > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-no-wrap > div.wt-pt-xs-1.wt-display-flex-xs > div > a");
         const timer = mod==1?200000:80000
         const links = document.querySelectorAll("#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-z-index-1 > div > div > a")
-        links.forEach((link, index) => {
-            setTimeout(() => {
-                //console.log(`${link.href}&mod=${mod}`)
-                window.open(`${link.href}&mod=${mod}`, '_blank');
-            }, index * timer);
-        });
-        window.close();
+        links.forEach((link,index)=>{
+            setTimeout(()=>{
+                window.open(`${link.href}&mod=${mod}`,'_blank')
+                if(index===links.length-1) window.close()
+            },index*timer)
+        })
     }
 
     document.addEventListener('keydown', function(event) {
