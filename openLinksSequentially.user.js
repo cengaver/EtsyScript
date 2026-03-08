@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      1.20
+// @version      1.21
 // @description  Open all matching links with a 1-second delay
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -36,20 +36,21 @@
         const links = document.querySelectorAll("#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-z-index-1 > div > div > a")
         links.forEach((link, index) => {
             setTimeout(() => {
-                console.log(`${link.href}&mod=${mod}`)
+                //console.log(`${link.href}&mod=${mod}`)
                 window.open(`${link.href}&mod=${mod}`, '_blank');
             }, index * timer);
         });
+        window.close();
     }
 
     document.addEventListener('keydown', function(event) {
         if (event.ctrlKey && event.altKey) {
             openLinks(0);
-            console.log("yeni sekmeler çalıştı")
+            //console.log("yeni sekmeler çalıştı")
         }
         if (event.ctrlKey && event.code === "Space") {
             openLinks(1);
-            console.log("yeni sekmeler çalıştı")
+            //console.log("yeni sekmeler çalıştı")
         }
     });
 
@@ -59,7 +60,7 @@
 
     const observer = new MutationObserver(() => {
         colorRoas();
-        console.log("DOM changed, rechecking links...");
+        //console.log("DOM changed, rechecking links...");
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
