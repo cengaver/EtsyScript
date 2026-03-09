@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.80
+// @version      1.90
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -20,7 +20,7 @@
 // @connect      script.google.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewMessage.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewMessage.user.js
-// @run-at       document-en
+// @run-at       document-end
 // ==/UserScript==
 
 
@@ -751,9 +751,9 @@
         const replyButton =[...document.querySelectorAll("#dg-tabs-preact__tab-1--default_wt_tab_panel .flag-body button")].find(el => el.textContent.trim() === "Reply")
 
         if (!textAreaEl) {
-            console.log("textAreaEl yok")
-            if (msgBuyerButton) { console.log("msgBuyerButton var");msgBuyerButton.click()}
-            if (replyButton){console.log("replyButton var");replyButton.click()}
+            //console.log("textAreaEl yok")
+            if (msgBuyerButton) { msgBuyerButton.click()}//console.log("msgBuyerButton var");
+            if (replyButton){replyButton.click()}//console.log("replyButton var");
         }
         setTimeout(() => {
             if (textAreaEl && !textAreaEl.value.includes(personalizedMessage)) {
@@ -868,7 +868,10 @@
 
         await insertOrUpdateProgressBar(star, el.length);
         await insertOrUpdateRefreshButton();
+        await nextMesssages();
+    }
 
+    async function nextMesssages(){
         // bir kere ekle (aynı sayfada ikinci kez çağrılırsa tekrar eklemesin)
         if(!window.__btnNavigatorInitialized){
             window.__btnNavigatorInitialized = true;
@@ -901,58 +904,74 @@
     }
 
     function clickNextTabIndex(){
-        const nodes = Array.from(document.querySelectorAll('[tabindex]'))
+
+        const nodes=[...document.querySelectorAll("[tabindex]")]
         .filter(isVisibleAndEnabled)
-        .map(el => ({el, tab: Number(el.getAttribute('tabindex') ?? el.tabIndex ?? 0)}))
-        .filter(o => !Number.isNaN(o.tab))
-        .sort((a,b) => a.tab - b.tab)
-        .map(o => o.el);
+        .map(el=>({el,tab:Number(el.getAttribute("tabindex")||0)}))
+        .filter(o=>!Number.isNaN(o.tab))
+        .sort((a,b)=>a.tab-b.tab)
+        .map(o=>o.el)
 
-        if(nodes.length === 0){ console.log('No focusable elements found'); return; }
+        if(nodes.length===0) return
 
-        const active = document.activeElement;
-        let currentIndex = nodes.indexOf(active);
+        const active=document.activeElement
+        let i=nodes.indexOf(active)
 
-        // Eğer activeElement listede yoksa ilk elemanı seç (veya odaklanmış öğeyi bulmaya çalış)
-        if(currentIndex === -1){
-            // alternatif: active element'in en yakın [tabindex] ancestor'unu bul
-            const anc = active ? active.closest && active.closest('[tabindex]') : null;
-            currentIndex = anc ? nodes.indexOf(anc) : -1;
+        if(i===-1){
+            const anc=active?.closest?.("[tabindex]")
+            i=anc?nodes.indexOf(anc):-1
         }
 
-        let nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % nodes.length;
-        const nextEl = nodes[nextIndex];
-        if(nextEl){
-            try { nextEl.focus(); } catch(e){}
-            setTimeout(()=> { try { nextEl.click(); console.log('Clicked tabindex', nextEl.getAttribute('tabindex')); } catch(e){ console.error(e); } }, 40);
-            setTimeout(()=> {closedProme();}, 400);
+        const next=nodes[(i+1)%nodes.length]
+
+        next?.focus()
+
+        setTimeout(()=>{
+            next?.click()
+            closedProme()
+        },60)
+
+    }
+
+    async function sendMessages(){
+        const sendButton = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel .panel-body .btn.btn-primary.btn-small");
+        if (sendButton) {
+            setTimeout(() => sendButton.click(), 500); // Gönderim için zamanlama ekle
+            //console.log("gömderildi")
         }
     }
 
     // Ctrl + Alt  gönderme
     document.addEventListener("keydown", (event) => {
         if (event.ctrlKey && event.altKey) {
-            const sendButton = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel .panel-body .btn.btn-primary.btn-small");
-            if (sendButton) {
-                setTimeout(() => sendButton.click(), 500); // Gönderim için zamanlama ekle
-                //console.log("gömderildi")
-            }
+            sendMessages();
         }
     });
 
-    // Ctrl + Alt + Space ile doldurma ve gönderme
-    document.addEventListener("keydown", (event) => {
-        if (event.ctrlKey && event.altKey && event.code === "Space") {
-            //main(true); // Doldur ve gönder
-        }
-    });
+    // Ctrl + aşağı ok ile doldurma,gönderme ve sonrakine geçme
+    const delay=ms=>new Promise(r=>setTimeout(r,ms))
 
-    // Ctrl + Shift + Space ile doldurma ve gönderme
-    document.addEventListener("keydown", (event) => {
-        if (event.ctrlKey && event.shiftKey && event.code === "Space") {
-            main(true); // Doldur ve gönder
+    async function autoProcess(){
+
+        await main("reviewMessage")
+
+        await delay(800)
+
+        await sendMessages()
+
+        await delay(1200)
+
+        history.back()
+
+    }
+
+    document.addEventListener("keydown",e=>{
+        if(e.ctrlKey && e.key==="ArrowDown"){
+            e.preventDefault()
+            autoProcess()
         }
-    });
+    })
+
     async function insertOrUpdateRefreshButton() {
         const ul = document.querySelector('nav.wt-tab-container ul.wt-tab');
         if (!ul) return;
@@ -988,22 +1007,11 @@
     }
 
     function observeButtons() {
-        //const messageButtonsEL = "#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div";
         const buttons = document.querySelectorAll(
             MESSAGE_BUTTONS_SELECTOR + ' :is(div, div:nth-child(2)) > span > button[data-clg-id="WtButton"]:not([data-test-id="purchase-shipping-label-button"])'
         );
         if (buttons.length > 0 && !window.location.href.includes("https://www.etsy.com/your/orders/sold/new?search_query=")) {
             butonsAll(buttons);
-            console.log("Butonlar bulundu:", buttons);
-            const nextBtn = document.querySelector('[data-testid="next-page"]');
-            if (nextBtn) {
-                console.log("nextBtn bulundu");
-                nextBtn.addEventListener('click', () => {
-                    console.log("nextBtn tıklandı");
-                    setTimeout(() => observeButtons(), 3000);
-                    setTimeout(() => console.log("nextBtn 3 sn geçti"), 3000);
-                });
-            }
             observer.disconnect(); // İlk gözlemi durdur
         }
     }
@@ -1016,23 +1024,17 @@
     new MutationObserver(() => {
         const currentPage = new URL(location.href).searchParams.get("page") || "1";
         if (currentPage !== lastPage) {
-            console.log(`Sayfa değişti: ${lastPage} → ${currentPage}`);
             lastPage = currentPage;
-            observeButtons();
+            setTimeout(() => observeButtons(), 3000);
         }
     }).observe(document.body, { childList: true, subtree: true });
 
-
     // Initialize
-    async function initialize() {
-        // Load config
-        await loadConfig();
-
-        // Register menu commands
-        GM.registerMenuCommand("Ayarlar", showConfigMenu);
-
-        // Show welcome message
-        showToast('Message Tool: Ctrl+Space Ctrl+Alt Ctrl+->', 'info');
+    async function initialize(){
+        await loadConfig()
+        GM.registerMenuCommand("Ayarlar", showConfigMenu)
+        nextMesssages();
+        showToast("Message Tool Ready CTRL + Aşağı OK", "info")
     }
 
     // Start the script
