@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      1.40
+// @version      1.42
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -12,6 +12,8 @@
 // @grant        GM_addElement
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
+// @connect      raw.githubusercontent.com
 // @require      https://cdn.jsdelivr.net/npm/notyf@3.0.0/notyf.min.js
 // @resource     notyf-css https://cdn.jsdelivr.net/npm/notyf@3.0.0/notyf.min.css
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/AdWordlist.user.js
@@ -197,10 +199,10 @@ socks
           if (nextButton) {
               if (nextButton.getAttribute('aria-disabled') === 'true') {
                   window.close();
-                  console.log("Sayfa Kapandı");
+                  //console.log("Sayfa Kapandı");
               } else {
                   nextButton.click();
-                  console.log("Sonraki Sayfaya Geçildi");
+                  //console.log("Sonraki Sayfaya Geçildi");
                   const sleepMs = getRandomInt(1200, 2500)
                   await sleep(sleepMs)
                   toggleRows(false,true);
@@ -227,6 +229,34 @@ socks
         });
     }
 
+    const Word_List_Url = "https://raw.githubusercontent.com/cengaver/EtsyScript/refs/heads/main/blackListWord.json";
+    async function fetchWord() {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: "GET",
+                url: Word_List_Url + "?t=" + Date.now(),
+                onload: r => {
+                    if (r.status !== 200) return reject();
+                    resolve(r.responseText);
+                },
+                onerror: reject
+            });
+        });
+    }
+
+    async function ensureWord() {
+        console.log("Word güncellemesi kontrol ediliyor.")
+        try {
+            const word = await fetchWord();
+            getToast().success("Kelimeler alınıyor");
+            await GM.setValue("adWordlist",word);
+            getToast().success("Kelimeler güncellendi");
+        } catch {
+            getToast().error("Kelimeler Alınamadı");
+        }
+    }
+
+
     window.addEventListener("load", async () => {
         await colorRoas()
         let filteredRows = await getFilteredRows()
@@ -237,10 +267,9 @@ socks
         getToast().success("Ads Tool : CTRL + Alt");
     })
 
-
     GM_registerMenuCommand("Kelimeleri kapat", () => toggleRows(false))
     GM_registerMenuCommand("Kelimeleri aç", () => toggleRows(true))
-
+    GM_registerMenuCommand("Kelimeleri Güncelle", () => ensureWord())
     GM_registerMenuCommand("Yasaklı kelimeleri düzenle", async () => {
         const popup = window.open(
             "about:blank",
