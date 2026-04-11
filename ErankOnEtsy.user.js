@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.24
+// @version      4.27
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -972,6 +972,7 @@
     }
 
     async function ensureBearer() {
+        console.log("Authorization güncellemesi kontrol ediliyor.")
         const localVersion = config.config_version ?? null;
         try {
             const cfg = await fetchConfig();
@@ -1361,6 +1362,7 @@
                 });
                 const data = response.response?.data;
                 if (response.status==401) {
+                        console.error("eRank API error");
                     if (!await ensureBearer()) {
                         showToast('Erank Authorization Yüklenemedi <br>SAYFAYI YENİLEYİN!!!', 'error');
                     }
@@ -1468,7 +1470,10 @@
                   style="margin-left:auto;padding:4px 10px;cursor:pointer">
                   🌙 Dark
                 </button>
-
+                <button id="erank-clear"
+                  style="margin-left:auto;padding:4px 10px;cursor:pointer">
+                  Clear
+                </button>
                 <span class="erank-close" id="erank-close">✕</span>
               </div>
 
@@ -1678,6 +1683,11 @@
                     preview.style.display="none"
                 }
             })
+            const clearData=modal.querySelector("#erank-clear")
+            clearData.onclick=()=>{
+                handleLocalStorageQuota();
+                clearData.textContent="Deleted";
+            }
             const box=modal.querySelector(".erank-box")
             const toggle=modal.querySelector("#erank-theme-toggle")
 
@@ -1686,6 +1696,7 @@
                 box.classList.add("erank-dark")
                 toggle.textContent="☀️ Light"
             }
+
             toggle.onclick=()=>{
                 const dark=box.classList.toggle("erank-dark")
                 localStorage.setItem("erank_theme",dark?"dark":"light")
@@ -2103,7 +2114,7 @@
                 est_conversion_rate: data.est_conversion_rate || "",
                 team: config.team || ""
             })
-            console.log(body)
+            //console.log(body)
             try {
                 const response = await fetch(sheetUrl, {
                     method: "POST",
@@ -2486,10 +2497,9 @@
                 ehuntOverlay();
                 showToast("Ehunt");
             }
-
         } else {
-            initOverlay();
             if (window.location.href.includes("etsy.com/shop/")) shopOverlay()
+            initOverlay();
         }
     }
 
@@ -2524,6 +2534,7 @@
         await loadConfig();
         // Register menu commands
         GM.registerMenuCommand("Ayarlar", showConfigMenu);
+        GM.registerMenuCommand("KeyGüncelle", () => ensureBearer())
         // Show welcome message
         showToast('Etsy Erank Tool yüklendi', 'info');
     }
