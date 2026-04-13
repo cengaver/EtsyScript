@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.29
+// @version      4.30
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -667,9 +667,7 @@
             await GM.xmlHttpRequest({
                 method: "POST",
                 url: "https://ee-ingest.lifecodeof.workers.dev/ingest?key=trust-me-bro",
-                headers: { "Content-Type": "application/octet-stream" },
                 data,
-                binary: true,
                 nocache: true,
                 redirect: "follow"
             })
