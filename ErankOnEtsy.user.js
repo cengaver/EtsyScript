@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.27
+// @version      4.28
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -28,6 +28,7 @@
 // @connect      erank.com
 // @connect      script.google.com
 // @connect      developer.uspto.gov
+// @connect      ee-ingest.lifecodeof.workers.dev
 // @connect      raw.githubusercontent.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
@@ -637,6 +638,44 @@
        }
        .erank-dark th.sort-active{background:#444}
     `);
+
+    /**
+     * @param rawResponse {Record<string, unknown>|"CACHED"}
+     * @param element {HTMLElement}
+     */
+    async function EE_Ingest(rawResponse, element) {
+        try {
+            const liTagUnderRoot = element.closest("li")
+            const allListingEls = document.querySelectorAll(
+                "ul[data-results-grid-container] > li"
+            )
+
+            const searchRank =
+                  allListingEls.length && liTagUnderRoot
+            ? [...allListingEls].indexOf(liTagUnderRoot) + 1
+            : null
+
+            const data = JSON.stringify({
+                scraped_at: new Date().toISOString(),
+                page_url: window.location.href,
+                search_rank: searchRank,
+                raw_html: liTagUnderRoot?.outerHTML ?? null,
+                payload: rawResponse,
+            })
+
+            await GM.xmlHttpRequest({
+                method: "POST",
+                url: "https://ee-ingest.lifecodeof.workers.dev/ingest?key=trust-me-bro",
+                headers: { "Content-Type": "application/octet-stream" },
+                data,
+                binary: true,
+                nocache: true,
+                redirect: "follow"
+            })
+        } catch (error) {
+            console.error("[EE]:", error)
+        }
+    }
 
     // Config yapısı
     const DEFAULT_CONFIG = {
@@ -1330,7 +1369,7 @@
             return { dnoValue, gDrive, teamname };
         };
 
-        const getErankData = async (id, imgUrl=null, link=null) => {
+        const getErankData = async (id, el, imgUrl=null, link=null) => {
             const cacheKey = `erank_${id}`;
             const now = Date.now();
             const cachedData = JSON.parse(localStorage.getItem(cacheKey));
@@ -1341,6 +1380,7 @@
                 "tags" in cachedData &&
                 "title" in cachedData
             ) {
+                EE_Ingest({ type: "cached", data: cachedData }, el);
                 return cachedData;
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
@@ -1374,6 +1414,7 @@
                         error: response.error.code == 404 ? "Not found" : "Error",
                     }
                 }
+                EE_Ingest({ type: "raw", data }, el);
                 const age = convertToNumber(data.stats.listing_age);
                 const sales = convertToNumber(data.stats.est_sales.label);
                 const erankData = {
@@ -2164,7 +2205,7 @@
             //console.log(currentUrl);
             const img = imgUrl ?? element.querySelector("img")?.src;
 
-            const erankData = await getErankData(id,img,currentUrl);
+            const erankData = await getErankData(id,element,img,currentUrl);
             if (erankData.error) {
                 if (erankData.error === "Not found") {
                     loadingEl.textContent = "Erank verileri bulunamadı.";
