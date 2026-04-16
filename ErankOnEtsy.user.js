@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.30
+// @version      4.31
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -643,7 +643,7 @@
      * @param rawResponse {Record<string, unknown>|"CACHED"}
      * @param element {HTMLElement}
      */
-    async function EE_Ingest(rawResponse, element) {
+    async function EE_Ingest(id,rawResponse, element) {
         try {
             const liTagUnderRoot = element.closest("li")
             const allListingEls = document.querySelectorAll(
@@ -656,10 +656,11 @@
             : null
 
             const data = JSON.stringify({
+                id,
                 scraped_at: new Date().toISOString(),
                 page_url: window.location.href,
                 search_rank: searchRank,
-                raw_html: liTagUnderRoot?.outerHTML ?? null,
+                raw_html: element?.outerHTML ?? null,
                 payload: rawResponse,
                 team: config.team
             })
