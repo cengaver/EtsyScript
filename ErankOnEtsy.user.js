@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.31
+// @version      4.32
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1380,7 +1380,7 @@
                 "tags" in cachedData &&
                 "title" in cachedData
             ) {
-                EE_Ingest({ type: "cached", data: cachedData }, el);
+                EE_Ingest(id, { type: "cached", data: cachedData }, el);
                 return cachedData;
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
@@ -1414,7 +1414,7 @@
                         error: response.error.code == 404 ? "Not found" : "Error",
                     }
                 }
-                EE_Ingest({ type: "raw", data }, el);
+                EE_Ingest(id, { type: "raw", data }, el);
                 const age = convertToNumber(data.stats.listing_age);
                 const sales = convertToNumber(data.stats.est_sales.label);
                 const erankData = {
