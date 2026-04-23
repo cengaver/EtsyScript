@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.40
+// @version      4.42
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -740,7 +740,7 @@
 
     async function isConfigured() {
 
-        if (!config.authorization || !config.signature|| !config.timestamp || !config.deviceId) {
+        if (!config.authorization || !config.signature|| !config.timestamp || !config.deviceId || !config.secret) {
             //showToast('Account credentials missing', 'error');
             return false;
         }
@@ -853,7 +853,8 @@
             { id: 'config_version', label: 'config_version', type: 'text', value: config.config_version },
             { id: 'deviceId', label: 'deviceId', type: 'text', value: config.deviceId },
             { id: 'signature', label: 'signature', type: 'text', value: config.signature },
-            { id: 'timestamp', label: 'timestamp', type: 'text', value: config.timestamp }
+            { id: 'timestamp', label: 'timestamp', type: 'text', value: config.timestamp },
+            { id: 'secret', label: 'secret', type: 'text', value: config.secret }
 
         ];
 
@@ -1199,7 +1200,7 @@
             const accessToken = await getAccessToken();
             if(!accessToken) return;
 
-            const tags = tag.join(", ");
+            const tags = tag!=""?tag.join(", "):tag;
             // 1. Mevcut son dolu satırı bul
             let linkAlreadyExists = false;
             let lastRow = 0;
@@ -1376,6 +1377,52 @@
             return { dnoValue, gDrive, teamname };
         };
 
+        const HMAC = async (key, message) => {
+            const enc = new TextEncoder();
+
+            const cryptoKey = await crypto.subtle.importKey(
+                "raw",
+                enc.encode(key),
+                { name: "HMAC", hash: "SHA-256" },
+                false,
+                ["sign"]
+            );
+
+            const sig = await crypto.subtle.sign(
+                "HMAC",
+                cryptoKey,
+                enc.encode(message)
+            );
+
+            return new Uint8Array(sig);
+        };
+
+        const Base64 = (bytes) => {
+            let binary = "";
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        };
+
+        const signatureSigned = async (id) => {
+            config.timestamp = Math.floor(Date.now() / 1000).toString();
+
+            const canonical = `ext/listing/${id}|${config.timestamp}`;
+            console.log({
+                canonical,
+                secret: config.secret,
+                timestamp: config.timestamp
+            });
+            if (!config.secret) {
+                //showToast('Secret missing', 'error');
+                return false;
+            }
+            const raw = await HMAC(config.secret, canonical);
+            config.signature = Base64(raw);
+            return true;
+        };
+
         const getErankData = async (id, el, imgUrl=null, link=null) => {
             const cacheKey = `erank_${id}`;
             const now = Date.now();
@@ -1391,7 +1438,6 @@
                 return cachedData;
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
-
             if (!await isConfigured()) return;
             const url = `https://members.erank.com/ext`;
 
@@ -1404,7 +1450,7 @@
                     "x-signature": config.signature,
                     "x-timestamp": config.timestamp,
                 };
-
+                console.log(headers);
                 const body = JSON.stringify({
                     endpoint: `ext/listing/${id}`,
                     payload: {},
@@ -2231,11 +2277,10 @@
             const loadingEl = window.document.createElement("div");
             loadingEl.textContent = "Erank verileri yükleniyor...";
             overlay.appendChild(loadingEl);
+            await signatureSigned(id);
             if (await isConfigured()){
                 //showToast('Konfigure olmuş', 'info');
-
                 const erankData = await getErankData(id,element,img,currentUrl);
-
                 if (erankData.error) {
                     if (erankData.error === "Not found") {
                         loadingEl.textContent = "Erank verileri bulunamadı.";
@@ -2244,7 +2289,6 @@
                     }
                     return;
                 }
-
                 ({ sales, age, title, tags } = erankData);
 
             } else {
@@ -2256,7 +2300,6 @@
 
             //showToast('Title:' + title, 'info');
             loadingEl.remove();
-
             //console.log(img)
             if (config.sheetId !== "") {
                 let { dnoValue, gDrive, teamname } = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
