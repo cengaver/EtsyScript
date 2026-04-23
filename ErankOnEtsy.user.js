@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.32
+// @version      4.40
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -691,6 +691,9 @@
         team: await GM.getValue('team', 'X'),
         manager: await GM.getValue('manager', ''),
         config_version: await GM.getValue('config_version', '1'),
+        deviceId: await GM.getValue('deviceId', ''),
+        signature: await GM.getValue('signature', ''),
+        timestamp: await GM.getValue('timestamp', ''),
     };
 
     // Global değişkenler
@@ -736,8 +739,9 @@
     }
 
     async function isConfigured() {
-        if (!config.erankKey || !config.authorization) {
-            showToast('Erank Account credentials missing', 'error');
+
+        if (!config.authorization || !config.signature|| !config.timestamp || !config.deviceId) {
+            //showToast('Account credentials missing', 'error');
             return false;
         }
         return true;
@@ -846,7 +850,10 @@
             { id: 'sheetId2', label: 'SheetId2', type: 'text', value: config.sheetId2 },
             { id: 'team', label: 'Team', type: 'text', value: config.team },
             { id: 'manager', label: 'manager', type: 'text', value: config.manager },
-            { id: 'config_version', label: 'config_version', type: 'text', value: config.config_version }
+            { id: 'config_version', label: 'config_version', type: 'text', value: config.config_version },
+            { id: 'deviceId', label: 'deviceId', type: 'text', value: config.deviceId },
+            { id: 'signature', label: 'signature', type: 'text', value: config.signature },
+            { id: 'timestamp', label: 'timestamp', type: 'text', value: config.timestamp }
 
         ];
 
@@ -1380,41 +1387,58 @@
                 "tags" in cachedData &&
                 "title" in cachedData
             ) {
-                EE_Ingest(id, { type: "cached", data: cachedData }, el);
+                EE_Ingest({ type: "cached", data: cachedData }, el);
                 return cachedData;
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
+
             if (!await isConfigured()) return;
-            const url = `https://members.erank.com/api/ext/listing/${id}`;
+            const url = `https://members.erank.com/ext`;
 
             try {
                 const headers = {
-                    accept: "application/json, text/plain, */*",
-                    authorization: `${config.authorization}`,
-                    "x-erank-key": config.erankKey,
-                    "x-user-agent": "erank-bx/1.0",
-                }
+                    "accept": "*/*",
+                    "content-type": "application/json",
+                    "authorization": config.authorization, // "Bearer ..." şeklinde olmalı
+                    "x-device-id": config.deviceId,
+                    "x-signature": config.signature,
+                    "x-timestamp": config.timestamp,
+                };
+
+                const body = JSON.stringify({
+                    endpoint: `ext/listing/${id}`,
+                    payload: {},
+                    method: "GET"
+                });
 
                 const response = await GM.xmlHttpRequest({
+                    method: "POST",
                     url,
                     headers,
+                    data: body,
                     responseType: "json",
                 });
-                const data = response.response?.data;
-                if (response.status==401) {
-                        console.error("eRank API error");
+
+                if (response.status === 401) {
+                    console.error("eRank API error: Unauthorized");
                     if (!await ensureBearer()) {
                         showToast('Erank Authorization Yüklenemedi <br>SAYFAYI YENİLEYİN!!!', 'error');
                     }
-                    return
+                    return;
                 }
+
+                const data = response.response?.data;
+
                 if (!data) {
-                    console.error("eRank API error:", response.error?.code, response.error?.message);
+                    console.error("eRank API error:", response.response);
                     return {
-                        error: response.error.code == 404 ? "Not found" : "Error",
-                    }
+                        error: response.status === 404 ? "Not found" : "Error",
+                    };
                 }
-                EE_Ingest(id, { type: "raw", data }, el);
+
+                return data;
+
+                EE_Ingest({ type: "raw", data }, el);
                 const age = convertToNumber(data.stats.listing_age);
                 const sales = convertToNumber(data.stats.est_sales.label);
                 const erankData = {
@@ -2183,10 +2207,19 @@
             element,
             id,
             imgUrl = null,
-            url = null,
+            url = null
         }) => {
-            //console.log("Creating overlay on", element);
+            //console.log(element);
+            //console.log(element?.querySelector('h1, h3'));
             //console.log("Creating overlay id : ", id);
+            // Etsy ürün linkini al
+            url ??= element.querySelector("a.listing-link")?.href ?? element.querySelector("a.v2-listing-card__img")?.href ?? window.location.href
+            const currentUrl = simplifyEtsyUrl(url);//**
+            //console.log(currentUrl);
+            const img = imgUrl ?? element.querySelector("img")?.src;
+            const titleEl = element.querySelector('h1','h3');
+            let title = element?.querySelector('h1, h3')?.textContent?.trim()?? document.querySelector('h1[data-buy-box-listing-title="true"]')?.textContent?.trim();
+            let sales, age, tags;
             const overlay = window.document.createElement("div");
             overlay.style.display = "flex";
             overlay.style.gap = "0.5rem";
@@ -2198,24 +2231,30 @@
             const loadingEl = window.document.createElement("div");
             loadingEl.textContent = "Erank verileri yükleniyor...";
             overlay.appendChild(loadingEl);
+            if (await isConfigured()){
+                //showToast('Konfigure olmuş', 'info');
 
-            // Etsy ürün linkini al
-            url ??= element.querySelector("a.listing-link")?.href ?? element.querySelector("a.v2-listing-card__img")?.href ?? window.location.href
-            const currentUrl = simplifyEtsyUrl(url);//**
-            //console.log(currentUrl);
-            const img = imgUrl ?? element.querySelector("img")?.src;
+                const erankData = await getErankData(id,element,img,currentUrl);
 
-            const erankData = await getErankData(id,element,img,currentUrl);
-            if (erankData.error) {
-                if (erankData.error === "Not found") {
-                    loadingEl.textContent = "Erank verileri bulunamadı.";
-                } else {
-                    loadingEl.textContent = "Erank'a giriş yapın.";
+                if (erankData.error) {
+                    if (erankData.error === "Not found") {
+                        loadingEl.textContent = "Erank verileri bulunamadı.";
+                    } else {
+                        loadingEl.textContent = "Erank'a giriş yapın.";
+                    }
+                    return;
                 }
-                return
+
+                ({ sales, age, title, tags } = erankData);
+
+            } else {
+                //showToast('Konfigure YOK', 'info');
+                sales = -1;
+                age = -1;
+                tags = "";
             }
 
-            const { sales, age, title, tags } = erankData;
+            //showToast('Title:' + title, 'info');
             loadingEl.remove();
 
             //console.log(img)
@@ -2278,10 +2317,12 @@
             salesEl.textContent = `Satış: ${sales}`;
             if (Number(sales) / 1.3 > Number(age)) salesEl.style.backgroundColor = "green";
             else if (Number(sales) == 0 ) salesEl.style.backgroundColor = "red";
+            if (sales==-1) salesEl.style.backgroundColor = "#b00bb3";
             overlay.appendChild(salesEl);
 
             const ageEl = window.document.createElement("div");
             ageEl.textContent = `Yaş: ${age}`;
+            if (age==-1) ageEl.style.backgroundColor = "#b00bb3";
             if (age >= 1 && age <= 50) ageEl.style.backgroundColor = "#73C476";
             else if (age >= 51 && age <= 100) ageEl.style.backgroundColor = "#C5E1A5";
             else if (age >= 101 && age <= 300) ageEl.style.backgroundColor = "#FFD54F";
@@ -2376,10 +2417,10 @@
             const addOverlay = async (el) => {
                 //console.log(el);
                 const id = el.dataset.listingId;
-                const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
+                //const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
                 await createOverlayOnElement({
-                    element: infoEl,
-                    id,
+                    element: el,
+                    id
                 });
             };
             observeElements("[data-listing-id][data-listing-card-v2]", addOverlay, window.document);
@@ -2577,7 +2618,7 @@
         GM.registerMenuCommand("Ayarlar", showConfigMenu);
         GM.registerMenuCommand("KeyGüncelle", () => ensureBearer())
         // Show welcome message
-        showToast('Etsy Erank Tool yüklendi', 'info');
+        showToast('Erank ARTIK yok', 'info');
     }
 
     // Start the script
