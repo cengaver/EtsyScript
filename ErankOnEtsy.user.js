@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.44
+// @version      4.45
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1381,7 +1381,7 @@
             if (cachedData) { localStorage.removeItem(cacheKey) }
             // if (!await isConfigured()) return;
             try {
-                const response = await eRankNative.extFetch("ext/listing/1864659814", "GET")
+                const response = await eRankNative.extFetch(`ext/listing/${id}`, "GET")
 
                 if (!response.success) {
                     console.error("eRank API error:", response.error);
