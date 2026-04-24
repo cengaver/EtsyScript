@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.45
+// @version      4.46
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -1427,7 +1427,7 @@
                 }
                 return erankData;
             } catch (error) {
-                showToast('Erank Login OL', 'error');
+                //showToast('Erank Login OL', 'error');
                 console.error("eRank data fetch error:", error);
             }
         };
