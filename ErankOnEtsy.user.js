@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.42
+// @version      4.44
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -12,7 +12,8 @@
 // @match        https://www.etsy.com/c/*
 // @match        https://www.etsy.com/your/purchases*
 // @match        https://ehunt.ai/product-detail/*
-// @match        https://ehunt.ai/etsy-product-research*
+// @match        https://ehunt.ai/etsy-product-research**
+// @require      https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
 // @grant        GM_xmlhttpRequest
@@ -22,14 +23,14 @@
 // @grant        GM.addElement
 // @grant        GM.getResourceText
 // @grant        GM.addStyle
-// @connect      beta.erank.com
+// @grant        unsafeWindow
 // @connect      ehunt.ai
 // @connect      sheets.googleapis.com
-// @connect      erank.com
 // @connect      script.google.com
 // @connect      developer.uspto.gov
 // @connect      ee-ingest.lifecodeof.workers.dev
 // @connect      raw.githubusercontent.com
+// @connect      members.erank.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ErankOnEtsy.user.js
 // ==/UserScript==
@@ -682,18 +683,12 @@
         apiKeyUspto: await GM.getValue('apiKeyUspto', ''),
         sheetId: await GM.getValue('sheetId', ''),
         sheetId2: await GM.getValue('sheetId2', ''),
-        authorization: await GM.getValue('authorization', ''),
-        erankKey: await GM.getValue('erankKey', ''),
         range: await GM.getValue('range', ''),
         rangeLink: await GM.getValue('rangeLink', ''),
         privateKey: await GM.getValue('privateKey', ''),
         clientEmail: await GM.getValue('clientEmail', ''),
         team: await GM.getValue('team', 'X'),
-        manager: await GM.getValue('manager', ''),
-        config_version: await GM.getValue('config_version', '1'),
-        deviceId: await GM.getValue('deviceId', ''),
-        signature: await GM.getValue('signature', ''),
-        timestamp: await GM.getValue('timestamp', ''),
+        manager: await GM.getValue('manager', '')
     };
 
     // Global değişkenler
@@ -740,7 +735,7 @@
 
     async function isConfigured() {
 
-        if (!config.authorization || !config.signature|| !config.timestamp || !config.deviceId || !config.secret) {
+        if (!config.deviceId) {
             //showToast('Account credentials missing', 'error');
             return false;
         }
@@ -840,8 +835,6 @@
         // Form fields
         const fields = [
             { id: 'apiKeyUspto', label: 'KeyUspto', type: 'text', value: config.apiKeyUspto },
-            { id: 'authorization', label: 'authorization', type: 'text', value: config.authorization },
-            { id: 'erankKey', label: 'erankKey', type: 'text', value: config.erankKey },
             { id: 'clientEmail', label: 'Client Email', type: 'text', value: config.clientEmail },
             { id: 'privateKey', label: 'Private Key', type: 'textarea', value: config.privateKey },
             { id: 'rangeLink', label: 'Range Link', type: 'text', value: config.rangeLink },
@@ -849,13 +842,7 @@
             { id: 'range', label: 'Range ', type: 'text', value: config.range },
             { id: 'sheetId2', label: 'SheetId2', type: 'text', value: config.sheetId2 },
             { id: 'team', label: 'Team', type: 'text', value: config.team },
-            { id: 'manager', label: 'manager', type: 'text', value: config.manager },
-            { id: 'config_version', label: 'config_version', type: 'text', value: config.config_version },
-            { id: 'deviceId', label: 'deviceId', type: 'text', value: config.deviceId },
-            { id: 'signature', label: 'signature', type: 'text', value: config.signature },
-            { id: 'timestamp', label: 'timestamp', type: 'text', value: config.timestamp },
-            { id: 'secret', label: 'secret', type: 'text', value: config.secret }
-
+            { id: 'manager', label: 'manager', type: 'text', value: config.manager }
         ];
 
         fields.forEach(field => {
@@ -1003,8 +990,8 @@
         });
     }
 
-    const CONFIG_URL = "https://raw.githubusercontent.com/cengaver/EtsyScript/refs/heads/main/config.json";
     async function fetchConfig() {
+        const CONFIG_URL = "https://raw.githubusercontent.com/cengaver/EtsyScript/refs/heads/main/config.json";
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: "GET",
@@ -1377,52 +1364,6 @@
             return { dnoValue, gDrive, teamname };
         };
 
-        const HMAC = async (key, message) => {
-            const enc = new TextEncoder();
-
-            const cryptoKey = await crypto.subtle.importKey(
-                "raw",
-                enc.encode(key),
-                { name: "HMAC", hash: "SHA-256" },
-                false,
-                ["sign"]
-            );
-
-            const sig = await crypto.subtle.sign(
-                "HMAC",
-                cryptoKey,
-                enc.encode(message)
-            );
-
-            return new Uint8Array(sig);
-        };
-
-        const Base64 = (bytes) => {
-            let binary = "";
-            for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return btoa(binary);
-        };
-
-        const signatureSigned = async (id) => {
-            config.timestamp = Math.floor(Date.now() / 1000).toString();
-
-            const canonical = `ext/listing/${id}|${config.timestamp}`;
-            console.log({
-                canonical,
-                secret: config.secret,
-                timestamp: config.timestamp
-            });
-            if (!config.secret) {
-                //showToast('Secret missing', 'error');
-                return false;
-            }
-            const raw = await HMAC(config.secret, canonical);
-            config.signature = Base64(raw);
-            return true;
-        };
-
         const getErankData = async (id, el, imgUrl=null, link=null) => {
             const cacheKey = `erank_${id}`;
             const now = Date.now();
@@ -1434,57 +1375,24 @@
                 "tags" in cachedData &&
                 "title" in cachedData
             ) {
-                EE_Ingest({ type: "cached", data: cachedData }, el);
+                EE_Ingest(id, { type: "cached", data: cachedData }, el);
                 return cachedData;
             }
             if (cachedData) { localStorage.removeItem(cacheKey) }
-            if (!await isConfigured()) return;
-            const url = `https://members.erank.com/ext`;
-
+            // if (!await isConfigured()) return;
             try {
-                const headers = {
-                    "accept": "*/*",
-                    "content-type": "application/json",
-                    "authorization": config.authorization, // "Bearer ..." şeklinde olmalı
-                    "x-device-id": config.deviceId,
-                    "x-signature": config.signature,
-                    "x-timestamp": config.timestamp,
-                };
-                console.log(headers);
-                const body = JSON.stringify({
-                    endpoint: `ext/listing/${id}`,
-                    payload: {},
-                    method: "GET"
-                });
+                const response = await eRankNative.extFetch("ext/listing/1864659814", "GET")
 
-                const response = await GM.xmlHttpRequest({
-                    method: "POST",
-                    url,
-                    headers,
-                    data: body,
-                    responseType: "json",
-                });
-
-                if (response.status === 401) {
-                    console.error("eRank API error: Unauthorized");
-                    if (!await ensureBearer()) {
-                        showToast('Erank Authorization Yüklenemedi <br>SAYFAYI YENİLEYİN!!!', 'error');
-                    }
-                    return;
-                }
-
-                const data = response.response?.data;
-
-                if (!data) {
-                    console.error("eRank API error:", response.response);
+                if (!response.success) {
+                    console.error("eRank API error:", response.error);
                     return {
                         error: response.status === 404 ? "Not found" : "Error",
                     };
                 }
 
-                return data;
+                const data = response.data;
 
-                EE_Ingest({ type: "raw", data }, el);
+                EE_Ingest(id, { type: "raw", data }, el);
                 const age = convertToNumber(data.stats.listing_age);
                 const sales = convertToNumber(data.stats.est_sales.label);
                 const erankData = {
@@ -1719,7 +1627,6 @@
                 a.textContent="❤️"
                 a.style.backgroundColor=null
             })
-
 
             const salesVals=data.map(d=>Number(d.sales)||0)
             const convVals=data.map(d=>Number(d.est_conversion_rate)||0)
@@ -2260,7 +2167,7 @@
             //console.log("Creating overlay id : ", id);
             // Etsy ürün linkini al
             url ??= element.querySelector("a.listing-link")?.href ?? element.querySelector("a.v2-listing-card__img")?.href ?? window.location.href
-            const currentUrl = simplifyEtsyUrl(url);//**
+            const currentUrl = simplifyEtsyUrl(url);
             //console.log(currentUrl);
             const img = imgUrl ?? element.querySelector("img")?.src;
             const titleEl = element.querySelector('h1','h3');
@@ -2277,9 +2184,7 @@
             const loadingEl = window.document.createElement("div");
             loadingEl.textContent = "Erank verileri yükleniyor...";
             overlay.appendChild(loadingEl);
-            await signatureSigned(id);
-            if (await isConfigured()){
-                //showToast('Konfigure olmuş', 'info');
+            try {
                 const erankData = await getErankData(id,element,img,currentUrl);
                 if (erankData.error) {
                     if (erankData.error === "Not found") {
@@ -2291,7 +2196,8 @@
                 }
                 ({ sales, age, title, tags } = erankData);
 
-            } else {
+            } catch (error) {
+                console.error(error)
                 //showToast('Konfigure YOK', 'info');
                 sales = -1;
                 age = -1;
@@ -2659,9 +2565,9 @@
         await loadConfig();
         // Register menu commands
         GM.registerMenuCommand("Ayarlar", showConfigMenu);
-        GM.registerMenuCommand("KeyGüncelle", () => ensureBearer())
+        //GM.registerMenuCommand("KeyGüncelle", () => ensureBearer())
         // Show welcome message
-        showToast('Erank ARTIK yok', 'info');
+        showToast('Pod Tool Yüklendi.', 'info');
     }
 
     // Start the script
