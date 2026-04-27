@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Discount Adjust
-// @version      1.24
+// @version      1.25
 // @description  Create daily discount
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -699,26 +699,28 @@
         }
         const mountStr = String(config.mount).padStart(2, '0');
         // Inputlara tarih yaz
-        const dateInputs = [...document.querySelectorAll('input[data-datepicker-input="true"]')];
-        if (dateInputs.length >= 2) {
-            const dateStr = `${mountStr}/${lastDayStr}/${config.fullYear}`;
-
+        const dateInputsStart = document.querySelector('#sales-and-coupons--start-date');
+        const dateInputsEnd = document.querySelector('#sales-and-coupons--end-date');
+        console.log("date inputlar bulundu")
+        //if (dateInputsStart.length >= 1 && dateInputsEnd.length >= 1) {
+            const dateStr = `${config.fullYear}-${mountStr}-${lastDayStr}`;
+            console.log("date inputlar bulundu");
             // İlk input
-            dateInputs[0].value = dateStr;
-            dateInputs[0].focus();
-            dateInputs[0].click();
-            dateInputs[0].blur();
-            dateInputs[0].dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-            dateInputs[0].dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+            dateInputsStart.value = dateStr;
+            dateInputsStart.focus();
+            dateInputsStart.click();
+            dateInputsStart.blur();
+            dateInputsStart.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+            dateInputsStart.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
 
             // İkinci input
-            dateInputs[1].value = dateStr;
-            dateInputs[1].focus();
-            dateInputs[1].click();
-            dateInputs[1].blur();
-            dateInputs[1].dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-            dateInputs[1].dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-        }
+            dateInputsEnd.value = dateStr;
+            dateInputsEnd.focus();
+            dateInputsEnd.click();
+            dateInputsEnd.blur();
+            dateInputsEnd.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+            dateInputsEnd.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+        //}
 
         // 2. Select'i seçili hale getir
         const select = document.querySelector("#reward-percentage");
