@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy
-// @version      1.78
+// @version      1.79
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -400,5 +400,5 @@
         setupPeriodObserver();
     });
     smallObserver.observe(document.body, { childList: true, subtree: true });
-
+    GM.registerMenuCommand("Güncelle", () => processPage(1));
 })();
