@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy MesssageOrder CounterIndicator
 // @namespace    https://github.com/cengaver
-// @version      0.10
+// @version      0.11
 // @description  Message and Order CounterIndicator panel
 // @match        https://www.etsy.com/your/shops/*
 // @match        https://www.etsy.com/messages*
@@ -221,13 +221,21 @@
         const container = document.getElementById("shop-manager--tool-links");
         if (!container) return;
 
-        const messageEl = container.querySelector('a[data-app-key="messages"] span[data-clg-id="WtCounterIndicator"]');
-        const orderEl = container.querySelector('a[data-app-key="orders"] span[data-clg-id="WtCounterIndicator"]');
-        //if (!messageEl && !orderEl) return;
+        const message = normalizeNumber(
+            container
+            .querySelector('a[data-app-key="messages"] clg-counter-indicator')
+            ?.shadowRoot
+            ?.querySelector('.clg-counter-indicator__value')
+            ?.textContent);
 
-        const message = normalizeNumber(messageEl?.textContent);
-        const order = normalizeNumber(orderEl?.textContent);
-        //if (!message && !order) return;
+        const order = normalizeNumber(
+            container
+            .querySelector('a[data-app-key="orders"] clg-counter-indicator')
+            ?.shadowRoot
+            ?.querySelector('.clg-counter-indicator__value')
+            ?.textContent);
+
+        if (!message && !order) return;
 
         // Google Sheet’e gönderilecek veri objesi
         const data = {
