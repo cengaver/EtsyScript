@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.90
+// @version      1.91
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -493,7 +493,7 @@
     const DEFAULT_CONFIG = {
         reviewMessage: `Hello {{userName}}, 🙏`
     };
-    const MESSAGE_BUTTONS_SELECTOR = '#browse-view > div > div.col-lg-9.pl-xs-0.pl-md-4.pr-xs-0.pr-md-4.pr-lg-0.float-left > div > section > div > div.panel-body > div > div > div.flag-img.flag-img-right.pt-xs-2.pt-xl-3.pl-xs-2.pl-xl-3.pr-xs-3.pr-xl-3.vertical-align-top.icon-t-2.hide-xs.hide-sm > div';
+    const MESSAGE_BUTTONS_SELECTOR = 'section.order-group-list .panel-body-row > .flag > :last-child > [role=presentation] > :first-child clg-icon-button';
 
     // Global değişkenler
     let config = {...DEFAULT_CONFIG};
@@ -863,7 +863,6 @@
             }
             if(skip) return;
             button.setAttribute('tabindex', String(index + 1)); // attribute olarak koy -> getAttribute/selector tutarlı olur
-            button.innerText = '...';
         });
 
         await insertOrUpdateProgressBar(star, el.length);
@@ -893,7 +892,7 @@
 
             window.addEventListener('popstate', function(){
                 // Sayfa içeriği SPA olarak güncelleniyorsa DOM'un hazır olmasını bekle
-                waitFor(()=> document.querySelectorAll(MESSAGE_BUTTONS_SELECTOR + ' :is(div, div:nth-child(2)) > span > button[data-clg-id="WtButton"]').length > 0, 120, 50)
+                waitFor(()=> document.querySelectorAll(MESSAGE_BUTTONS_SELECTOR).length > 0, 120, 50)
                     .then(()=> clickNextTabIndex())
                     .catch(()=> {
                     // fallback: 1s sonra dene
@@ -1008,7 +1007,7 @@
 
     function observeButtons() {
         const buttons = document.querySelectorAll(
-            MESSAGE_BUTTONS_SELECTOR + ' :is(div, div:nth-child(2)) > span > button[data-clg-id="WtButton"]:not([data-test-id="purchase-shipping-label-button"])'
+            MESSAGE_BUTTONS_SELECTOR
         );
         if (buttons.length > 0 && !window.location.href.includes("https://www.etsy.com/your/orders/sold/new?search_query=")) {
             butonsAll(buttons);
