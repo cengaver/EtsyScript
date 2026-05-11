@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.91
+// @version      1.92
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -850,19 +850,24 @@
         });
     }
 
-    // butonsAll: çağırdığınız fonksiyonun güncellenmiş hali
     async function butonsAll(el){
         let star = 0;
+
         el.forEach((button, index) => {
-            let parentElement = button;
-            let skip = false;
-            for (let i = 0; i < 5; i++){
-                if(!parentElement) break;
-                parentElement = parentElement.parentElement;
-                if(parentElement && parentElement.querySelector('[data-icon="star"]')){ skip = true; star++; break; }
+
+            // sipariş kartını bul
+            const row = button.closest('.panel-body-row');
+
+            // review var mı kontrol et
+            const hasReview = !!row?.querySelector('[data-icon="star"]');
+
+            if(hasReview){
+                star++;
+                return;
             }
-            if(skip) return;
-            button.setAttribute('tabindex', String(index + 1)); // attribute olarak koy -> getAttribute/selector tutarlı olur
+
+            button.setAttribute('tabindex', String(index + 1));
+            button.innerText = '...';
         });
 
         await insertOrUpdateProgressBar(star, el.length);
