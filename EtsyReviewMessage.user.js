@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.92
+// @version      1.93
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -493,8 +493,11 @@
     const DEFAULT_CONFIG = {
         reviewMessage: `Hello {{userName}}, 🙏`
     };
-    const MESSAGE_BUTTONS_SELECTOR = 'section.order-group-list .panel-body-row > .flag > :last-child > [role=presentation] > :first-child clg-icon-button';
-
+    //const MESSAGE_BUTTONS_SELECTOR = 'section.order-group-list .panel-body-row > .flag > :last-child > [role=presentation] > :first-child clg-icon-button';
+    const MESSAGE_BUTTONS_SELECTOR = `
+section.order-group-list
+clg-tooltip span[slot="trigger"] clg-icon-button:has(clg-icon[name="message"])
+`;
     // Global değişkenler
     let config = {...DEFAULT_CONFIG};
     let toastContainer = null;
