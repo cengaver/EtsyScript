@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.93
+// @version      1.94
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -496,13 +496,14 @@
     //const MESSAGE_BUTTONS_SELECTOR = 'section.order-group-list .panel-body-row > .flag > :last-child > [role=presentation] > :first-child clg-icon-button';
     const MESSAGE_BUTTONS_SELECTOR = `
 section.order-group-list
-clg-tooltip span[slot="trigger"] clg-icon-button:has(clg-icon[name="message"])
+.panel-body-row
+clg-tooltip:has(clg-icon[name="message"]) clg-icon-button
 `;
     // Global değişkenler
     let config = {...DEFAULT_CONFIG};
     let toastContainer = null;
 
-     // Config yönetimi
+    // Config yönetimi
     async function loadConfig() {
         try {
             const savedConfig = await GM.getValue('Config');
