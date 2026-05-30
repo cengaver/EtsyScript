@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      1.97
+// @version      2.00
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -18,1058 +18,405 @@
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/ShipStationSalesReport.user.js
 // ==/UserScript==
 
-
-(async function() {
+(async function () {
     'use strict';
 
-    // Modern UI Styles
+    // ─── CSS Variables + Styles ───────────────────────────────────────────────
     GM.addStyle(`
+        :root {
+            --primary:      #007bff;
+            --primary-dark: #0056b3;
+            --success:      #34a853;
+            --success-dark: #2e7d32;
+            --danger:       #ea4335;
+            --danger-dark:  #c62828;
+            --warning:      #fbbc05;
+            --warning-dark: #f57f17;
+            --light:        #f8f9fa;
+            --dark:         #202124;
+            --gray:         #5f6368;
+            --radius:       4px;
+            --shadow:       0 2px 10px rgba(0,0,0,.1);
+            --transition:   all .25s ease;
+            --font:         'Segoe UI', Roboto, Arial, sans-serif;
+        }
+
+        /* Floating action button */
         #sales-floating-button {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 60px;
-        height: 60px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        font-size: 24px;
-        cursor: pointer;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-    }
-    #sales-floating-button:hover {
-        background-color: #0056b3;
-    }
-    #sales-report-container {
-        position: fixed;
-        top: 100px;
-        right: 20px;
-        width: 450px;
-        max-height: 500px;
-        background: #ffffff;
-        border: 1px solid #ccc;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        overflow-y: auto;
-        z-index: 9999;
-    }
-    #sales-report-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    #sales-report-table th, #sales-report-table td {
-        padding: 10px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-    }
-    #sales-report-table th {
-        background-color: #007bff;
-        color: white;
-    }
-    #sales-report-table tr:hover {
-        background-color: #f1f1f1;
-    }
-    #sales-dropdown-menu {
-        margin: 10px;
-    }
-    #sales-dropdown-menu select, #sales-dropdown-menu button {
-        margin-right: 5px;
-        padding: 4px 9px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 10px;
-    }
-    #loading-indicator {
-        font-size: 16px;
-        font-weight: bold;
-        color: #333;
-    }
-    /*:root {
-        --primary-color: #4285f4;
-        --primary-dark: #3367d6;
-        --secondary-color: #34a853;
-        --secondary-dark: #2e7d32;
-        --danger-color: #ea4335;
-        --danger-dark: #c62828;
-        --warning-color: #fbbc05;
-        --warning-dark: #f57f17;
-        --light-color: #f8f9fa;
-        --dark-color: #202124;
-        --gray-color: #5f6368;
-        --border-radius: 4px;
-        --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        --transition: all 0.3s ease;
-        --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-    }*/
+            position: fixed; bottom: 20px; right: 20px;
+            width: 56px; height: 56px;
+            background: var(--primary); color: #fff;
+            border: none; border-radius: 50%;
+            font-size: 22px; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,.2);
+            z-index: 10000; transition: var(--transition);
+        }
+        #sales-floating-button:hover { background: var(--primary-dark); transform: scale(1.08); }
 
-    /* Toast Notifications */
-    .toast-container {
-        position: fixed;
-        bottom: 20px;
-        /*right: 20px;*/
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .toast {
-        min-width: 280px;
-        padding: 12px 16px;
-        border-radius: var(--border-radius);
-        box-shadow: var(--box-shadow);
-        font-family: var(--font-family);
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        opacity: 0;
-        transform: translateY(20px);
-        transition: var(--transition);
-    }
-
-    .toast.show {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    .toast-success {
-        background-color: var(--secondary-color);
-        color: white;
-    }
-
-    .toast-error {
-        background-color: var(--danger-color);
-        color: white;
-    }
-
-    .toast-warning {
-        background-color: var(--warning-color);
-        color: var(--dark-color);
-    }
-
-    .toast-info {
-        background-color: var(--primary-color);
-        color: white;
-    }
-
-    .toast-close {
-        background: none;
-        border: none;
-        color: inherit;
-        cursor: pointer;
-        font-size: 16px;
-        margin-left: 10px;
-        opacity: 0.7;
-    }
-
-    .toast-close:hover {
-        opacity: 1;
-    }
-
-    /* Buttons */
-    .etsy-tool-btn {
-        padding: 8px 12px;
-        border: none;
-        border-radius: var(--border-radius);
-        font-family: var(--font-family);
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: var(--transition);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-    }
-
-    .etsy-tool-btn:focus {
-        outline: none;
-    }
-
-    .etsy-tool-btn-primary {
-        background-color: var(--primary-color);
-        color: white;
-    }
-
-    .etsy-tool-btn-primary:hover {
-        background-color: var(--primary-dark);
-    }
-
-    .etsy-tool-btn-secondary {
-        background-color: var(--secondary-color);
-        color: white;
-    }
-
-    .etsy-tool-btn-secondary:hover {
-        background-color: var(--secondary-dark);
-    }
-
-    .etsy-tool-btn-danger {
-        background-color: var(--danger-color);
-        color: white;
-    }
-
-    .etsy-tool-btn-danger:hover {
-        background-color: var(--danger-dark);
-    }
-
-    .etsy-tool-btn-warning {
-        background-color: var(--warning-color);
-        color: var(--dark-color);
-    }
-
-    .etsy-tool-btn-warning:hover {
-        background-color: var(--warning-dark);
-    }
-
-    .etsy-tool-btn-light {
-        background-color: var(--light-color);
-        color: var(--dark-color);
-        border: 1px solid #ddd;
-    }
-
-    .etsy-tool-btn-light:hover {
-        background-color: #e9ecef;
-    }
-
-    .etsy-tool-btn-sm {
-        padding: 4px 8px;
-        font-size: 12px;
-    }
-
-    .etsy-tool-btn-lg {
-        padding: 10px 16px;
-        font-size: 16px;
-    }
-
-    .etsy-tool-btn-icon {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        border-radius: 50%;
-    }
-
-    /* Inputs */
-    .etsy-tool-input {
-        padding: 2px 4px;
-        border: 1px solid #ddd;
-        border-radius: var(--border-radius);
-        font-family: var(--font-family);
-        font-size: 16px;
-        transition: var(--transition);
-    }
-
-    .etsy-tool-input:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-    }
-
-    .etsy-tool-select {
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        border-radius: var(--border-radius);
-        font-family: var(--font-family);
-        font-size: 14px;
-        background-color: white;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .etsy-tool-select:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-    }
-
-    /* Panels */
-    .etsy-tool-panel {
-        background-color: white;
-        border-radius: var(--border-radius);
-        box-shadow: var(--box-shadow);
-        overflow: hidden;
-    }
-
-    .etsy-tool-panel-header {
-        padding: 12px 16px;
-        background-color: var(--primary-color);
-        color: white;
-        font-family: var(--font-family);
-        font-size: 16px;
-        font-weight: 500;
-        display: flex;
-        cursor: move;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .etsy-tool-panel-body {
-        padding: 16px;
-    }
-
-    /* Main Toolbar */
-    .etsy-tool-toolbar {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        z-index: 1000;
-        display: flex;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        flex-direction: column;
-        gap: 10px;
-        width: 300px;
-    }
-
-    /* Image Thumbnails */
-    .etsy-tool-thumbnails {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-top: 10px;
-    }
-
-    .etsy-tool-thumbnail {
-        position: relative;
-        width: 100%;
-        padding-top: 100%; /* 1:1 Aspect Ratio */
-        border-radius: var(--border-radius);
-        overflow: hidden;
-        cursor: pointer;
-        box-shadow: var(--box-shadow);
-        transition: var(--transition);
-    }
-
-    .etsy-tool-thumbnail:hover {
-        transform: scale(1.05);
-    }
-
-    .etsy-tool-thumbnail img {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .etsy-tool-thumbnail-actions {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background-color: rgba(0, 0, 0, 0.6);
-        display: flex;
-        justify-content: space-around;
-        padding: 5px;
-        opacity: 0;
-        transition: var(--transition);
-    }
-
-    .etsy-tool-thumbnail:hover .etsy-tool-thumbnail-actions {
-        opacity: 1;
-    }
-
-    /* Modal */
-    .etsy-tool-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        opacity: 0;
-        visibility: hidden;
-        transition: var(--transition);
-    }
-
-    .etsy-tool-modal-overlay.show {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .etsy-tool-modal {
-        background-color: white;
-        border-radius: var(--border-radius);
-        box-shadow: var(--box-shadow);
-        width: 90%;
-        max-width: 600px;
-        max-height: 90vh;
-        overflow: auto;
-        transform: translateY(-20px);
-        transition: var(--transition);
-    }
-
-    .etsy-tool-modal-overlay.show .etsy-tool-modal {
-        transform: translateY(0);
-    }
-
-    .etsy-tool-modal-header {
-        padding: 16px;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .etsy-tool-modal-title {
-        font-family: var(--font-family);
-        font-size: 18px;
-        font-weight: 500;
-        margin: 0;
-    }
-
-    .etsy-tool-modal-close {
-        background: none;
-        border: none;
-        font-size: 20px;
-        cursor: pointer;
-        color: var(--gray-color);
-    }
-
-    .etsy-tool-modal-body {
-        padding: 16px;
-    }
-
-    .etsy-tool-modal-footer {
-        padding: 16px;
-        border-top: 1px solid #eee;
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    /* Image Viewer */
-    .etsy-tool-image-viewer {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .etsy-tool-image-viewer img {
-        max-width: 100%;
-        max-height: 70vh;
-        object-fit: contain;
-    }
-
-    /* PNG Filter Panel */
-    .etsy-tool-png-filter {
-        margin-top: 10px;
-    }
-
-    .etsy-tool-png-list {
-        margin-top: 10px;
-        max-height: 300px;
-        overflow-y: auto;
-    }
-
-    .etsy-tool-png-item {
-        display: flex;
-        align-items: center;
-        padding: 8px;
-        border-bottom: 1px solid #eee;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .etsy-tool-png-item:hover {
-        background-color: #f5f5f5;
-    }
-
-    .etsy-tool-png-item.selected {
-        background-color: rgba(66, 133, 244, 0.1);
-    }
-
-    .etsy-tool-png-item-checkbox {
-        margin-right: 10px;
-    }
-
-    .etsy-tool-png-item-thumbnail {
-        width: 40px;
-        height: 40px;
-        border-radius: var(--border-radius);
-        overflow: hidden;
-        margin-right: 10px;
-    }
-
-    .etsy-tool-png-item-thumbnail img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .etsy-tool-png-item-info {
-        flex: 1;
-    }
-
-    .etsy-tool-png-item-title {
-        font-weight: 500;
-        margin-bottom: 2px;
-    }
-
-    .etsy-tool-png-item-sku {
-        font-size: 12px;
-        color: var(--gray-color);
-    }
-
-    /* Loading Spinner */
-    .etsy-tool-spinner {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: white;
-        animation: spin 1s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .etsy-tool-toolbar {
-            width: 250px;
+        /* Report panel */
+        #sales-report-container {
+            position: fixed; top: 80px; right: 20px;
+            width: 460px; max-height: 88vh;
+            background: #fff;
+            border: 1px solid #dde;
+            border-radius: 10px;
+            box-shadow: 0 6px 24px rgba(0,0,0,.15);
+            overflow-y: auto;
+            z-index: 9999;
+            font-family: var(--font);
         }
 
-        .etsy-tool-thumbnails {
-            grid-template-columns: repeat(2, 1fr);
+        /* Dropdown bar */
+        #sales-dropdown-menu {
+            position: sticky; top: 0;
+            background: #fff;
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+            z-index: 1;
         }
-    }
+        #sales-dropdown-menu select,
+        #sales-dropdown-menu button {
+            padding: 5px 10px;
+            border: 1px solid #ccc; border-radius: var(--radius);
+            font-size: 12px; font-family: var(--font);
+            cursor: pointer; background: #fff;
+            transition: var(--transition);
+        }
+        #sales-dropdown-menu button {
+            background: var(--primary); color: #fff; border-color: var(--primary);
+            font-weight: 600;
+        }
+        #sales-dropdown-menu button:hover { background: var(--primary-dark); }
+
+        /* Table */
+        #sales-report-table {
+            width: 100%; border-collapse: collapse;
+            font-size: 13px;
+        }
+        #sales-report-table th {
+            background: var(--primary); color: #fff;
+            padding: 9px 11px; text-align: left;
+            position: sticky; top: 0;
+        }
+        #sales-report-table td { padding: 8px 11px; border-bottom: 1px solid #f0f0f0; }
+        #sales-report-table tbody tr:hover { background: #f5f8ff; }
+        #sales-report-table tfoot tr th { background: #343a40; }
+
+        /* Loading overlay */
+        #loading-indicator {
+            position: fixed; inset: 0;
+            background: rgba(255,255,255,.75);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 99999;
+            font-family: var(--font); font-size: 18px; font-weight: 600; color: var(--dark);
+        }
+        .spinner {
+            width: 36px; height: 36px; margin-right: 12px;
+            border: 4px solid #dde;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Toast */
+        .toast-container {
+            position: fixed; bottom: 90px; right: 20px;
+            z-index: 99999; display: flex; flex-direction: column; gap: 8px;
+        }
+        .toast {
+            min-width: 260px; padding: 11px 14px;
+            border-radius: var(--radius); box-shadow: var(--shadow);
+            font-family: var(--font); font-size: 13px;
+            display: flex; align-items: center; justify-content: space-between;
+            opacity: 0; transform: translateY(10px);
+            transition: var(--transition);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast-success  { background: var(--success);  color: #fff; }
+        .toast-error    { background: var(--danger);   color: #fff; }
+        .toast-warning  { background: var(--warning);  color: var(--dark); }
+        .toast-info     { background: var(--primary);  color: #fff; }
+        .toast-close {
+            background: none; border: none; color: inherit;
+            cursor: pointer; font-size: 16px; margin-left: 10px; opacity: .7;
+        }
+        .toast-close:hover { opacity: 1; }
+
+        /* Config Modal */
+        .etsy-modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.45);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 99999;
+            opacity: 0; visibility: hidden; transition: var(--transition);
+        }
+        .etsy-modal-overlay.show { opacity: 1; visibility: visible; }
+        .etsy-modal {
+            background: #fff; border-radius: 8px;
+            box-shadow: var(--shadow);
+            width: 90%; max-width: 520px; max-height: 90vh; overflow: auto;
+            transform: translateY(-16px); transition: var(--transition);
+        }
+        .etsy-modal-overlay.show .etsy-modal { transform: translateY(0); }
+        .etsy-modal-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid #eee;
+            display: flex; align-items: center; justify-content: space-between;
+            font-family: var(--font); font-weight: 600; font-size: 16px;
+        }
+        .etsy-modal-body { padding: 18px; }
+        .etsy-modal-footer {
+            padding: 14px 18px; border-top: 1px solid #eee;
+            display: flex; justify-content: flex-end; gap: 10px;
+        }
+        .etsy-modal label {
+            display: block; margin-bottom: 4px;
+            font-family: var(--font); font-size: 13px; font-weight: 600;
+        }
+        .etsy-modal input, .etsy-modal textarea {
+            width: 100%; padding: 7px 10px;
+            border: 1px solid #ccc; border-radius: var(--radius);
+            font-family: var(--font); font-size: 14px;
+            box-sizing: border-box; transition: var(--transition);
+            margin-bottom: 14px;
+        }
+        .etsy-modal input:focus, .etsy-modal textarea:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0,123,255,.2);
+        }
+        .etsy-modal textarea { height: 90px; resize: vertical; }
+        .btn {
+            padding: 8px 16px; border: none; border-radius: var(--radius);
+            font-family: var(--font); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: var(--transition);
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-light { background: var(--light); color: var(--dark); border: 1px solid #ccc; }
+        .btn-light:hover { background: #e2e6ea; }
     `);
 
-    // Config yapısı
-    const DEFAULT_CONFIG = {
-        apiKey: "",
-        apiSecret: "",
-        selectedDateRange: "",
-        storeIds: "{}"
+    // ─── Constants & State ────────────────────────────────────────────────────
+    const API_BASE = 'https://ssapi.shipstation.com';
+    const EXCLUDED_STORE_ID = 307646;
+
+    const DEFAULT_CONFIG = { apiKey: '', apiSecret: '', selectedDateRange: 'yesterday', storeIds: '{}' };
+    let config = { ...DEFAULT_CONFIG };
+    let toastContainer = null;
+    let activeChart = null;     // track Chart instance to destroy on re-render
+    let overlayInitialized = false;
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+    const authHeader = () => btoa(`${config.apiKey}:${config.apiSecret}`);
+
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+
+    /** Safe JSON parse for config.storeIds */
+    const parseStoreIds = () => {
+        try { return JSON.parse(config.storeIds); }
+        catch { return {}; }
     };
 
-    // Global değişkenler
-    let config = {...DEFAULT_CONFIG};
-    let toastContainer = null;
+    /** Returns a NEW Date object offset by `days` from today — never mutates. */
+    const dateOffset = (days) => {
+        const d = new Date();
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split('T')[0];
+    };
 
-    // Config yönetimi
+    /** Maps a dateRange key → { startDate, endDate } */
+    const resolveDateRange = (range) => {
+        const today = dateOffset(0);
+        switch (range) {
+            case 'today':     return { startDate: today,          endDate: today };
+            case 'yesterday': return { startDate: dateOffset(-1), endDate: today };
+            case 'otherday':  return { startDate: dateOffset(-2), endDate: dateOffset(-1) };
+            case 'last7':     return { startDate: dateOffset(-7), endDate: today };
+            case 'last30':    return { startDate: dateOffset(-30),endDate: today };
+            default:          return { startDate: today,          endDate: today };
+        }
+    };
+
+    // ─── Config ───────────────────────────────────────────────────────────────
     async function loadConfig() {
         try {
-            const savedConfig = await GM.getValue('Config');
-            if (savedConfig) {
-                config = {...DEFAULT_CONFIG, ...savedConfig};
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.error('Config yükleme hatası:', error);
-            return false;
-        }
+            const saved = await GM.getValue('Config');
+            if (saved) config = { ...DEFAULT_CONFIG, ...saved };
+        } catch (e) { console.error('[SS] Config load error:', e); }
     }
 
     async function saveConfig() {
-        await GM.setValue('Config', config);
+        try { await GM.setValue('Config', config); }
+        catch (e) { console.error('[SS] Config save error:', e); }
     }
 
-    // Config kontrol fonksiyonu
-    async function checkConfig() {
-        return await loadConfig();
-    }
-
-    // Config doğrulama
-    async function validateConfig() {
-        if (!await checkConfig()) {
-            showToast('Config yüklenemedi', 'error');
-            return false;
-        }
-
-        if (!config.apiSecret || !config.apiKey) {
-            showToast('Ship Stations credentials missing', 'error');
-            return false;
-        }
-        return true;
-    }
-
-    // Modern Toast Notification System
-    function createToastContainer() {
+    // ─── Toast ────────────────────────────────────────────────────────────────
+    function showToast(message, type = 'info', duration = 3500) {
         if (!toastContainer) {
             toastContainer = document.createElement('div');
             toastContainer.className = 'toast-container';
             document.body.appendChild(toastContainer);
         }
-        return toastContainer;
-    }
-
-    function showToast(message, type = 'success', duration = 3000) {
-        const container = createToastContainer();
-
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
 
-        const messageSpan = document.createElement('span');
-        messageSpan.textContent = message;
+        const msg = document.createElement('span');
+        msg.textContent = message;
 
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        });
+        const close = document.createElement('button');
+        close.className = 'toast-close';
+        close.innerHTML = '&times;';
+        close.onclick = () => dismissToast(toast);
 
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeBtn);
-        container.appendChild(toast);
+        toast.append(msg, close);
+        toastContainer.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
 
-        // Show animation
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        // Auto dismiss
-        if (duration > 0) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 30000);
-            }, duration);
-        }
-
-        return toast;
+        if (duration > 0) setTimeout(() => dismissToast(toast), duration);
     }
 
-    // Modern Config Dialog
+    function dismissToast(toast) {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }
+
+    // ─── Loading ──────────────────────────────────────────────────────────────
+    function showLoading() {
+        hideLoading();
+        const el = document.createElement('div');
+        el.id = 'loading-indicator';
+        el.innerHTML = '<div class="spinner"></div> Veriler yükleniyor...';
+        document.body.appendChild(el);
+    }
+
+    function hideLoading() {
+        document.getElementById('loading-indicator')?.remove();
+    }
+
+    // ─── Config Modal ─────────────────────────────────────────────────────────
     async function showConfigMenu() {
-        // Create modal overlay
+        await loadConfig();
+
         const overlay = document.createElement('div');
-        overlay.className = 'etsy-tool-modal-overlay';
+        overlay.className = 'etsy-modal-overlay';
 
-        // Create modal
-        const modal = document.createElement('div');
-        modal.className = 'etsy-tool-modal';
-
-        // Modal header
-        const header = document.createElement('div');
-        header.className = 'etsy-tool-modal-header';
-
-        const title = document.createElement('h3');
-        title.className = 'etsy-tool-modal-title';
-        title.textContent = 'Ship Stations Tool Ayarları';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'etsy-tool-modal-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        header.appendChild(title);
-        header.appendChild(closeBtn);
-
-        // Modal body
-        const body = document.createElement('div');
-        body.className = 'etsy-tool-modal-body';
-
-        // Form fields
         const fields = [
-            { id: 'apiKey', label: 'apiKey', type: 'text', value: config.apiKey },
-            { id: 'apiSecret', label: 'apiSecret', type: 'text', value: config.apiSecret },
-            { id: 'selectedDateRange', label: 'selectedDateRange', type: 'text', value: config.selectedDateRange },
-            { id: 'storeIds', label: 'storeIds', type: 'textarea', value: config.storeIds }
+            { id: 'apiKey',            label: 'API Key',            type: 'text',     value: config.apiKey },
+            { id: 'apiSecret',         label: 'API Secret',         type: 'password', value: config.apiSecret },
+            { id: 'selectedDateRange', label: 'Varsayılan Aralık',  type: 'text',     value: config.selectedDateRange },
+            { id: 'storeIds',          label: 'Store IDs (JSON)',   type: 'textarea', value: config.storeIds },
         ];
 
-        fields.forEach(field => {
-            const fieldContainer = document.createElement('div');
-            fieldContainer.style.marginBottom = '15px';
+        const bodyHTML = fields.map(f => {
+            const tag = f.type === 'textarea'
+                ? `<textarea id="cfg-${f.id}">${f.value}</textarea>`
+                : `<input type="${f.type}" id="cfg-${f.id}" value="${f.value}" autocomplete="off">`;
+            return `<label>${f.label}</label>${tag}`;
+        }).join('');
 
-            const label = document.createElement('label');
-            label.textContent = field.label;
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.fontWeight = 'bold';
+        overlay.innerHTML = `
+            <div class="etsy-modal">
+                <div class="etsy-modal-header">
+                    ⚙️ ShipStation Ayarları
+                    <button class="btn btn-light" id="cfg-close" style="padding:4px 10px">&times;</button>
+                </div>
+                <div class="etsy-modal-body">${bodyHTML}</div>
+                <div class="etsy-modal-footer">
+                    <button class="btn btn-light" id="cfg-cancel">İptal</button>
+                    <button class="btn btn-primary" id="cfg-save">Kaydet</button>
+                </div>
+            </div>`;
 
-            let input;
-            if (field.type === 'textarea') {
-                input = document.createElement('textarea');
-                input.style.height = '100px';
-            } else {
-                input = document.createElement('input');
-                input.type = field.type;
-            }
-
-            input.id = field.id;
-            input.className = 'etsy-tool-input';
-            input.value = field.value;
-            input.style.width = '100%';
-
-            fieldContainer.appendChild(label);
-            fieldContainer.appendChild(input);
-            body.appendChild(fieldContainer);
-        });
-
-        // Modal footer
-        const footer = document.createElement('div');
-        footer.className = 'etsy-tool-modal-footer';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'etsy-tool-btn etsy-tool-btn-light';
-        cancelBtn.textContent = 'İptal';
-        cancelBtn.addEventListener('click', () => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'etsy-tool-btn etsy-tool-btn-primary';
-        saveBtn.textContent = 'Kaydet';
-        saveBtn.addEventListener('click', async () => {
-            // Save config
-            fields.forEach(field => {
-                config[field.id] = field.type=='number' ? parseFloat(document.getElementById(field.id).value) : document.getElementById(field.id).value;
-            });
-
-            await saveConfig();
-            showToast('Ayarlar başarıyla kaydedildi', 'success');
-
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        footer.appendChild(cancelBtn);
-        footer.appendChild(saveBtn);
-
-        // Assemble modal
-        modal.appendChild(header);
-        modal.appendChild(body);
-        modal.appendChild(footer);
-        overlay.appendChild(modal);
-
-        // Add to document
         document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('show'));
 
-        // Show with animation
-        setTimeout(() => overlay.classList.add('show'), 10);
+        const close = () => {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.remove(), 300);
+        };
+
+        overlay.querySelector('#cfg-close').onclick  = close;
+        overlay.querySelector('#cfg-cancel').onclick = close;
+        overlay.querySelector('#cfg-save').onclick   = async () => {
+            fields.forEach(f => {
+                config[f.id] = document.getElementById(`cfg-${f.id}`).value.trim();
+            });
+            // Validate JSON before saving
+            try { JSON.parse(config.storeIds); }
+            catch { showToast('storeIds geçerli bir JSON değil!', 'error'); return; }
+            await saveConfig();
+            showToast('Ayarlar kaydedildi', 'success');
+            close();
+        };
     }
 
-    // Elementi sürüklenebilir yap
-    function makeDraggable(element, handle) {
-        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    // ─── API Wrappers ─────────────────────────────────────────────────────────
 
-        handle.onmousedown = dragMouseDown;
-
-        function dragMouseDown(e) {
-            e = e || window.event;
-            e.preventDefault();
-            // Fare pozisyonunu al
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            document.onmouseup = closeDragElement;
-            // Fare hareket ettiğinde çağrılacak fonksiyon
-            document.onmousemove = elementDrag;
-        }
-
-        function elementDrag(e) {
-            e = e || window.event;
-            e.preventDefault();
-            // Yeni pozisyonu hesapla
-            pos1 = pos3 - e.clientX;
-            pos2 = pos4 - e.clientY;
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            // Elementin pozisyonunu ayarla
-            element.style.top = (element.offsetTop - pos2) + "px";
-            element.style.left = (element.offsetLeft - pos1) + "px";
-            // Sabit konumdan çıkar
-            element.style.bottom = "auto";
-            element.style.right = "auto";
-        }
-
-        function closeDragElement() {
-            // Sürükleme işlemini durdur
-            document.onmouseup = null;
-            document.onmousemove = null;
-        }
-    }
-
-    const apiBaseUrl = 'https://ssapi.shipstation.com';
-    const authHeader = (apiKey, apiSecret) => btoa(`${apiKey}:${apiSecret}`);
-
-    const waitForElement = (selector, timeout = 10000) => {
-        return new Promise((resolve, reject) => {
-            const interval = 100;
-            let elapsedTime = 0;
-            const checkExist = setInterval(() => {
-                const element = document.querySelector(selector);
-                if (element) {
-                    clearInterval(checkExist);
-                    resolve(element);
-                }
-                elapsedTime += interval;
-                if (elapsedTime >= timeout) {
-                    clearInterval(checkExist);
-                    reject(new Error(`Element with selector "${selector}" not found within ${timeout}ms`));
-                }
-            }, interval);
-        });
-    };
-
-    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-    const getShipData = async (pod = null) => {
-        let use_storeIds = {};
-        const my_storeIds = JSON.parse(config.storeIds);
-        if (pod == 1) {
-            const stores = await getStores();
-            if (Array.isArray(stores) && stores.length > 0) {
-                stores.forEach(store => {
-                    use_storeIds[store.storeId] = store.storeName.replace("CUSTOMHUB ", "");
-                });
-            }
-        } else if (pod == 0) {
-            try {
-                use_storeIds = my_storeIds;
-            } catch (e) {
-                console.error("Invalid JSON in config.storeIds", e);
-                use_storeIds = {};
-            }
-        } else {
-            use_storeIds = { [pod]: my_storeIds.pod };
-        }
-
-        const store_ids = Object.keys(use_storeIds);
-        const results = [];
-
-        for (let i = 0; i < store_ids.length; i++) {
-            const store = store_ids[i];
-            const status = await refreshStore(store);
-            results.push(status);
-            if (i < store_ids.length - 1) await delay(2200);
-        }
-
-        //console.log("All stores refreshed successfully:", results);
-        return results.every(status => status === 200) ? 200 : null;
-    }
-
-    function refreshStore(storeId) {
+    /** Wraps GM_xmlhttpRequest in a Promise. */
+    function gmRequest(options) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
-                method: "POST",
-                url: `https://ssapi.shipstation.com/stores/refreshstore?storeId=${storeId}`,
+                ...options,
                 headers: {
-                    "Authorization": `Basic ${authHeader(config.apiKey, config.apiSecret)}`,
-                    "Content-Type": "application/json"
+                    'Authorization': `Basic ${authHeader()}`,
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {}),
                 },
-                onload: response => {
-                    if (response.status === 200) resolve(200);
-                    else {
-                        console.error(`Error refreshing store ${storeId}:`, response.status, response.responseText);
-                        resolve(response.status);
-                    }
-                },
-                onerror: err => {
-                    console.error(`Request failed for store ${storeId}`, err);
-                    resolve(null);
-                }
+                onload:  resolve,
+                onerror: reject,
             });
         });
     }
 
     async function getStores() {
-        const response = await fetch(apiBaseUrl + "/stores", {
-            method: "GET",
-            headers: { 'Authorization': `Basic ${authHeader(config.apiKey, config.apiSecret)}` },
-        });
-
-        if (!response.ok) {
-            console.error("Error:", response.status, await response.text());
-            return;
-        }
-
-        const stores = await response.json();
-
-        // stores dizisinin yapısını kontrol et
-        //console.log("Original Stores:", stores);
-
-        // 307646 ID'li öğeyi sil (storeId'nin türünü kontrol et)
-        const updatedStores = stores.filter(store => {
-            // storeId'yi number olarak karşılaştır
-            return store.storeId !== 307646;
-        });
-
-        return updatedStores;
+        const res = await gmRequest({ method: 'GET', url: `${API_BASE}/stores` });
+        if (res.status !== 200) throw new Error(`getStores failed: ${res.status}`);
+        const stores = JSON.parse(res.responseText);
+        return stores.filter(s => s.storeId !== EXCLUDED_STORE_ID);
     }
 
-    const initOverlay = async () => {
-        try {
-            const selector = await waitForElement("#refresh-area");
-
-            const El = document.createElement("button");
-            El.textContent = "Ship";
-            El.title = "Ship Stations Senkronize";
-            El.style.marginLeft = "1px";
-            El.className = "mud-button-root mud-button mud-button-text mud-button-text-default mud-button-text-size-medium mud-ripple";
-            El.style.fontSize = "0.8rem";
-            El.style.color = "black";
-
-            const svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            svgIcon.setAttribute("aria-hidden", "true");
-            svgIcon.setAttribute("focusable", "false");
-            svgIcon.setAttribute("data-prefix", "fas");
-            svgIcon.setAttribute("data-icon", "rotate-right");
-            svgIcon.setAttribute("class", "svg-inline--fa fa-rotate-right icon");
-            svgIcon.setAttribute("role", "img");
-            svgIcon.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-            svgIcon.setAttribute("viewBox", "0 0 512 512");
-            svgIcon.style.width = "0.7em";
-            svgIcon.style.height = "0.7em";
-            svgIcon.style.marginLeft = "3px";
-
-            const svgPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            svgPath.setAttribute("fill", "currentColor");
-            svgPath.setAttribute(
-                "d",
-                "M463.5 224l8.5 0c13.3 0 24-10.7 24-24l0-128c0-9.7-5.8-18.5-14.8-22.2s-19.3-1.7-26.2 5.2L413.4 96.6c-87.6-86.5-228.7-86.2-315.8 1c-87.5 87.5-87.5 229.3 0 316.8s229.3 87.5 316.8 0c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0c-62.5 62.5-163.8 62.5-226.3 0s-62.5-163.8 0-226.3c62.2-62.2 162.7-62.5 225.3-1L327 183c-6.9 6.9-8.9 17.2-5.2 26.2s12.5 14.8 22.2 14.8l119.5 0z"
-            );
-
-            svgIcon.appendChild(svgPath);
-            El.appendChild(svgIcon);
-            selector.appendChild(El);
-
-            El.addEventListener("click", async function() {
-                El.style.backgroundColor = "orange";
-                const pod = document.getElementById('pod-select').value ;
-                const status = await getShipData(pod);
-                if (status == 200) {
-                    El.textContent = "❤️";
-                    showToast('Ship Stattions Order Alındı', 'info');
-                } else {
-                    El.textContent = "🚨";
-                    showToast('Ship Stattions Order Alınamadı', 'error');
-                    console.log("status:", status);
-                }
-                El.style.backgroundColor = null;
-            });
-        } catch (error) {
-            console.error("Overlay initialization error:", error);
-        }
-
-    };
-
-    const renderChart = (orders) => {
-        const salesData = {};
-        orders.forEach(order => {
-            const date = order.createDate.split("T")[0];
-            const amount = parseFloat(order.amountPaid || 0);
-            if (!salesData[date]) salesData[date] = { totalSales: 0, totalOrders: 0 };
-            salesData[date].totalSales += amount;
-            salesData[date].totalOrders += 1;
+    async function refreshStore(storeId) {
+        const res = await gmRequest({
+            method: 'POST',
+            url: `${API_BASE}/stores/refreshstore?storeId=${storeId}`,
         });
+        if (res.status !== 200)
+            console.warn(`[SS] refreshStore ${storeId} → ${res.status}`);
+        return res.status;
+    }
 
-        const labels = Object.keys(salesData).sort();
-        const salesDataArray = labels.map(date => salesData[date].totalSales);
-        const ordersDataArray = labels.map(date => salesData[date].totalOrders);
+    /** Fetch ALL pages for a single store. */
+    async function fetchAllOrdersForStore(startDate, endDate, storeId) {
+        const baseUrl = `${API_BASE}/orders?createDateStart=${startDate}&createDateEnd=${endDate}&storeId=${storeId}`;
+        let page = 1;
+        let all  = [];
 
-        const ctx = document.getElementById("salesChart").getContext("2d");
-        new Chart(ctx, {
-            type: "bar",
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: "Satış Ücreti",
-                        data: salesDataArray,
-                        borderColor: "blue",
-                        backgroundColor: "rgba(0, 0, 255, 0.1)",
-                        type: "line",
-                        yAxisID: "y-axis-sales"
-                    },
-                    {
-                        label: "Satış Sayısı",
-                        data: ordersDataArray,
-                        backgroundColor: "rgba(255, 99, 132, 0.2)",
-                        borderColor: "rgba(255, 99, 132, 1)",
-                        borderWidth: 1,
-                        yAxisID: "y-axis-orders"
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    yAxes: [
-                        {
-                            id: "y-axis-sales",
-                            type: "linear",
-                            position: "left",
-                            ticks: {
-                                beginAtZero: true
-                            }
-                        },
-                        {
-                            id: "y-axis-orders",
-                            type: "linear",
-                            position: "right",
-                            ticks: {
-                                beginAtZero: true
-                            },
-                            gridLines: {
-                                drawOnChartArea: false
-                            }
-                        }
-                    ]
-                }
+        while (true) {
+            const res = await gmRequest({ method: 'GET', url: `${baseUrl}&page=${page}` });
+            if (res.status !== 200) {
+                console.error(`[SS] fetchOrders storeId=${storeId} page=${page} → ${res.status}`);
+                break;
             }
-        });
-    };
-
-    const fetchSales = (startDate, endDate, storeId, storeName, callback) => {
-        const url = `${apiBaseUrl}/orders?createDateStart=${startDate}&createDateEnd=${endDate}&storeId=${storeId}`;
-        let currentPage = 1;
-        let allOrders = [];
-
-        const fetchPage = async () => {
-            await GM_xmlhttpRequest({
-                method: 'GET',
-                url: `${url}&page=${currentPage}`,
-                headers: { 'Authorization': `Basic ${authHeader(config.apiKey, config.apiSecret)}` },
-                onload: function(response) {
-                    if (response.status === 200) {
-                        const data = JSON.parse(response.responseText);
-                        allOrders = allOrders.concat(data.orders);
-                        if (data.orders.length === 100) {
-                            currentPage++;
-                            fetchPage();
-                        } else {
-                            callback(allOrders);
-                        }
-                    } else {
-                        console.error(`Error fetching data for store ${storeId}:`, response.statusText);
-                    }
-                },
-                onerror: function(err) {
-                    console.error(`Error fetching data for store ${storeId}:`, err);
-                }
-            });
-        };
-        fetchPage();
-    };
-
-    const getSalesData = async (startDate, endDate, callback, pod) => {
-        const salesData = [];
-        let use_storeIds = {};
-        let processed;
-
-        let my_storeIds = {};
-        try {
-            my_storeIds = JSON.parse(config.storeIds);
-            //console.log("my_storeIds: ",my_storeIds);
-        } catch (e) {
-            console.error("Invalid JSON in config.storeIds", e);
+            const data = JSON.parse(res.responseText);
+            all = all.concat(data.orders);
+            if (data.orders.length < 100) break; // last page
+            page++;
         }
+        return all;
+    }
+
+    // ─── Store ID Resolution ──────────────────────────────────────────────────
+
+    /**
+     * pod values:
+     *   "0"  → use config.storeIds only
+     *   "1"  → fetch all stores from API
+     *   else → single specific storeId
+     */
+    async function resolveStoreMap(pod) {
+        const myStores = parseStoreIds();
         //console.log(config.pod)
         if (pod == 1){
             if(config?.pod == 1){
@@ -1078,250 +425,306 @@
                 pod=0;
             }
         }
-        //console.log(pod)
-        if (pod == 1) {
+        if (pod === '1') {
             const stores = await getStores();
-            if (Array.isArray(stores) && stores.length > 0) {
-                stores.forEach(store => {
-                    use_storeIds[store.storeId] = store.storeName.replace("CUSTOMHUB ", "");
-                });
-            }
-            //console.log("use_storeIdsAll: ",use_storeIds);
-        } else if (pod == 0) {
-            use_storeIds = my_storeIds;
-            //console.log("use_storeIds: ",use_storeIds);
-        } else {
-            use_storeIds = { [pod]: my_storeIds?.[pod] ?? 'shop' };
-            //console.log("use_storeId: ",use_storeIds);
+            const map = {};
+            stores.forEach(s => { map[s.storeId] = s.storeName.replace('CUSTOMHUB ', ''); });
+            return map;
         }
 
-        await Promise.all(Object.entries(use_storeIds).map(([storeId, storeName]) =>
-          new Promise(resolve => {
-            fetchSales(startDate, endDate, storeId, storeName, data => {
-                salesData.push({ storeId, storeName, orders: data });
-                //console.log(`storeId: ${storeId} , storeName: ${storeName}`);
-                resolve();
-            });
-          })
-        ));
+        if (pod === '0') return myStores;
 
-        callback(salesData,startDate, endDate);
-    };
-
-
-    const displaySalesTable = (salesData,startDate, endDate) => {
-        // Satış Ücretine göre azalan şekilde sırala
-        salesData.sort((a, b) => {
-            const totalSalesA = a.orders.reduce((sum, order) => sum + parseFloat(order.amountPaid || 0), 0);
-            const totalSalesB = b.orders.reduce((sum, order) => sum + parseFloat(order.amountPaid || 0), 0);
-            return totalSalesB - totalSalesA;
-        });
-
-        const tableContainer = document.getElementById('sales-report-container');
-        tableContainer.innerHTML = '<canvas id="salesChart"></canvas>';
-
-        const table = document.createElement('table');
-        table.id = 'sales-report-table';
-        table.innerHTML = `
-        <tr>
-            <th>Sr</th>
-            <th>Mağaza Adı</th>
-            <th>Satış Sayısı</th>
-            <th>Satış Ücreti</th>
-            <th>Satış Oranı</th>
-        </tr>
-    `;
-
-        let GtotalOrders = 0;
-        let GtotalSales = 0;
-        let GpercSales =0;
-        let Grow = 1;
-        let style;
-        const used_storeIds = JSON.parse(config.storeIds);
-        const storeNames = Object.values(used_storeIds);
-
-        salesData.forEach(({ storeName, orders }) => {
-            const totalOrders = orders.length;
-            const totalSales = orders.reduce((sum, order) => sum + parseFloat(order.amountPaid || 0), 0).toFixed(2);
-            const percSales = totalOrders > 0 ? Math.ceil(totalSales/totalOrders) : 0 ;
-            GtotalOrders += totalOrders;
-            GtotalSales += parseFloat(totalSales);
-
-            const row = document.createElement('tr');
-            style = storeNames.includes(storeName) ? ' style="font-weight:bold;"' : '';
-            row.innerHTML = `
-            <td>${Grow}</td>
-            <td${style}>${storeName}</td>
-            <td>${totalOrders}</td>
-            <td>${totalSales}</td>
-            <td>${percSales}</td>
-        `;
-            table.appendChild(row);
-            Grow++
-        });
-
-        const ms = new Date(endDate) - new Date(startDate);
-        const days = ms / (1000 * 60 * 60 * 24);
-        //console.log(days); // 30
-
-        const rows = document.createElement('tr');
-        rows.innerHTML = `
-        <th>SR</th>
-        <th>Toplam</th>
-        <th>${GtotalOrders}</th>
-        <th>${GtotalSales.toFixed(2)}</th>
-        <th>${Math.ceil(GtotalSales/GtotalOrders)}</th>
-    `;
-        table.appendChild(rows);
-        const rows2 = document.createElement('tr');
-        rows2.innerHTML = `
-        <th>SR</th>
-        <th>OrtGün</th>
-        <th>${(GtotalOrders/days).toFixed(0)}</th>
-        <th>${(GtotalSales/days).toFixed(2)}</th>
-        <th>${days} gün</th>
-    `;
-
-        table.appendChild(rows2);
-        tableContainer.appendChild(table);
-        tableContainer.style.display = 'block';
-
-        renderChart(salesData.flatMap(data => data.orders));
-        setTimeout(hideLoading, 2000);
-        createDropdownMenu();
-        initOverlay();
-    };
-
-    const createFloatingButton = () => {
-        const button = document.createElement('button');
-        button.id = 'sales-floating-button';
-        button.innerHTML = '📊';
-        document.body.appendChild(button);
-
-        const tableContainer = document.createElement('div');
-        tableContainer.id = 'sales-report-container';
-        tableContainer.style.display = 'none';
-        document.body.appendChild(tableContainer);
-
-        button.addEventListener('click', () => {
-            tableContainer.style.display = tableContainer.style.display === 'none' ? 'block' : 'none';
-        });
-        // Sürükleme işlevselliği için başlık çubuğu
-        //makeDraggable(document.querySelector('#sales-report-container'), document.querySelector('#sales-dropdown-menu'));
-    };
-
-    const createDropdownMenu = () => {
-        const menu = document.createElement('div');
-        menu.id = 'sales-dropdown-menu';
-
-        const use_storeIds = JSON.parse(config.storeIds); // object
-        let pod_select = ''; // Boş string ile başla
-
-        for (const store in use_storeIds) {
-            if (use_storeIds.hasOwnProperty(store)) {
-                pod_select += `<option value="${store}">${use_storeIds[store]}</option>\n`;
-            }
-        }
-
-        menu.innerHTML = `
-         <select id="pod-select">
-           <option value="0">My</option>
-           <option value="1">Tümü</option>
-           ${pod_select}
-         </select>
-         <select id="date-range-select">
-           <option value="today">Today</option>
-           <option value="yesterday">Yesterday</option>
-           <option value="otherday">Otherday</option>
-           <option value="last7">Last 7 Days</option>
-           <option value="last30">Last 30 Days</option>
-         </select>
-         <button id="fetch-sales-button">Sales</button>
-         <span id="refresh-area"></span>
-         <p id="loading-area"></p>
-       `;
-
-        document.getElementById('sales-report-container').appendChild(menu);
-
-        if (config.selectedDateRange) {
-            document.getElementById('date-range-select').value = config.selectedDateRange;
-        }
-
-        document.getElementById('fetch-sales-button').addEventListener('click', () => {
-            const dateRange = document.getElementById('date-range-select').value;
-            const pod = document.getElementById('pod-select').value;
-            config.selectedDateRange = dateRange;
-            saveConfig();
-            const today = new Date();
-            let startDate, endDate;
-
-            if (dateRange === 'today') {
-                startDate = today.toISOString().split('T')[0];
-                //today.setDate(today.getDate() + 1);
-                endDate = today.toISOString().split('T')[0];
-            } else if (dateRange === 'yesterday') {
-                endDate = today.toISOString().split('T')[0];
-                today.setDate(today.getDate() - 1);
-                startDate = today.toISOString().split('T')[0];
-            } else if (dateRange === 'otherday') {
-                today.setDate(today.getDate() - 1);
-                endDate = today.toISOString().split('T')[0];
-                today.setDate(today.getDate() - 1);
-                startDate = today.toISOString().split('T')[0];
-            } else if (dateRange === 'last7') {
-                endDate = today.toISOString().split('T')[0];
-                today.setDate(today.getDate() - 7);
-                startDate = today.toISOString().split('T')[0];
-            } else if (dateRange === 'last30') {
-                endDate = today.toISOString().split('T')[0];
-                today.setDate(today.getDate() - 30);
-                startDate = today.toISOString().split('T')[0];
-            }
-            //console.log("startDate:",startDate)
-            //console.log("endDate:",endDate)
-            showLoading();
-            getSalesData(startDate, endDate, displaySalesTable, pod);
-        });
-    };
-
-    const showLoading = () => {
-        const loaderarea = document.getElementById('loading-area');
-        const loader = document.createElement('div');
-        loader.id = 'loading-indicator';
-        loader.innerHTML = 'Loading...';
-        loader.style.position = 'fixed';
-        loader.style.top = '50%';
-        loader.style.left = '50%';
-        loader.style.transform = 'translate(-50%, -50%)';
-        loader.style.backgroundColor = '#fff';
-        loader.style.padding = '20px';
-        loader.style.borderRadius = '10px';
-        loader.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-        loaderarea.appendChild(loader);
-    };
-
-    const hideLoading = () => {
-        const loader = document.getElementById('loading-indicator');
-        if (loader) loader.remove();
-    };
-    // Initialize
-    async function initialize() {
-        // Load config
-        await loadConfig();
-
-        // Register menu commands
-        GM.registerMenuCommand("Ayarlar", showConfigMenu);
-
-        createFloatingButton();
-        createDropdownMenu();
-        initOverlay();
-
-        // Show welcome message
-        //showToast('Ship Stattions Tool yüklendi', 'info');
+        // Single store
+        return { [pod]: myStores[pod] ?? 'Shop' };
     }
 
-    // Start the script
+    // ─── Sync (Refresh) ───────────────────────────────────────────────────────
+    async function syncStores(pod) {
+        const storeMap  = await resolveStoreMap(pod);
+        const storeIds  = Object.keys(storeMap);
+        const results   = [];
+
+        for (let i = 0; i < storeIds.length; i++) {
+            const status = await refreshStore(storeIds[i]);
+            results.push(status);
+            if (i < storeIds.length - 1) await delay(2200);
+        }
+
+        return results.every(s => s === 200) ? 200 : null;
+    }
+
+    // ─── Sales Data ───────────────────────────────────────────────────────────
+    async function getSalesData(startDate, endDate, pod) {
+        const storeMap = await resolveStoreMap(pod);
+        const entries  = Object.entries(storeMap);
+
+        // Parallel fetch — all stores at once
+        const results = await Promise.all(
+            entries.map(async ([storeId, storeName]) => {
+                const orders = await fetchAllOrdersForStore(startDate, endDate, storeId);
+                return { storeId, storeName, orders };
+            })
+        );
+
+        return results;
+    }
+
+    // ─── Chart ────────────────────────────────────────────────────────────────
+    function renderChart(orders) {
+        const salesByDate = {};
+        orders.forEach(o => {
+            const date   = o.createDate.split('T')[0];
+            const amount = parseFloat(o.amountPaid) || 0;
+            if (!salesByDate[date]) salesByDate[date] = { sales: 0, count: 0 };
+            salesByDate[date].sales += amount;
+            salesByDate[date].count += 1;
+        });
+
+        const labels = Object.keys(salesByDate).sort();
+        const salesArr  = labels.map(d => +salesByDate[d].sales.toFixed(2));
+        const ordersArr = labels.map(d => salesByDate[d].count);
+
+        const canvas = document.getElementById('salesChart');
+        if (!canvas) return;
+
+        if (activeChart) { activeChart.destroy(); activeChart = null; }
+
+        activeChart = new Chart(canvas.getContext('2d'), {
+            data: {
+                labels,
+                datasets: [
+                    {
+                        type: 'line', label: 'Satış ($)',
+                        data: salesArr,
+                        borderColor: '#007bff', backgroundColor: 'rgba(0,123,255,.1)',
+                        yAxisID: 'ySales', tension: 0.3, pointRadius: 3,
+                    },
+                    {
+                        type: 'bar', label: 'Sipariş Adedi',
+                        data: ordersArr,
+                        backgroundColor: 'rgba(255,99,132,.35)', borderColor: 'rgba(255,99,132,1)',
+                        borderWidth: 1, yAxisID: 'yOrders',
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    ySales:  { type: 'linear', position: 'left',  beginAtZero: true, title: { display: true, text: 'USD ($)' } },
+                    yOrders: { type: 'linear', position: 'right', beginAtZero: true, title: { display: true, text: 'Adet' }, grid: { drawOnChartArea: false } },
+                },
+            },
+        });
+    }
+
+    // ─── Table ────────────────────────────────────────────────────────────────
+    function displaySalesTable(salesData, startDate, endDate) {
+        const container = document.getElementById('sales-report-container');
+        if (!container) return;
+
+        // Sort by revenue desc
+        salesData.sort((a, b) => {
+            const sumA = a.orders.reduce((s, o) => s + (parseFloat(o.amountPaid) || 0), 0);
+            const sumB = b.orders.reduce((s, o) => s + (parseFloat(o.amountPaid) || 0), 0);
+            return sumB - sumA;
+        });
+
+        const myStoreNames = new Set(Object.values(parseStoreIds()));
+        const ms   = new Date(endDate) - new Date(startDate);
+        const days = Math.max(1, ms / 864e5);
+
+        let gOrders = 0, gSales = 0;
+
+        const tbody = salesData.map(({ storeName, orders }, idx) => {
+            const cnt   = orders.length;
+            const total = orders.reduce((s, o) => s + (parseFloat(o.amountPaid) || 0), 0);
+            const avg   = cnt > 0 ? Math.ceil(total / cnt) : 0;
+            gOrders += cnt;
+            gSales  += total;
+            const bold = myStoreNames.has(storeName) ? 'font-weight:600' : '';
+            return `<tr>
+                <td>${idx + 1}</td>
+                <td style="${bold}">${storeName}</td>
+                <td>${cnt}</td>
+                <td>$${total.toFixed(2)}</td>
+                <td>$${avg}</td>
+            </tr>`;
+        }).join('');
+
+        const gAvg = gOrders > 0 ? Math.ceil(gSales / gOrders) : 0;
+
+        // Rebuild only the dynamic portion — keep the sticky menu intact
+        const existingMenu = container.querySelector('#sales-dropdown-menu');
+
+        container.innerHTML = '';
+        if (existingMenu) container.appendChild(existingMenu);
+
+        container.insertAdjacentHTML('beforeend', `
+            <canvas id="salesChart" style="padding:10px 12px;"></canvas>
+            <table id="sales-report-table">
+                <thead>
+                    <tr>
+                        <th>#</th><th>Mağaza</th><th>Sipariş</th><th>Ciro</th><th>Ort. ($)</th>
+                    </tr>
+                </thead>
+                <tbody>${tbody}</tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="2">TOPLAM</th>
+                        <th>${gOrders}</th>
+                        <th>$${gSales.toFixed(2)}</th>
+                        <th>$${gAvg}</th>
+                    </tr>
+                    <tr>
+                        <th colspan="2">GÜNLÜK ORT. (${days} gün)</th>
+                        <th>${(gOrders / days).toFixed(1)}</th>
+                        <th>$${(gSales / days).toFixed(2)}</th>
+                        <th>—</th>
+                    </tr>
+                </tfoot>
+            </table>
+        `);
+
+        renderChart(salesData.flatMap(d => d.orders));
+        hideLoading();
+    }
+
+    // ─── Overlay (Sync button) ────────────────────────────────────────────────
+    async function initOverlay() {
+        if (overlayInitialized) return;
+
+        const refreshArea = document.getElementById('refresh-area');
+        if (!refreshArea) return;
+
+        overlayInitialized = true;
+
+        const btn = document.createElement('button');
+        btn.title = 'ShipStation Senkronize Et';
+        btn.style.cssText = 'margin-left:4px;padding:4px 10px;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:11px;';
+        btn.textContent = '🔄 Sync';
+
+        refreshArea.appendChild(btn);
+
+        btn.addEventListener('click', async () => {
+            const pod = document.getElementById('pod-select')?.value ?? '0';
+            btn.disabled = true;
+            btn.textContent = '⏳';
+            btn.style.background = '#ffc107';
+
+            try {
+                const status = await syncStores(pod);
+                if (status === 200) {
+                    btn.textContent = '✅';
+                    btn.style.background = '#d4edda';
+                    showToast('ShipStation siparişleri alındı', 'success');
+                } else {
+                    btn.textContent = '❌';
+                    btn.style.background = '#f8d7da';
+                    showToast('Senkronizasyon başarısız', 'error');
+                }
+            } catch (e) {
+                btn.textContent = '❌';
+                btn.style.background = '#f8d7da';
+                showToast(`Hata: ${e.message}`, 'error');
+                console.error('[SS] syncStores error:', e);
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => {
+                    btn.textContent = '🔄 Sync';
+                    btn.style.background = '';
+                }, 4000);
+            }
+        });
+    }
+
+    // ─── Dropdown Menu ────────────────────────────────────────────────────────
+    function createDropdownMenu(container) {
+        const myStores = parseStoreIds();
+        const storeOptions = Object.entries(myStores)
+            .map(([id, name]) => `<option value="${id}">${name}</option>`)
+            .join('');
+
+        const menu = document.createElement('div');
+        menu.id = 'sales-dropdown-menu';
+        menu.innerHTML = `
+            <select id="pod-select">
+                <option value="0">My Stores</option>
+                <option value="1">Tümü</option>
+                ${storeOptions}
+            </select>
+            <select id="date-range-select">
+                <option value="today">Bugün</option>
+                <option value="yesterday">Dün</option>
+                <option value="otherday">Evvelsi Gün</option>
+                <option value="last7">Son 7 Gün</option>
+                <option value="last30">Son 30 Gün</option>
+            </select>
+            <button id="fetch-sales-btn">📊 Getir</button>
+            <span id="refresh-area"></span>
+            <span id="loading-area"></span>
+        `;
+
+        container.appendChild(menu);
+
+        // Restore saved date range
+        if (config.selectedDateRange) {
+            const sel = menu.querySelector('#date-range-select');
+            if (sel) sel.value = config.selectedDateRange;
+        }
+
+        menu.querySelector('#fetch-sales-btn').addEventListener('click', async () => {
+            const range = document.getElementById('date-range-select').value;
+            const pod   = document.getElementById('pod-select').value;
+
+            config.selectedDateRange = range;
+            await saveConfig();
+
+            const { startDate, endDate } = resolveDateRange(range);
+
+            showLoading();
+            try {
+                const data = await getSalesData(startDate, endDate, pod);
+                displaySalesTable(data, startDate, endDate);
+            } catch (e) {
+                hideLoading();
+                showToast(`Veri alınamadı: ${e.message}`, 'error');
+                console.error('[SS] getSalesData error:', e);
+            }
+        });
+
+        // Init overlay after menu is in DOM
+        initOverlay();
+    }
+
+    // ─── Floating Button & Panel ──────────────────────────────────────────────
+    function createFloatingButton() {
+        const btn = document.createElement('button');
+        btn.id = 'sales-floating-button';
+        btn.innerHTML = '📊';
+        btn.title = 'ShipStation Raporu';
+        document.body.appendChild(btn);
+
+        const panel = document.createElement('div');
+        panel.id = 'sales-report-container';
+        panel.style.display = 'none';
+        document.body.appendChild(panel);
+
+        // Build the menu once
+        createDropdownMenu(panel);
+
+        btn.addEventListener('click', () => {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    async function initialize() {
+        await loadConfig();
+        GM.registerMenuCommand('⚙️ ShipStation Ayarları', showConfigMenu);
+        createFloatingButton();
+    }
+
     initialize();
-    //getStores();
 
 })();
