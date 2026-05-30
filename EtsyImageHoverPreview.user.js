@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Etsy Image Hover Preview
 // @namespace    https://github.com/cengaver
-// @version      1.42
-// @description  Show large image preview on hover, supports lazy loading
+// @version      2.00
+// @description  Show large image preview on hover, supports lazy loading — Optimized v2
 // @author       Cengaver
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @match        https://www.etsy.com/your/shops/me/advertising*
@@ -17,113 +17,162 @@
 // ==/UserScript==
 
 (() => {
-    function addPreviews(win) {
-        const styleTag = document.createElement("style")
-        styleTag.innerHTML = `
-.hover-preview {
-    position: absolute;
-    z-index: 1000;
-    border: 2px solid #ccc;
-    background: #fff;
-    padding: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    display: none;
-}
-.hover-preview img {
-    max-width: 300px;
-    max-height: 300px;
-}
-`
-        win.document.head.appendChild(styleTag)
+    'use strict';
 
-        let previewDiv;
-
-        function createPreview() {
-            previewDiv = win.document.createElement('div');
-            previewDiv.className = 'hover-preview';
-            win.document.body.appendChild(previewDiv);
+    // ─────────────────────────────────────────────
+    // STYLES — injected once via GM.addStyle
+    // ─────────────────────────────────────────────
+    GM.addStyle(`
+        .ehp-preview {
+            position: fixed;
+            z-index: 2147483647;
+            border: 2px solid #ccc;
+            background: #fff;
+            padding: 5px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.4);
+            border-radius: 4px;
+            pointer-events: none;
+            display: none;
+            transition: opacity .1s ease;
         }
-
-        function showPreview(event, imgUrl) {
-            if (!previewDiv) createPreview();
-            previewDiv.innerHTML = `<img src="${imgUrl}" alt="Preview">`;
-            previewDiv.style.display = 'block';
-            previewDiv.style.left = `${event.pageX + 15}px`;
-            previewDiv.style.top = `${event.pageY + 15}px`;
+        .ehp-preview img {
+            display: block;
+            max-width: 300px;
+            max-height: 300px;
+            object-fit: contain;
         }
+    `);
 
-        function hidePreview() {
-            if (previewDiv) previewDiv.style.display = 'none';
+    // ─────────────────────────────────────────────
+    // PREVIEW ELEMENT — single singleton for the page
+    // ─────────────────────────────────────────────
+    let preview = null;
+
+    function getPreview() {
+        if (!preview) {
+            preview = document.createElement('div');
+            preview.className = 'ehp-preview';
+            const img = document.createElement('img');
+            img.alt = 'Preview';
+            preview.appendChild(img);
+            document.body.appendChild(preview);
         }
-
-        function handleHover(event) {
-            const target = event.target;
-            if (target.tagName === 'IMG') {
-                // Use data-src if available (for lazy loading), otherwise use src
-                let imgUrl = target.getAttribute('data-src') || target.src;
-                if (imgUrl) {
-                    let largeImgUrl = imgUrl.replace('75x75', '400x400');
-                    largeImgUrl = imgUrl.replace('80x80', '400x400');
-                    largeImgUrl = largeImgUrl.replace(/il_\d+xN/, 'il_400xN');
-                    showPreview(event, largeImgUrl);
-                }
-            }
-        }
-
-        function attachHoverListeners() {
-            win.document.addEventListener('mouseover', handleHover);
-            win.document.addEventListener('mousemove', (e) => {
-                if (previewDiv && previewDiv.style.display === 'block') {
-                    previewDiv.style.left = `${e.pageX + 15}px`;
-                    previewDiv.style.top = `${e.pageY + 15}px`;
-                }
-            });
-            win.document.addEventListener('mouseout', hidePreview);
-        }
-
-        // Initial attachment of listeners
-        attachHoverListeners();
-
-        /*if (win.location.href.includes("ehunt.ai")) {
-            observeDynamicContent();
-        }*/
+        return preview;
     }
 
-    function onLoaded(doc, fn) {
-        if (doc.readyState == 'loading') {
-            doc.addEventListener("DOMContentLoaded", fn);
+    // ─────────────────────────────────────────────
+    // URL TRANSFORM — upscale thumbnail to ~400px
+    // ─────────────────────────────────────────────
+    function getLargeUrl(url) {
+        return url
+            .replace(/\b75x75\b/,  '400x400')
+            .replace(/\b80x80\b/,  '400x400')
+            .replace(/il_\d+xN/,   'il_400xN');
+    }
+
+    // ─────────────────────────────────────────────
+    // POSITION — keep preview inside viewport
+    // Using `position:fixed` so we work in terms of clientX/Y, not pageX/Y
+    // ─────────────────────────────────────────────
+    const OFFSET = 16;
+    function positionPreview(e) {
+        const p   = getPreview();
+        const vw  = window.innerWidth;
+        const vh  = window.innerHeight;
+        const pw  = p.offsetWidth  || 310;
+        const ph  = p.offsetHeight || 310;
+        const x   = e.clientX + OFFSET + pw > vw ? e.clientX - pw - OFFSET : e.clientX + OFFSET;
+        const y   = e.clientY + OFFSET + ph > vh ? e.clientY - ph - OFFSET : e.clientY + OFFSET;
+        p.style.left = Math.max(4, x) + 'px';
+        p.style.top  = Math.max(4, y) + 'px';
+    }
+
+    // ─────────────────────────────────────────────
+    // EVENT HANDLERS — delegated on document (single listeners)
+    // ─────────────────────────────────────────────
+    document.addEventListener('mouseover', e => {
+        const t = e.target;
+        if (t.tagName !== 'IMG') return;
+
+        const raw = t.getAttribute('data-src') || t.src || '';
+        if (!raw || raw.startsWith('data:')) return; // skip inline/placeholder
+
+        const p   = getPreview();
+        const img = p.querySelector('img');
+        img.src = getLargeUrl(raw);
+        positionPreview(e);
+        p.style.display = 'block';
+    }, { passive: true });
+
+    document.addEventListener('mousemove', e => {
+        if (preview?.style.display === 'block') positionPreview(e);
+    }, { passive: true });
+
+    document.addEventListener('mouseout', e => {
+        if (e.target.tagName === 'IMG' && preview) {
+            preview.style.display = 'none';
+        }
+    }, { passive: true });
+
+    // ─────────────────────────────────────────────
+    // IFRAME SUPPORT
+    //
+    // Cross-origin iframes throw SecurityError when accessing .document.
+    // We guard every access inside try/catch and skip silently.
+    // Same-origin iframes (e.g. customhub.io internal) still get previews.
+    // ─────────────────────────────────────────────
+    const _processedDocs = new WeakSet();
+
+    function tryAddToIframe(iframe) {
+        let win, doc;
+        try {
+            win = iframe.contentWindow;
+            doc = win?.document; // throws on cross-origin
+        } catch { return; } // cross-origin — skip silently
+
+        if (!doc || _processedDocs.has(doc)) return;
+        _processedDocs.add(doc);
+
+        const inject = () => {
+            // Delegate on the iframe's document — same pattern as main page
+            doc.addEventListener('mouseover', e => {
+                const t = e.target;
+                if (t.tagName !== 'IMG') return;
+                const raw = t.getAttribute('data-src') || t.src || '';
+                if (!raw || raw.startsWith('data:')) return;
+                const p   = getPreview(); // still the main-page singleton
+                p.querySelector('img').src = getLargeUrl(raw);
+                positionPreview(e);
+                p.style.display = 'block';
+            }, { passive: true });
+
+            doc.addEventListener('mousemove', e => {
+                if (preview?.style.display === 'block') positionPreview(e);
+            }, { passive: true });
+
+            doc.addEventListener('mouseout', e => {
+                if (e.target.tagName === 'IMG' && preview) preview.style.display = 'none';
+            }, { passive: true });
+        };
+
+        if (doc.readyState === 'loading') {
+            doc.addEventListener('DOMContentLoaded', inject, { once: true });
         } else {
-            fn()
+            inject();
         }
     }
 
-    function main() {
-        addPreviews(window)
-
-        let processedDocuments = []
-        function processIframeWindows() {
-            const iframes = document.querySelectorAll("iframe")
-            for (const iframe of iframes) {
-                const win = iframe.contentWindow
-
-                onLoaded(win.document, () => {
-                    if (!processedDocuments.includes(win.document)){
-                        addPreviews(win)
-                        processedDocuments.push(win.document)
-                    }
-                })
-            }
-        }
-        processIframeWindows()
-
-        new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList') {
-                    processIframeWindows()
-                }
-            });
-        }).observe(document.body, { subtree: true, childList: true });
+    function scanIframes() {
+        document.querySelectorAll('iframe').forEach(tryAddToIframe);
     }
 
-    onLoaded(document, main)
+    // Debounce iframe scanning — MutationObserver fires very frequently
+    let _iframeTimer = null;
+    new MutationObserver(() => {
+        clearTimeout(_iframeTimer);
+        _iframeTimer = setTimeout(scanIframes, 300);
+    }).observe(document.body, { childList: true, subtree: true });
+
+    scanIframes(); // initial pass
+
 })();
