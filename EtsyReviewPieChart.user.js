@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Etsy Review Pie Chart with Badge
 // @namespace    https://github.com/cengaver
-// @version      1.36
-// @description  Reviews yanına pie chart ve badge
+// @version      2.00
+// @description  Reviews yanına pie chart ve badge — Optimized v2
 // @match        https://www.etsy.com/your/shops/me/dashboard*
 // @author       Cengaver
 // @grant        GM.xmlHttpRequest
@@ -17,177 +17,151 @@
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewPieChart.user.js
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
-    GM.registerMenuCommand("⚙️ Sheet Url Ayarla", async () => {
-        const currentUrl = await getSheetUrl();
-        const url = prompt(" Sheet Url'nizi girin:" ,currentUrl);
-        if (url) {
-            await GM.setValue("sheet_url", url.trim());
-            alert("✅ Kaydedildi.");
+
+    // ─────────────────────────────────────────────
+    // SHEET URL — cached in memory to avoid repeated GM.getValue calls
+    // ─────────────────────────────────────────────
+    let _sheetUrl = null;
+
+    async function getSheetUrl() {
+        if (_sheetUrl !== null) return _sheetUrl;
+        _sheetUrl = await GM.getValue('sheet_url', '');
+        return _sheetUrl;
+    }
+
+    GM.registerMenuCommand('⚙️ Sheet Url Ayarla', async () => {
+        const current = await getSheetUrl();
+        const url = prompt('Sheet URL\'nizi girin:', current);
+        if (url && url.trim()) {
+            _sheetUrl = url.trim();
+            await GM.setValue('sheet_url', _sheetUrl);
+            alert('✅ Kaydedildi.');
         }
     });
-    async function getSheetUrl() {
-        const url = await GM.getValue("sheet_url", "");
-        return url;
-    }
 
-    // Google Sheets log fonksiyonun
-    async function logToGoogleSheets(payload) {
-        const sheetUrl = await getSheetUrl();
-        if (!sheetUrl) return;
+    // ─────────────────────────────────────────────
+    // GOOGLE SHEETS LOG — fire-and-forget, no toast spam
+    // ─────────────────────────────────────────────
+    async function logToSheets(payload) {
+        const url = await getSheetUrl();
+        if (!url) return;
         GM.xmlHttpRequest({
-            method: "POST",
-            url: sheetUrl,
-            data: JSON.stringify(payload),
-            headers: {
-                "Content-Type": "application/json"
-            },
-            onload: function(response) {
-                try {
-                    const data = JSON.parse(response.responseText);
-                    if (data.status === 'success') {
-                        //toast('✅ Link gönderildi');
-                    } else {
-                        //toast('❌ Hata: ' + (data.message || 'Bilinmeyen hata'));
-                    }
-                } catch (e) {
-                   // toast('❌ Yanıt işlenemedi');
-                }
-            },
-            onerror: function(error) {
-                //toast('❌ Gönderilemedi: ' + (error.message || 'Bilinmeyen hata'));
-            }
+            method:  'POST',
+            url,
+            data:    JSON.stringify(payload),
+            headers: { 'Content-Type': 'application/json' },
+            // Responses silently ignored — no user-facing toasts for background sync
+            onerror: err => console.warn('[EtsyPie] Sheet log failed:', err),
         });
     }
-    function toast(msg) {
-        let c = document.querySelector('.tm-send-toast');
-        if (!c) {
-            c = document.createElement('div');
-            c.className = 'tm-send-toast';
-            Object.assign(c.style, {
-                position:'fixed', right:'12px', bottom:'12px', zIndex: 999999,
-                padding:'10px 14px', borderRadius:'12px', boxShadow:'0 4px 14px rgba(0,0,0,.2)',
-                background:'#111', color:'#fff', fontSize:'12px', opacity:'0.95'
-            });
-            document.body.appendChild(c);
-        }
-        c.textContent = msg;
-        setTimeout(() => {
-            if (c && c.parentNode) c.parentNode.removeChild(c);
-        }, 1800);
-    }
-    function normalizeNumber(str) {
-        return parseInt(str.replace(/[^\d]/g, ''), 10);
+
+    // ─────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────
+    const parseCount = str => parseInt((str ?? '').replace(/\D/g, ''), 10) || 0;
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    function svgEl(tag, attrs) {
+        const el = document.createElementNS(SVG_NS, tag);
+        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+        return el;
     }
 
+    // ─────────────────────────────────────────────
+    // MAIN — addReviewPie
+    // ─────────────────────────────────────────────
     async function addReviewPie() {
-        // Dashboard’dan verileri al
         const container = document.querySelector('.dashboard-header-metadata');
-        if (!container) return;
-        if (container.querySelector('.review-pie-wrapper')) return;
+        if (!container || container.querySelector('.review-pie-wrapper')) return;
 
-        const reviewsEl = container.querySelector('a[href*="#reviews"] div:nth-child(2) > span:nth-child(2)');
-        const salesEl = container.querySelector('a[href*="/your/orders/sold"]');
+        const reviewsEl  = container.querySelector('a[href*="#reviews"] div:nth-child(2) > span:nth-child(2)');
+        const salesEl    = container.querySelector('a[href*="/your/orders/sold"]');
         if (!reviewsEl || !salesEl) return;
 
-        const reviews = normalizeNumber(reviewsEl.textContent);
-        const sales = normalizeNumber(salesEl.textContent);
+        const reviews = parseCount(reviewsEl.textContent);
+        const sales   = parseCount(salesEl.textContent);
         if (!reviews || !sales) return;
 
-        // Active listings
-        const listingsEl = container.querySelector('a[href*="tools/listings"]');
-        const activeListings = listingsEl ? parseInt(listingsEl.textContent.replace(/[^\d]/g, ''), 10) : null;
+        const listingsEl      = container.querySelector('a[href*="tools/listings"]');
+        const activeListings  = listingsEl ? parseCount(listingsEl.textContent) : null;
 
-        // Shop name
         const shopLinkEl = container.querySelector('a[href*="/shop/"]');
-        let shopName = "";
-        if (shopLinkEl) {
-            const urlParts = shopLinkEl.href.split('/');
-            shopName = urlParts[4].split('?')[0];
-        }
+        const shopName   = shopLinkEl ? (shopLinkEl.href.split('/')[4]?.split('?')[0] ?? '') : '';
 
         const ratio = reviews / sales;
+        const color = ratio >= 0.1 ? '#22c55e' : ratio >= 0.05 ? '#f97316' : '#ef4444';
 
-        // Wrapper div
-        const wrapper = document.createElement('div');
-        wrapper.className = 'review-pie-wrapper';
-        wrapper.style.display = 'inline-block';
-        wrapper.style.position = 'relative';
-        wrapper.style.marginLeft = '6px';
-        wrapper.style.verticalAlign = 'middle';
-        wrapper.style.width = '24px';
-        wrapper.style.height = '24px';
+        // ── SVG ring ──────────────────────────────
+        const SIZE   = 24;
+        const R      = SIZE / 2;
+        const SW     = 6;
+        const cr     = R - SW / 2;           // circle radius
+        const circ   = 2 * Math.PI * cr;
+        const offset = circ * (1 - Math.min(ratio, 1));
 
-        const size = 24;
-        const radius = size / 2;
-        const strokeWidth = 6;
-        const circumference = 2 * Math.PI * (radius - strokeWidth/2);
-        const offset = circumference * (1 - ratio);
+        const svg = svgEl('svg', { width: SIZE, height: SIZE, 'aria-hidden': 'true' });
+        svg.appendChild(svgEl('circle', { cx:R, cy:R, r:cr, fill:'none', stroke:'#e5e7eb', 'stroke-width':SW }));
+        svg.appendChild(svgEl('circle', {
+            cx: R, cy: R, r: cr, fill: 'none',
+            stroke: color, 'stroke-width': SW,
+            'stroke-dasharray': circ,
+            'stroke-dashoffset': offset,
+            'stroke-linecap': 'round',
+            transform: `rotate(-90 ${R} ${R})`,
+            style: 'transition:stroke-dashoffset .4s ease',
+        }));
 
-        // SVG Pie
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", size);
-        svg.setAttribute("height", size);
+        // ── Badge ─────────────────────────────────
+        const badge = Object.assign(document.createElement('span'), {
+            textContent: `${(ratio * 100).toFixed(1)}%`,
+        });
+        Object.assign(badge.style, {
+            position: 'absolute', top: '-12px', right: '-24px',
+            background: '#1f2937', color: '#fff',
+            fontSize: '10px', padding: '1px 4px',
+            borderRadius: '8px', fontWeight: '600', lineHeight: '14px',
+            whiteSpace: 'nowrap',
+        });
 
-        // Background circle
-        const bg = document.createElementNS(svg.namespaceURI, "circle");
-        bg.setAttribute("cx", radius);
-        bg.setAttribute("cy", radius);
-        bg.setAttribute("r", radius - strokeWidth/2);
-        bg.setAttribute("fill", "none");
-        bg.setAttribute("stroke", "#eee");
-        bg.setAttribute("stroke-width", strokeWidth);
-        svg.appendChild(bg);
-
-        // Foreground circle
-        const fg = document.createElementNS(svg.namespaceURI, "circle");
-        fg.setAttribute("cx", radius);
-        fg.setAttribute("cy", radius);
-        fg.setAttribute("r", radius - strokeWidth/2);
-        fg.setAttribute("fill", "none");
-        fg.setAttribute("stroke", ratio >= 0.1 ? "green" : ratio >= 0.05 ? "orange" : "red");
-        fg.setAttribute("stroke-width", strokeWidth);
-        fg.setAttribute("stroke-dasharray", circumference);
-        fg.setAttribute("stroke-dashoffset", offset);
-        fg.setAttribute("transform", `rotate(-90 ${radius} ${radius})`);
-        svg.appendChild(fg);
-
+        // ── Wrapper ───────────────────────────────
+        const wrapper = Object.assign(document.createElement('div'), { className: 'review-pie-wrapper' });
+        Object.assign(wrapper.style, {
+            display: 'inline-block', position: 'relative',
+            marginLeft: '6px', verticalAlign: 'middle',
+            width: `${SIZE}px`, height: `${SIZE}px`,
+        });
+        wrapper.title = `${reviews} yorum / ${sales} satış = %${(ratio * 100).toFixed(2)}`;
         wrapper.appendChild(svg);
-
-        // Badge
-        const badge = document.createElement('span');
-        badge.textContent = `${(ratio*100).toFixed(1)}%`;
-        badge.style.position = 'absolute';
-        badge.style.top = '-12px';
-        badge.style.right = '-24px';
-        badge.style.background = '#333';
-        badge.style.color = 'white';
-        badge.style.fontSize = '10px';
-        badge.style.padding = '1px 4px';
-        badge.style.borderRadius = '8px';
-        badge.style.fontWeight = '600';
-        badge.style.lineHeight = '10px';
-
         wrapper.appendChild(badge);
 
-        // ReviewsEl'in yanına ekle
         reviewsEl.parentNode.appendChild(wrapper);
-        // Google Sheet’e gönderilecek veri objesi
-        const data = {
-            title: shopName,
-            sls: sales || "",
-            active_listings: activeListings || "",
-            reviews: reviews || "",
-            ratio: (ratio*100).toFixed(2) || "",
-            sheetName: 'dashboard'
-        };
 
-        console.log(data);
-        await logToGoogleSheets(data);
+        // ── Log to Sheets ─────────────────────────
+        await logToSheets({
+            title:           shopName,
+            sls:             sales,
+            active_listings: activeListings ?? '',
+            reviews,
+            ratio:           (ratio * 100).toFixed(2),
+            sheetName:       'dashboard',
+        });
     }
 
+    // ─────────────────────────────────────────────
+    // OBSERVER — debounced to avoid hammering on
+    // rapid DOM updates (Etsy SPA navigations)
+    // ─────────────────────────────────────────────
+    let _debounceTimer = null;
+
+    const observer = new MutationObserver(() => {
+        clearTimeout(_debounceTimer);
+        _debounceTimer = setTimeout(addReviewPie, 300);
+    });
+
+    // Run immediately; if container not ready yet, observer will catch it
     addReviewPie();
-    const observer = new MutationObserver(addReviewPie);
     observer.observe(document.body, { childList: true, subtree: true });
+
 })();
