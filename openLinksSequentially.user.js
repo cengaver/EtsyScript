@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      1.22
-// @description  Open all matching links with a 1-second delay
+// @version      2.00
+// @description  Open all matching links with delay + ROAS coloring — Optimized v2
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising?ref=seller-platform-mcnav
@@ -11,56 +11,82 @@
 // @grant        none
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
+    // ─────────────────────────────────────────────
+    // SELECTORS
+    // ─────────────────────────────────────────────
+    const SEL_ROWS  = '#listings-header > table > tbody > tr';
+    const SEL_ROAS  = 'td:nth-child(10) > span';
+    const SEL_LINKS = '#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-z-index-1 > div > div > a';
+
+    const TIMER = { 0: 80_000, 1: 200_000 };
+    const LOW_ROAS_BG  = '#ffa59e';
+    const HIGH_ROAS_BG = '';
+
+    // ─────────────────────────────────────────────
+    // COLOR ROAS
+    // Row'ları her DOM değişikliğinde re-color etmek için
+    // WeakSet ile zaten renklendirilmiş satırları izliyoruz;
+    // böylece aynı satıra defalarca setTimeout açılmıyor.
+    // ─────────────────────────────────────────────
+    const _coloredRows = new WeakSet();
+
     function colorRoas() {
-        const roassEl = document.querySelectorAll("#listings-header > table > tbody > tr");
-        roassEl.forEach((roas, index) => {
-            setTimeout(() => {
-                const roasValue = Number(roas.querySelector("td:nth-child(10) > span")?.textContent.trim() || 0);
-                if (roasValue < 2){
-                    roas.style.backgroundColor = "#ffa59e";
-                }else{
-                    roas.style.backgroundColor = "";
-                }
-                //console.log(roas);
-            }, index * 400);
+        document.querySelectorAll(SEL_ROWS).forEach(row => {
+            if (_coloredRows.has(row)) return; // already handled this DOM node
+            _coloredRows.add(row);
+
+            const span = row.querySelector(SEL_ROAS);
+            if (!span) return;
+
+            // Use MutationObserver on the span so we re-color if value updates later
+            const apply = () => {
+                const val = parseFloat(span.textContent.trim()) || 0;
+                row.style.backgroundColor = val < 2 ? LOW_ROAS_BG : HIGH_ROAS_BG;
+            };
+
+            apply(); // immediate
+            new MutationObserver(apply).observe(span, { childList: true, characterData: true, subtree: true });
         });
     }
 
+    // ─────────────────────────────────────────────
+    // OPEN LINKS
+    // ─────────────────────────────────────────────
     function openLinks(mod) {
-        //const links = document.querySelectorAll("#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-no-wrap > div.wt-pt-xs-1.wt-display-flex-xs > div > a")
-        //const links = document.querySelectorAll("#manage_advertised_listings_wt_tab_panel > div > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-no-wrap > div.wt-pt-xs-1.wt-display-flex-xs > div > a");
-        const timer = mod==1?200000:80000
-        const links = document.querySelectorAll("#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-z-index-1 > div > div > a")
-        links.forEach((link,index)=>{
-            setTimeout(()=>{
-                window.open(`${link.href}&mod=${mod}`,'_blank')
-                if(index===links.length-1) window.close()
-            },index*timer)
-        })
+        const links = [...document.querySelectorAll(SEL_LINKS)];
+        if (!links.length) return;
+
+        const delay = TIMER[mod] ?? 80_000;
+
+        links.forEach((link, i) => {
+            setTimeout(() => {
+                window.open(`${link.href}&mod=${mod}`, '_blank');
+                if (i === links.length - 1) window.close();
+            }, i * delay);
+        });
     }
 
-    document.addEventListener('keydown', function(event) {
-        if (event.ctrlKey && event.altKey) {
-            openLinks(0);
-            //console.log("yeni sekmeler çalıştı")
-        }
-        if (event.ctrlKey && event.code === "Space") {
-            openLinks(1);
-            //console.log("yeni sekmeler çalıştı")
-        }
+    // ─────────────────────────────────────────────
+    // KEYBOARD SHORTCUTS
+    // ─────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+        if (e.ctrlKey && e.altKey)              openLinks(0);
+        if (e.ctrlKey && e.code === 'Space')    openLinks(1);
     });
 
-    window.addEventListener("load", async () => {
-        colorRoas();
-    })
+    // ─────────────────────────────────────────────
+    // OBSERVER — debounced; only re-runs colorRoas on new nodes
+    // ─────────────────────────────────────────────
+    let _debounce = null;
+    new MutationObserver(() => {
+        clearTimeout(_debounce);
+        _debounce = setTimeout(colorRoas, 200);
+    }).observe(document.body, { childList: true, subtree: true });
 
-    const observer = new MutationObserver(() => {
-        colorRoas();
-        //console.log("DOM changed, rechecking links...");
-    });
+    // Initial pass (table may already be rendered)
+    colorRoas();
 
-    observer.observe(document.body, { childList: true, subtree: true });
 })();
