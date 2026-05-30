@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Etsy Review Message
-// @version      1.94
+// @version      2.0.0
 // @description  Send review message for buyer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -11,11 +11,6 @@
 // @grant        GM.setValue
 // @grant        GM.registerMenuCommand
 // @grant        GM.addStyle
-// @grant        GM.xmlHttpRequest
-// @grant        GM.getValue
-// @grant        GM.setValue
-// @grant        GM.addElement
-// @grant        GM.getResourceText
 // @connect      sheets.googleapis.com
 // @connect      script.google.com
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyReviewMessage.user.js
@@ -23,1028 +18,614 @@
 // @run-at       document-end
 // ==/UserScript==
 
-
-(async function() {
+(async function () {
     'use strict';
 
-    // Modern UI Styles
+    // ─── Constants ────────────────────────────────────────────────────────────
+
+    const MESSAGE_BUTTONS_SELECTOR = `
+        section.order-group-list
+        .panel-body-row
+        clg-tooltip:has(clg-icon[name="message"]) clg-icon-button
+    `;
+
+    const SEND_BUTTON_SELECTOR =
+        '#dg-tabs-preact__tab-1--default_wt_tab_panel .panel-body .btn.btn-primary.btn-small';
+
+    const TAB_PANEL_SELECTOR =
+        '#dg-tabs-preact__tab-1--default_wt_tab_panel';
+
+    const DEFAULT_CONFIG = {
+        reviewMessage:   `Hello {{userName}}, 🙏`,
+        printMessage:    '',
+        cancelMessage:   '',
+        noreturnMessage: '',
+        uspserrorMessage:'',
+        priorityMessage: '',
+        resendMessage:   '',
+        reptrackMessage: '',
+        repfotoMessage:  '',
+        wecanMessage:    '',
+        doapprowMessage: '',
+        shopName:        '',
+    };
+
+    const KEY_MAP = {
+        Space:    'reviewMessage',
+        Digit1:   'printMessage',
+        Digit2:   'cancelMessage',
+        Digit3:   'noreturnMessage',
+        Digit4:   'uspserrorMessage',
+        Digit5:   'priorityMessage',
+        Digit6:   'resendMessage',
+        Digit7:   'reptrackMessage',
+        Digit8:   'repfotoMessage',
+        Digit9:   'wecanMessage',
+        Digit0:   'doapprowMessage',
+    };
+
+    const SHORTCUT_LABELS = {
+        reviewMessage:   'Review Mesaj',
+        printMessage:    'Bu Şekilde Baskıya',
+        cancelMessage:   'Sipariş İptali',
+        noreturnMessage: 'İade Yerine Kupon',
+        uspserrorMessage:'Adres Hatası',
+        priorityMessage: 'Hızlı Kargo Seçeneği',
+        resendMessage:   'Yanlış Ürün Yeniden(rep) Gönderiyorum',
+        reptrackMessage: 'Yeni Ürün Gönderildi',
+        repfotoMessage:  'Yanlış Ürün – Fotoğraf İste',
+        wecanMessage:    'Kişiselleştirme Mümkün',
+        doapprowMessage: 'Onay Bekliyorum',
+    };
+
+    const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // ─── Styles ───────────────────────────────────────────────────────────────
+
     GM.addStyle(`
         :root {
-            --primary-color: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary-color: #34a853;
-            --secondary-dark: #2e7d32;
-            --danger-color: #ea4335;
-            --danger-dark: #c62828;
-            --warning-color: #fbbc05;
-            --warning-dark: #f57f17;
-            --light-color: #f8f9fa;
-            --dark-color: #202124;
-            --gray-color: #5f6368;
-            --border-radius: 4px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            --et-primary:   #4285f4;
+            --et-primary-d: #3367d6;
+            --et-success:   #34a853;
+            --et-success-d: #2e7d32;
+            --et-danger:    #ea4335;
+            --et-danger-d:  #c62828;
+            --et-warning:   #fbbc05;
+            --et-warning-d: #f57f17;
+            --et-light:     #f8f9fa;
+            --et-dark:      #202124;
+            --et-gray:      #5f6368;
+            --et-radius:    4px;
+            --et-shadow:    0 2px 10px rgba(0,0,0,.1);
+            --et-transition:all .25s ease;
+            --et-font:      'Segoe UI', Roboto, Arial, sans-serif;
         }
 
-        /* Toast Notifications */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        /* ── Toast ─────────────────────────────────────────────── */
+        .et-toasts {
+            position: fixed; bottom: 20px; right: 20px;
+            z-index: 10000; display: flex; flex-direction: column; gap: 8px;
+            pointer-events: none;
+        }
+        .et-toast {
+            min-width: 260px; padding: 10px 14px; border-radius: var(--et-radius);
+            box-shadow: var(--et-shadow); font: 14px var(--et-font);
+            display: flex; align-items: center; justify-content: space-between;
+            opacity: 0; transform: translateY(12px);
+            transition: var(--et-transition); pointer-events: all;
+        }
+        .et-toast.show { opacity: 1; transform: translateY(0); }
+        .et-toast--success { background: var(--et-success); color: #fff; }
+        .et-toast--error   { background: var(--et-danger);  color: #fff; }
+        .et-toast--warning { background: var(--et-warning); color: var(--et-dark); }
+        .et-toast--info    { background: var(--et-primary); color: #fff; }
+        .et-toast__close {
+            background: none; border: none; color: inherit;
+            cursor: pointer; font-size: 16px; margin-left: 8px; opacity: .7;
+        }
+        .et-toast__close:hover { opacity: 1; }
+
+        /* ── Modal ─────────────────────────────────────────────── */
+        .et-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10001; opacity: 0; visibility: hidden; transition: var(--et-transition);
+        }
+        .et-overlay.show { opacity: 1; visibility: visible; }
+        .et-modal {
+            background: #fff; border-radius: var(--et-radius);
+            box-shadow: var(--et-shadow); width: 90%; max-width: 600px;
+            max-height: 90vh; overflow: auto;
+            transform: translateY(-16px); transition: var(--et-transition);
+        }
+        .et-overlay.show .et-modal { transform: translateY(0); }
+        .et-modal__head {
+            padding: 14px 16px; border-bottom: 1px solid #eee;
+            display: flex; align-items: center; justify-content: space-between;
+            font: 500 18px var(--et-font);
+        }
+        .et-modal__close {
+            background: none; border: none; font-size: 20px;
+            cursor: pointer; color: var(--et-gray);
+        }
+        .et-modal__body  { padding: 16px; }
+        .et-modal__foot  {
+            padding: 14px 16px; border-top: 1px solid #eee;
+            display: flex; justify-content: flex-end; gap: 8px;
         }
 
-        .toast {
-            min-width: 280px;
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            font-family: var(--font-family);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
+        /* ── Buttons ───────────────────────────────────────────── */
+        .et-btn {
+            padding: 8px 12px; border: none; border-radius: var(--et-radius);
+            font: 500 14px var(--et-font); cursor: pointer;
+            transition: var(--et-transition); display: inline-flex;
+            align-items: center; gap: 6px;
         }
+        .et-btn:focus { outline: 2px solid var(--et-primary); outline-offset: 2px; }
+        .et-btn--primary  { background: var(--et-primary);  color: #fff; }
+        .et-btn--primary:hover { background: var(--et-primary-d); }
+        .et-btn--light    { background: var(--et-light); color: var(--et-dark); border: 1px solid #ddd; }
+        .et-btn--light:hover { background: #e9ecef; }
 
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
+        /* ── Inputs ────────────────────────────────────────────── */
+        .et-input {
+            padding: 6px 8px; border: 1px solid #ddd; border-radius: var(--et-radius);
+            font: 14px var(--et-font); width: 100%; box-sizing: border-box;
+            transition: var(--et-transition);
         }
-
-        .toast-success {
-            background-color: var(--secondary-color);
-            color: white;
+        .et-input:focus {
+            outline: none; border-color: var(--et-primary);
+            box-shadow: 0 0 0 2px rgba(66,133,244,.2);
         }
+        textarea.et-input { height: 90px; resize: vertical; }
 
-        .toast-error {
-            background-color: var(--danger-color);
-            color: white;
+        /* ── Field group ───────────────────────────────────────── */
+        .et-field { margin-bottom: 14px; }
+        .et-field label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 13px; }
+
+        /* ── Shortcut table ────────────────────────────────────── */
+        .et-shortcut-wrap {
+            margin-bottom: 14px; border: 1px solid #ccc; padding: 12px;
+            border-radius: 8px; background: #f9f9f9; font-family: sans-serif;
         }
-
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
+        .et-shortcut-wrap table {
+            width: 100%; margin-top: 8px;
+            border-collapse: collapse; font-size: 13px;
         }
-
-        .toast-info {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: inherit;
-            cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
-            opacity: 0.7;
-        }
-
-        .toast-close:hover {
-            opacity: 1;
-        }
-
-        /* Buttons */
-        .etsy-tool-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .etsy-tool-btn:focus {
-            outline: none;
-        }
-
-        .etsy-tool-btn-primary {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-primary:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .etsy-tool-btn-secondary {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-secondary:hover {
-            background-color: var(--secondary-dark);
-        }
-
-        .etsy-tool-btn-danger {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-danger:hover {
-            background-color: var(--danger-dark);
-        }
-
-        .etsy-tool-btn-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .etsy-tool-btn-warning:hover {
-            background-color: var(--warning-dark);
-        }
-
-        .etsy-tool-btn-light {
-            background-color: var(--light-color);
-            color: var(--dark-color);
-            border: 1px solid #ddd;
-        }
-
-        .etsy-tool-btn-light:hover {
-            background-color: #e9ecef;
-        }
-
-        .etsy-tool-btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-
-        .etsy-tool-btn-lg {
-            padding: 10px 16px;
-            font-size: 16px;
-        }
-
-        .etsy-tool-btn-icon {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            border-radius: 50%;
-        }
-
-        /* Inputs */
-        .etsy-tool-input {
-            padding: 2px 4px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 16px;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
-
-        .etsy-tool-select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 14px;
-            background-color: white;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
-
-        /* Panels */
-        .etsy-tool-panel {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            overflow: hidden;
-        }
-
-        .etsy-tool-panel-header {
-            padding: 12px 16px;
-            background-color: var(--primary-color);
-            color: white;
-            font-family: var(--font-family);
-            font-size: 16px;
-            font-weight: 500;
-            display: flex;
-            cursor: move;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .etsy-tool-panel-body {
-            padding: 16px;
-        }
-
-        /* Main Toolbar */
-        .etsy-tool-toolbar {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            display: flex;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            flex-direction: column;
-            gap: 10px;
-            width: 300px;
-        }
-
-        /* Image Thumbnails */
-        .etsy-tool-thumbnails {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .etsy-tool-thumbnail {
-            position: relative;
-            width: 100%;
-            padding-top: 100%; /* 1:1 Aspect Ratio */
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            cursor: pointer;
-            box-shadow: var(--box-shadow);
-            transition: var(--transition);
-        }
-
-        .etsy-tool-thumbnail:hover {
-            transform: scale(1.05);
-        }
-
-        .etsy-tool-thumbnail img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .etsy-tool-thumbnail-actions {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: flex;
-            justify-content: space-around;
-            padding: 5px;
-            opacity: 0;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-thumbnail:hover .etsy-tool-thumbnail-actions {
-            opacity: 1;
-        }
-
-        /* Modal */
-        .etsy-tool-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .etsy-tool-modal {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow: auto;
-            transform: translateY(-20px);
-            transition: var(--transition);
-        }
-
-        .etsy-tool-modal-overlay.show .etsy-tool-modal {
-            transform: translateY(0);
-        }
-
-        .etsy-tool-modal-header {
-            padding: 16px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .etsy-tool-modal-title {
-            font-family: var(--font-family);
-            font-size: 18px;
-            font-weight: 500;
-            margin: 0;
-        }
-
-        .etsy-tool-modal-close {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--gray-color);
-        }
-
-        .etsy-tool-modal-body {
-            padding: 16px;
-        }
-
-        .etsy-tool-modal-footer {
-            padding: 16px;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        /* Image Viewer */
-        .etsy-tool-image-viewer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .etsy-tool-image-viewer img {
-            max-width: 100%;
-            max-height: 70vh;
-            object-fit: contain;
-        }
-
-        /* PNG Filter Panel */
-        .etsy-tool-png-filter {
-            margin-top: 10px;
-        }
-
-        .etsy-tool-png-list {
-            margin-top: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .etsy-tool-png-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-png-item:hover {
-            background-color: #f5f5f5;
-        }
-
-        .etsy-tool-png-item.selected {
-            background-color: rgba(66, 133, 244, 0.1);
-        }
-
-        .etsy-tool-png-item-checkbox {
-            margin-right: 10px;
-        }
-
-        .etsy-tool-png-item-thumbnail {
-            width: 40px;
-            height: 40px;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            margin-right: 10px;
-        }
-
-        .etsy-tool-png-item-thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .etsy-tool-png-item-info {
-            flex: 1;
-        }
-
-        .etsy-tool-png-item-title {
-            font-weight: 500;
-            margin-bottom: 2px;
-        }
-
-        .etsy-tool-png-item-sku {
-            font-size: 12px;
-            color: var(--gray-color);
-        }
-
-        /* Loading Spinner */
-        .etsy-tool-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .etsy-tool-toolbar {
-                width: 250px;
-            }
-
-            .etsy-tool-thumbnails {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        .et-shortcut-wrap th, .et-shortcut-wrap td {
+            padding: 4px 8px; text-align: left;
         }
     `);
 
-    // Config yapısı
-    const DEFAULT_CONFIG = {
-        reviewMessage: `Hello {{userName}}, 🙏`
-    };
-    //const MESSAGE_BUTTONS_SELECTOR = 'section.order-group-list .panel-body-row > .flag > :last-child > [role=presentation] > :first-child clg-icon-button';
-    const MESSAGE_BUTTONS_SELECTOR = `
-section.order-group-list
-.panel-body-row
-clg-tooltip:has(clg-icon[name="message"]) clg-icon-button
-`;
-    // Global değişkenler
-    let config = {...DEFAULT_CONFIG};
-    let toastContainer = null;
+    // ─── Config ───────────────────────────────────────────────────────────────
 
-    // Config yönetimi
+    let config = { ...DEFAULT_CONFIG };
+
     async function loadConfig() {
         try {
-            const savedConfig = await GM.getValue('Config');
-            if (savedConfig) {
-                config = {...DEFAULT_CONFIG, ...savedConfig};
-                return true;
-            }else if(DEFAULT_CONFIG.reviewMessage){
-                await migrateConfig()
-            }
-            return false;
-        } catch (error) {
-            console.error('Config yükleme hatası:', error);
-            return false;
+            const saved = await GM.getValue('Config');
+            if (saved) config = { ...DEFAULT_CONFIG, ...saved };
+            else await saveConfig();           // first-run: persist defaults
+        } catch (e) {
+            console.error('[EtsyTool] loadConfig error', e);
         }
-    }
-
-    async function migrateConfig() {
-        await saveConfig();
-        for (const key of Object.keys(DEFAULT_CONFIG)) await GM.deleteValue(key);
     }
 
     async function saveConfig() {
         await GM.setValue('Config', config);
     }
 
-    // Config kontrol fonksiyonu
-    async function checkConfig() {
-        return await loadConfig();
+    // ─── Toast ────────────────────────────────────────────────────────────────
+
+    let _toastWrap = null;
+
+    function getToastContainer() {
+        if (!_toastWrap) {
+            _toastWrap = Object.assign(document.createElement('div'), { className: 'et-toasts' });
+            document.body.appendChild(_toastWrap);
+        }
+        return _toastWrap;
     }
 
-    // Config doğrulama
-    async function validateConfig() {
-        if (!await checkConfig()) {
-            showToast('Config yüklenemedi', 'error');
-            return false;
-        }
+    function showToast(message, type = 'success', duration = 3000) {
+        const wrap  = getToastContainer();
+        const toast = document.createElement('div');
+        toast.className = `et-toast et-toast--${type}`;
 
-        if (!config.reviewMessage) {
-            showToast('Mesaj ayarlanmalı', 'error');
-            return false;
+        const span = document.createElement('span');
+        span.textContent = message;
+
+        const btn = document.createElement('button');
+        btn.className = 'et-toast__close';
+        btn.innerHTML = '&times;';
+        btn.onclick = () => dismiss(toast);
+
+        toast.append(span, btn);
+        wrap.appendChild(toast);
+
+        requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('show')));
+
+        if (duration > 0) setTimeout(() => dismiss(toast), duration);
+
+        function dismiss(el) {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 260);
         }
-        return true;
     }
 
-    function insertOrUpdateProgressBar(completed, total) {
-        const percent = Math.round((completed / total) * 100);
+    // ─── Config dialog ────────────────────────────────────────────────────────
 
+    function showConfigMenu() {
+        const fields = Object.keys(DEFAULT_CONFIG).map((id) => ({
+            id,
+            label: SHORTCUT_LABELS[id] ?? id,
+        }));
+
+        const overlay = document.createElement('div');
+        overlay.className = 'et-overlay';
+
+        overlay.innerHTML = `
+            <div class="et-modal" role="dialog" aria-modal="true" aria-labelledby="et-modal-title">
+                <div class="et-modal__head">
+                    <span id="et-modal-title">Etsy Mesaj Tool Ayarları</span>
+                    <button class="et-modal__close" aria-label="Kapat">&times;</button>
+                </div>
+                <div class="et-modal__body">
+                    ${fields.map(f => `
+                        <div class="et-field">
+                            <label for="et-cfg-${f.id}">${f.label || f.id}</label>
+                            <textarea id="et-cfg-${f.id}" class="et-input">${escHtml(config[f.id] ?? '')}</textarea>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="et-modal__foot">
+                    <button class="et-btn et-btn--light" data-action="cancel">İptal</button>
+                    <button class="et-btn et-btn--primary" data-action="save">Kaydet</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('show')));
+
+        function close() {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.remove(), 260);
+        }
+
+        overlay.querySelector('.et-modal__close').onclick = close;
+        overlay.querySelector('[data-action="cancel"]').onclick = close;
+        overlay.querySelector('[data-action="save"]').onclick = async () => {
+            fields.forEach(({ id }) => {
+                config[id] = document.getElementById(`et-cfg-${id}`)?.value ?? '';
+            });
+            await saveConfig();
+            showToast('Ayarlar kaydedildi', 'success');
+            close();
+        };
+
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    }
+
+    function escHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ─── Core messaging ───────────────────────────────────────────────────────
+
+    function getBuyerFirstName() {
+        const raw = document.querySelector('#order-details-header-text > span')?.innerText ?? '';
+        const name = raw.replace('Order from ', '').split(' ')[0] ?? '';
+        if (!name || name.toLowerCase() === 'sign') return '';
+        return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    }
+
+    function getTextArea() {
+        return document.querySelector(`${TAB_PANEL_SELECTOR} textarea[name="message"]`);
+    }
+
+    function clickIfPresent(selector, text) {
+        for (const el of document.querySelectorAll(selector)) {
+            if (el.textContent.trim() === text) { el.click(); return true; }
+        }
+        return false;
+    }
+
+    async function insertMessage(messageKey) {
+        const template = config[messageKey];
+        if (!template) return;
+
+        const userName = getBuyerFirstName();
+        const text = '\n' + template.replace('{{userName}}', userName) + '\n';
+
+        let ta = getTextArea();
+        if (!ta) {
+            const btnSelector = `${TAB_PANEL_SELECTOR} .flag-body button`;
+            clickIfPresent(btnSelector, 'Message buyer') ||
+            clickIfPresent(btnSelector, 'Reply');
+
+            await delay(500);
+            ta = getTextArea();
+        }
+
+        if (!ta || ta.value.includes(text)) return;
+
+        ta.value += text;
+        ta.setAttribute('value', ta.value);
+        ta.dispatchEvent(new Event('input',  { bubbles: true }));
+        ta.dispatchEvent(new Event('change', { bubbles: true }));
+        ta.focus();
+    }
+
+    async function sendMessage() {
+        const btn = document.querySelector(SEND_BUTTON_SELECTOR);
+        if (!btn) return;
+        await delay(400);
+        btn.click();
+    }
+
+    async function autoProcess() {
+        await insertMessage('reviewMessage');
+        await delay(700);
+        await sendMessage();
+        await delay(1100);
+        history.back();
+    }
+
+    // ─── Progress bar & UI helpers ────────────────────────────────────────────
+
+    function upsertProgressBar(completed, total) {
         const ul = document.querySelector('nav.wt-tab-container ul.wt-tab');
         if (!ul) return;
 
-        let li = document.querySelector('#reviews-progress-bar');
+        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
+        let li = document.getElementById('et-progress-bar');
         if (!li) {
             li = document.createElement('li');
-            li.id = 'reviews-progress-bar';
+            li.id = 'et-progress-bar';
             li.className = 'wt-tab__item';
-            li.style = 'display:flex;align-items:center;gap:5px;padding:4px 8px;';
+            li.style.cssText = 'display:flex;align-items:center;gap:5px;padding:4px 8px;';
             ul.appendChild(li);
         }
 
         li.innerHTML = `
-    <span style="background:#e0e0e0;width:100px;height:10px;border-radius:5px;overflow:hidden;display:inline-block;">
-      <span style="background:green;width:${percent}%;height:100%;display:block;"></span>
-    </span>
-    <span style="font-size:12px;color:#333;">${percent}% (${completed}/${total}) reviews</span>
-  `;
+            <span style="background:#e0e0e0;width:100px;height:10px;border-radius:5px;overflow:hidden;display:inline-block;">
+                <span style="background:green;width:${pct}%;height:100%;display:block;transition:width .3s;"></span>
+            </span>
+            <span style="font-size:12px;color:#333;">${pct}% (${completed}/${total}) reviews</span>
+        `;
     }
 
-    // Modern Toast Notification System
-    async function createToastContainer() {
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            document.body.appendChild(toastContainer);
-        }
-        return toastContainer;
+    function upsertRefreshButton(onRefresh) {
+        const ul = document.querySelector('nav.wt-tab-container ul.wt-tab');
+        if (!ul || document.getElementById('et-refresh-btn')) return;
+
+        const li  = document.createElement('li');
+        li.id = 'et-refresh-btn';
+        li.className = 'wt-tab__item';
+
+        const btn = document.createElement('button');
+        btn.className = 'et-btn et-btn--light';
+        btn.textContent = '↺';
+        btn.title = 'Refresh message buttons';
+        btn.onclick = onRefresh;
+
+        li.appendChild(btn);
+        ul.appendChild(li);
     }
 
-    async function showToast(message, type = 'success', duration = 3000) {
-        const container = await createToastContainer();
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-
-        const messageSpan = document.createElement('span');
-        messageSpan.textContent = message;
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        });
-
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeBtn);
-        container.appendChild(toast);
-
-        // Show animation
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        // Auto dismiss
-        if (duration > 0) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
-
-        return toast;
+    function hideProtectionBanners() {
+        ['purchase-protection-seller-onsite-under-250',
+         'purchase-protection-seller-onsite-under-500']
+            .forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
     }
 
-    // Modern Config Dialog
-    async function showConfigMenu() {
-        // Create modal overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'etsy-tool-modal-overlay';
+    // ─── Shortcut table ───────────────────────────────────────────────────────
 
-        // Create modal
-        const modal = document.createElement('div');
-        modal.className = 'etsy-tool-modal';
+    function insertShortcutTable() {
+        const target = document.querySelector(
+            `${TAB_PANEL_SELECTOR} > div > div:nth-child(4) > div`
+        );
+        if (!target || target.previousElementSibling?.classList?.contains('et-shortcut-wrap')) return;
 
-        // Modal header
-        const header = document.createElement('div');
-        header.className = 'etsy-tool-modal-header';
-
-        const title = document.createElement('h3');
-        title.className = 'etsy-tool-modal-title';
-        title.textContent = 'Etsy Mesaj Tool Ayarları';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'etsy-tool-modal-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 500);
-        });
-
-        header.appendChild(title);
-        header.appendChild(closeBtn);
-
-        // Modal body
-        const body = document.createElement('div');
-        body.className = 'etsy-tool-modal-body';
-
-        // Form fields
-        const fields = [
-            { id: 'reviewMessage', label: 'Review Message', type: 'textarea', value: config.reviewMessage },
-            { id: 'printMessage', label: 'Bu Şekilde Baskıya', type: 'textarea', value: config.printMessage },
-            { id: 'cancelMessage', label: 'Sipariş İptali', type: 'textarea', value: config.cancelMessage },
-            { id: 'noreturnMessage', label: 'İade Yerine Kupon', type: 'textarea', value: config.noreturnMessage },
-            { id: 'uspserrorMessage', label: 'Adres Hatası', type: 'textarea', value: config.uspserrorMessage },
-            { id: 'priorityMessage', label: 'Hızlı Kargo Seçeneği', type: 'textarea', value: config.priorityMessage },
-            { id: 'resendMessage', label: 'Yanlış Ürün Yeniden(rep) Gönderiyorum', type: 'textarea', value: config.resendMessage },
-            { id: 'reptrackMessage', label: 'Yeni Ürün Gönderildi', type: 'textarea', value: config.reptrackMessage },
-            { id: 'repfotoMessage', label: 'Yanlış Ürün – Fotoğraf İste', type: 'textarea', value: config.repfotoMessage },
-            { id: 'wecanMessage', label: 'Kişiselleştirme Mümkün', type: 'textarea', value: config.wecanMessage },
-            { id: 'doapprowMessage', label: 'Onay Bekliyorum', type: 'textarea', value: config.doapprowMessage },
-            { id: 'shopName', label: 'Mağaza Adı', type: 'textarea', value: config.shopName }
+        const rows = [
+            ['Ctrl + Space', 'reviewMessage'],
+            ...Object.entries(KEY_MAP)
+                .filter(([k]) => k !== 'Space')
+                .map(([k, v]) => [`Ctrl + ${k.replace('Digit', '')}`, v]),
+            ['Ctrl + &#96;', null, 'Kısayol Haritası'],
         ];
 
-        fields.forEach(field => {
-            const fieldContainer = document.createElement('div');
-            fieldContainer.style.marginBottom = '15px';
-
-            const label = document.createElement('label');
-            label.textContent = field.label;
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.fontWeight = 'bold';
-
-            let input;
-            if (field.type === 'textarea') {
-                input = document.createElement('textarea');
-                input.style.height = '100px';
-            } else {
-                input = document.createElement('input');
-                input.type = field.type;
-            }
-
-            input.id = field.id;
-            input.className = 'etsy-tool-input';
-            input.value = field.value;
-            input.style.width = '100%';
-
-            fieldContainer.appendChild(label);
-            fieldContainer.appendChild(input);
-            body.appendChild(fieldContainer);
-        });
-
-        // Modal footer
-        const footer = document.createElement('div');
-        footer.className = 'etsy-tool-modal-footer';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'etsy-tool-btn etsy-tool-btn-light';
-        cancelBtn.textContent = 'İptal';
-        cancelBtn.addEventListener('click', () => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'etsy-tool-btn etsy-tool-btn-primary';
-        saveBtn.textContent = 'Kaydet';
-        saveBtn.addEventListener('click', async () => {
-            // Save config
-            fields.forEach(field => {
-                config[field.id] = field.type=='number' ? parseFloat(document.getElementById(field.id).value) : document.getElementById(field.id).value;
-            });
-
-            await saveConfig();
-            showToast('Ayarlar başarıyla kaydedildi', 'success');
-
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        footer.appendChild(cancelBtn);
-        footer.appendChild(saveBtn);
-
-        // Assemble modal
-        modal.appendChild(header);
-        modal.appendChild(body);
-        modal.appendChild(footer);
-        overlay.appendChild(modal);
-
-        // Add to document
-        document.body.appendChild(overlay);
-
-        // Show with animation
-        setTimeout(() => overlay.classList.add('show'), 10);
-    }
-
-    async function main(messageKey) {
-        const orderName = document.querySelector("#order-details-header-text > span")?.innerText;
-        if (!orderName) return;
-        const userName = orderName.replace("Order from ", "").split(" ")[0];
-        let capitalizedUserName = userName[0].toUpperCase() + userName.slice(1).toLowerCase();
-        capitalizedUserName = capitalizedUserName == "Sign" ? "" : capitalizedUserName;
-        const savedMessage = config[messageKey];
-        if (!savedMessage) return;
-
-        const personalizedMessage = `\n${savedMessage.replace("{{userName}}", capitalizedUserName)}\n`;
-
-        const textAreaEl = document.querySelector('textarea[name="message"]');
-        const msgBuyerButton =[...document.querySelectorAll("#dg-tabs-preact__tab-1--default_wt_tab_panel .flag-body button")].find(el => el.textContent.trim() === "Message buyer")
-        const replyButton =[...document.querySelectorAll("#dg-tabs-preact__tab-1--default_wt_tab_panel .flag-body button")].find(el => el.textContent.trim() === "Reply")
-
-        if (!textAreaEl) {
-            //console.log("textAreaEl yok")
-            if (msgBuyerButton) { msgBuyerButton.click()}//console.log("msgBuyerButton var");
-            if (replyButton){replyButton.click()}//console.log("replyButton var");
-        }
-        setTimeout(() => {
-            if (textAreaEl && !textAreaEl.value.includes(personalizedMessage)) {
-                textAreaEl.value += personalizedMessage;
-                textAreaEl.setAttribute("value", textAreaEl.value);
-                textAreaEl.dispatchEvent(new Event('input', { bubbles: true }));
-                textAreaEl.dispatchEvent(new Event('change', { bubbles: true }));
-                textAreaEl.focus();
-            }
-        }, 500);
-    }
-
-    document.addEventListener("keydown", (event) => {
-        if (event.ctrlKey && !event.altKey) {
-            switch (event.code) {
-                case "Space": event.preventDefault(); main("reviewMessage"); break;
-                case "Digit1":event.preventDefault(); main("printMessage"); break;
-                case "Digit2":event.preventDefault(); main("cancelMessage"); break;
-                case "Digit3":event.preventDefault(); main("noreturnMessage"); break;
-                case "Digit4":event.preventDefault(); main("uspserrorMessage"); break;
-                case "Digit5":event.preventDefault(); main("priorityMessage"); break;
-                case "Digit6":event.preventDefault(); main("resendMessage"); break;
-                case "Digit7":event.preventDefault(); main("reptrackMessage"); break;
-                case "Digit8":event.preventDefault(); main("repfotoMessage"); break;
-                case "Digit9":event.preventDefault(); main("wecanMessage"); break;
-                case "Digit0":event.preventDefault(); main("doapprowMessage"); break;
-                case "Backquote":event.preventDefault(); insertShortcutTable(); break;
-            }
-        }
-    });
-
-
-
-    async function insertShortcutTable() {
-        const target = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel > div > div:nth-child(4) > div");
-        if (!target) return;
-
-        const tableHTML = `
-        <div style="margin-bottom:16px; border:1px solid #ccc; padding:12px; border-radius:8px; background:#f9f9f9; font-family:sans-serif;">
+        const wrap = document.createElement('div');
+        wrap.className = 'et-shortcut-wrap';
+        wrap.innerHTML = `
             <strong>🧷 Message Shortcuts</strong>
-            <table style="width:100%; margin-top:8px; border-collapse:collapse; font-size:14px;">
-                <thead>
-                    <tr style="text-align:left;">
-                        <th style="padding:4px 8px;">Shortcut</th>
-                        <th style="padding:4px 8px;">Message Type</th>
-                        <th style="padding:4px 8px;">Açıklama</th>
-                    </tr>
-                </thead>
+            <table>
+                <thead><tr><th>Kısayol</th><th>Mesaj Tipi</th><th>Açıklama</th></tr></thead>
                 <tbody>
-                <tr><td style="padding:4px 8px;">Ctrl + Space</td><td style="padding:4px 8px;">Review Message</td><td style="padding:4px 8px;">Review Mesaj</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 1</td><td style="padding:4px 8px;">Print Message</td><td style="padding:4px 8px;">Bu Şekilde Baskıya</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 2</td><td style="padding:4px 8px;">Cancel Message</td><td style="padding:4px 8px;">Sipariş İptali</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 3</td><td style="padding:4px 8px;">Noreturn Message</td><td style="padding:4px 8px;">İade Yerine Kupon</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 4</td><td style="padding:4px 8px;">Uspserror Message</td><td style="padding:4px 8px;">Adres Hatası</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 5</td><td style="padding:4px 8px;">Priority Message</td><td style="padding:4px 8px;">Hızlı Kargo Seçeneği</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 6</td><td style="padding:4px 8px;">Resend(rep) Message</td><td style="padding:4px 8px;">Yanlış Ürün Yeniden(rep) Gönderiyorum</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 7</td><td style="padding:4px 8px;">Reptrack Message</td><td style="padding:4px 8px;">Yeni Ürün Gönderildi</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 8</td><td style="padding:4px 8px;">Repfoto Message</td><td style="padding:4px 8px;">Yanlış Ürün – Fotoğraf İste</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 9</td><td style="padding:4px 8px;">Wecan Message</td><td style="padding:4px 8px;">Kişiselleştirme Mümkün</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + 0</td><td style="padding:4px 8px;">Doapprow Message</td><td style="padding:4px 8px;">Onay Bekliyorum</td></tr>
-                    <tr><td style="padding:4px 8px;">Ctrl + "</td><td style="padding:4px 8px;">Shortcut Map</td><td style="padding:4px 8px;">Kısayol Haritası</td></tr>
+                    ${rows.map(([shortcut, key, override]) => `
+                        <tr>
+                            <td>${shortcut}</td>
+                            <td>${key ?? 'shortcutMap'}</td>
+                            <td>${override ?? (SHORTCUT_LABELS[key] ?? '')}</td>
+                        </tr>
+                    `).join('')}
                 </tbody>
             </table>
-        </div>
-    `;
-        const container = document.createElement("div");
-        container.innerHTML = tableHTML;
-        target.parentNode.insertBefore(container, target);
-        await closedProme();
-    }
-    await insertShortcutTable();
+        `;
 
-    async function closedProme(){
-        const protection = document.getElementById("purchase-protection-seller-onsite-under-250")
-        const protect500 = document.getElementById("purchase-protection-seller-onsite-under-500")
-        if(protection){
-            protection.style.display = "none";
-        }
-        if(protect500){
-            protect500.style.display = "none";
-        }
+        target.parentNode.insertBefore(wrap, target);
+        hideProtectionBanners();
     }
 
-    // helper: görünür ve tıklanabilir mi?
-    function isVisibleAndEnabled(el){ return el && !el.disabled && (!!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)); }
+    // ─── Tab-index navigation ─────────────────────────────────────────────────
 
-    function waitFor(predicate, interval=150, attempts=40){
-        return new Promise((resolve, reject)=>{
-            let i=0;
-            const t = setInterval(()=>{
-                if(predicate()){ clearInterval(t); resolve(); }
-                if(++i>=attempts){ clearInterval(t); reject(new Error('waitFor timeout')); }
+    function isInteractable(el) {
+        return el && !el.disabled &&
+            !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    }
+
+    function waitForElement(predicate, interval = 120, maxAttempts = 50) {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const id = setInterval(() => {
+                if (predicate())           { clearInterval(id); resolve(); return; }
+                if (++attempts >= maxAttempts) { clearInterval(id); reject(new Error('waitForElement timeout')); }
             }, interval);
         });
     }
 
-    async function butonsAll(el){
-        let star = 0;
+    function clickNextByTabIndex() {
+        const nodes = [...document.querySelectorAll('[tabindex]')]
+            .filter(isInteractable)
+            .map((el) => ({ el, tab: Number(el.getAttribute('tabindex')) }))
+            .filter(({ tab }) => Number.isFinite(tab) && tab > 0)
+            .sort((a, b) => a.tab - b.tab)
+            .map(({ el }) => el);
 
-        el.forEach((button, index) => {
+        if (!nodes.length) return;
 
-            // sipariş kartını bul
-            const row = button.closest('.panel-body-row');
+        const active = document.activeElement;
+        let idx = nodes.indexOf(active);
+        if (idx === -1) {
+            const anc = active?.closest?.('[tabindex]');
+            idx = anc ? nodes.indexOf(anc) : -1;
+        }
 
-            // review var mı kontrol et
-            const hasReview = !!row?.querySelector('[data-icon="star"]');
+        const next = nodes[(idx + 1) % nodes.length];
+        next?.focus();
+        setTimeout(() => { next?.click(); hideProtectionBanners(); }, 60);
+    }
 
-            if(hasReview){
-                star++;
-                return;
+    function initNavigation() {
+        if (window.__etNavInitialized) return;
+        window.__etNavInitialized = true;
+
+        let navTriggered = false;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Control') { navTriggered = false; return; }
+            if (e.ctrlKey && e.key === 'ArrowRight' && !navTriggered && !e.repeat) {
+                navTriggered = true;
+                e.preventDefault();
+                history.back();
             }
-
-            button.setAttribute('tabindex', String(index + 1));
-            button.innerText = '...';
         });
 
-        await insertOrUpdateProgressBar(star, el.length);
-        await insertOrUpdateRefreshButton();
-        await nextMesssages();
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Control') navTriggered = false;
+        });
+
+        window.addEventListener('popstate', () => {
+            waitForElement(() => document.querySelectorAll(MESSAGE_BUTTONS_SELECTOR).length > 0)
+                .then(clickNextByTabIndex)
+                .catch(() => setTimeout(clickNextByTabIndex, 1000));
+        });
     }
 
-    async function nextMesssages(){
-        // bir kere ekle (aynı sayfada ikinci kez çağrılırsa tekrar eklemesin)
-        if(!window.__btnNavigatorInitialized){
-            window.__btnNavigatorInitialized = true;
-            window.__btnNavState = { isTriggered: false };
+    // ─── Order list scanning ──────────────────────────────────────────────────
 
-            document.addEventListener('keydown', function(e){
-                if(e.key === 'Control'){ window.__btnNavState.isTriggered = false; return; }
-                if(e.ctrlKey && e.key === 'ArrowRight' && !window.__btnNavState.isTriggered && !e.repeat){
-                    window.__btnNavState.isTriggered = true;
-                    e.preventDefault();
-                    window.history.back();
-                    // popstate dinleyicisi sonrası click tetiklenir (aşağıda tanımlı)
-                }
-            });
+    function scanButtons(buttons) {
+        let reviewed = 0;
 
-            document.addEventListener('keyup', function(e){
-                if(e.key === 'Control') window.__btnNavState.isTriggered = false;
-            });
+        buttons.forEach((btn, idx) => {
+            const row = btn.closest('.panel-body-row');
+            if (row?.querySelector('[data-icon="star"]')) {
+                reviewed++;
+                return;
+            }
+            btn.setAttribute('tabindex', String(idx + 1));
+            btn.textContent = '...';
+        });
 
-            window.addEventListener('popstate', function(){
-                // Sayfa içeriği SPA olarak güncelleniyorsa DOM'un hazır olmasını bekle
-                waitFor(()=> document.querySelectorAll(MESSAGE_BUTTONS_SELECTOR).length > 0, 120, 50)
-                    .then(()=> clickNextTabIndex())
-                    .catch(()=> {
-                    // fallback: 1s sonra dene
-                    setTimeout(clickNextTabIndex, 1000);
-                });
-            });
+        upsertProgressBar(reviewed, buttons.length);
+        upsertRefreshButton(runScan);
+    }
+
+    // Throttled scan to avoid hammering on every mutation
+    let _scanScheduled = false;
+    function scheduleScan() {
+        if (_scanScheduled) return;
+        _scanScheduled = true;
+        setTimeout(() => {
+            _scanScheduled = false;
+            runScan();
+        }, 400);
+    }
+
+    function runScan() {
+        const buttons = document.querySelectorAll(MESSAGE_BUTTONS_SELECTOR);
+        if (!buttons.length) return;
+
+        // Stop observing while we mutate the DOM ourselves to avoid feedback loops
+        mainObserver.disconnect();
+        scanButtons(buttons);
+        mainObserver.observe(document.body, OBSERVER_OPTIONS);
+    }
+
+    // ─── Unified MutationObserver ─────────────────────────────────────────────
+
+    const OBSERVER_OPTIONS = { childList: true, subtree: true };
+
+    let lastPage = new URL(location.href).searchParams.get('page') ?? '1';
+    let _pageChangeTimer = null;
+
+    const mainObserver = new MutationObserver(() => {
+        // 1. Detect page change (pagination)
+        const currentPage = new URL(location.href).searchParams.get('page') ?? '1';
+        if (currentPage !== lastPage) {
+            lastPage = currentPage;
+            clearTimeout(_pageChangeTimer);
+            _pageChangeTimer = setTimeout(runScan, 2500);
+            return;
         }
-    }
 
-    function clickNextTabIndex(){
-
-        const nodes=[...document.querySelectorAll("[tabindex]")]
-        .filter(isVisibleAndEnabled)
-        .map(el=>({el,tab:Number(el.getAttribute("tabindex")||0)}))
-        .filter(o=>!Number.isNaN(o.tab))
-        .sort((a,b)=>a.tab-b.tab)
-        .map(o=>o.el)
-
-        if(nodes.length===0) return
-
-        const active=document.activeElement
-        let i=nodes.indexOf(active)
-
-        if(i===-1){
-            const anc=active?.closest?.("[tabindex]")
-            i=anc?nodes.indexOf(anc):-1
-        }
-
-        const next=nodes[(i+1)%nodes.length]
-
-        next?.focus()
-
-        setTimeout(()=>{
-            next?.click()
-            closedProme()
-        },60)
-
-    }
-
-    async function sendMessages(){
-        const sendButton = document.querySelector("#dg-tabs-preact__tab-1--default_wt_tab_panel .panel-body .btn.btn-primary.btn-small");
-        if (sendButton) {
-            setTimeout(() => sendButton.click(), 500); // Gönderim için zamanlama ekle
-            //console.log("gömderildi")
-        }
-    }
-
-    // Ctrl + Alt  gönderme
-    document.addEventListener("keydown", (event) => {
-        if (event.ctrlKey && event.altKey) {
-            sendMessages();
+        // 2. Run scan when message buttons appear
+        if (document.querySelectorAll(MESSAGE_BUTTONS_SELECTOR).length > 0) {
+            scheduleScan();
         }
     });
 
-    // Ctrl + aşağı ok ile doldurma,gönderme ve sonrakine geçme
-    const delay=ms=>new Promise(r=>setTimeout(r,ms))
+    // ─── Keyboard shortcuts ───────────────────────────────────────────────────
 
-    async function autoProcess(){
+    document.addEventListener('keydown', async (e) => {
+        if (!e.ctrlKey) return;
 
-        await main("reviewMessage")
+        if (!e.altKey) {
+            const msgKey = KEY_MAP[e.code];
+            if (msgKey) { e.preventDefault(); await insertMessage(msgKey); return; }
 
-        await delay(800)
+            if (e.code === 'Backquote') { e.preventDefault(); insertShortcutTable(); return; }
+            if (e.key === 'ArrowDown') { e.preventDefault(); await autoProcess(); return; }
+        }
 
-        await sendMessages()
+        if (e.altKey) {
+            e.preventDefault();
+            await sendMessage();
+        }
+    });
 
-        await delay(1200)
+    // ─── Init ─────────────────────────────────────────────────────────────────
 
-        history.back()
+    async function initialize() {
+        await loadConfig();
+        GM.registerMenuCommand('Ayarlar', showConfigMenu);
+        initNavigation();
 
+        // Insert shortcut table if already on an order page
+        insertShortcutTable();
+        hideProtectionBanners();
+
+        mainObserver.observe(document.body, OBSERVER_OPTIONS);
+
+        showToast('Message Tool Ready — CTRL + ↓ (auto process)', 'info', 4000);
     }
 
-    document.addEventListener("keydown",e=>{
-        if(e.ctrlKey && e.key==="ArrowDown"){
-            e.preventDefault()
-            autoProcess()
-        }
-    })
-
-    async function insertOrUpdateRefreshButton() {
-        const ul = document.querySelector('nav.wt-tab-container ul.wt-tab');
-        if (!ul) return;
-
-        let li = document.querySelector('#refresh-tab-item');
-        if (!li) {
-            li = document.createElement('li');
-            li.id = 'refresh-tab-item';
-            li.className = 'wt-tab__item';
-
-            const btn = document.createElement('button');
-            btn.className = 'refresh-button';
-            btn.innerHTML = '&times;';
-            btn.addEventListener('click', () => {
-                observeButtons();
-            });
-
-            li.appendChild(btn);
-            ul.appendChild(li);
-        } else {
-            // Eğer button varsa, event listener eklenmişse tekrar eklemenin önüne geç
-            const btn = li.querySelector('button.refresh-button');
-            if (!btn) {
-                const newBtn = document.createElement('button');
-                newBtn.className = 'refresh-button';
-                newBtn.innerHTML = '&times;';
-                newBtn.addEventListener('click', () => {
-                    observeButtons();
-                });
-                li.appendChild(newBtn);
-            }
-        }
-    }
-
-    function observeButtons() {
-        const buttons = document.querySelectorAll(
-            MESSAGE_BUTTONS_SELECTOR
-        );
-        if (buttons.length > 0 && !window.location.href.includes("https://www.etsy.com/your/orders/sold/new?search_query=")) {
-            butonsAll(buttons);
-            observer.disconnect(); // İlk gözlemi durdur
-        }
-    }
-
-    const observer = new MutationObserver(observeButtons);
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    let lastPage = new URL(location.href).searchParams.get("page") || "1";
-
-    new MutationObserver(() => {
-        const currentPage = new URL(location.href).searchParams.get("page") || "1";
-        if (currentPage !== lastPage) {
-            lastPage = currentPage;
-            setTimeout(() => observeButtons(), 3000);
-        }
-    }).observe(document.body, { childList: true, subtree: true });
-
-    // Initialize
-    async function initialize(){
-        await loadConfig()
-        GM.registerMenuCommand("Ayarlar", showConfigMenu)
-        nextMesssages();
-        showToast("Message Tool Ready CTRL + Aşağı OK", "info")
-    }
-
-    // Start the script
     initialize();
 })();
