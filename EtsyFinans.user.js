@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
-// @description  Etsy
-// @version      1.79
+// @description  Etsy monthly statement analyzer — Optimized v2
+// @version      2.00
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -19,386 +19,265 @@
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyFinans.user.js
 // ==/UserScript==
 
-; (function () {
-    "use strict"
+(function () {
+    'use strict';
+
+    // ─────────────────────────────────────────────
+    // STYLES
+    // ─────────────────────────────────────────────
     GM.addStyle(`
-       :root {
-            --primary-color: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary-color: #34a853;
-            --secondary-dark: #2e7d32;
-            --danger-color: #ea4335;
-            --danger-dark: #c62828;
-            --warning-color: #fbbc05;
-            --warning-dark: #f57f17;
-            --light-color: #f8f9fa;
-            --dark-color: #202124;
-            --gray-color: #5f6368;
-            --border-radius: 4px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+        :root {
+            --pc:#4285f4; --sc:#34a853; --dc:#ea4335;
+            --wc:#fbbc05; --dk:#202124; --gc:#5f6368;
+            --br:4px; --bs:0 2px 10px rgba(0,0,0,.1);
+            --tr:all .3s ease; --ff:'Segoe UI',Roboto,Arial,sans-serif;
         }
-
-        /* Toast Notifications */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toast {
-            min-width: 280px;
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            font-family: var(--font-family);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .toast-success {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .toast-error {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .toast-info {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: inherit;
-            cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
-            opacity: 0.7;
-        }
-
-        .toast-close:hover {
-            opacity: 1;
-        }
+        .ef-toast-wrap { position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+        .ef-toast { min-width:280px; padding:12px 16px; border-radius:var(--br); box-shadow:var(--bs); font:14px var(--ff); display:flex; align-items:center; justify-content:space-between; opacity:0; transform:translateY(16px); transition:var(--tr); pointer-events:all; }
+        .ef-toast.show { opacity:1; transform:translateY(0); }
+        .ef-toast.success { background:var(--sc); color:#fff; }
+        .ef-toast.error   { background:var(--dc); color:#fff; }
+        .ef-toast.warning { background:var(--wc); color:var(--dk); }
+        .ef-toast.info    { background:var(--pc); color:#fff; }
+        .ef-toast-x { background:none; border:none; color:inherit; cursor:pointer; font-size:16px; margin-left:10px; opacity:.7; }
+        .ef-toast-x:hover { opacity:1; }
     `);
-    GM.registerMenuCommand("⚙️ Sheet Url Ayarla", async () => {
-        const currentUrl = await getSheetUrl();
-        const url = prompt(" Sheet Url'nizi girin:" ,currentUrl);
-        if (url) {
-            await GM.setValue("sheet_url", url.trim());
-            showToast('✅ Kaydedildi','info');
-        }
+
+    // ─────────────────────────────────────────────
+    // SETTINGS — in-memory cache
+    // ─────────────────────────────────────────────
+    const _cfg = { sheetUrl: null, shopName: null };
+
+    async function getSheetUrl() { return _cfg.sheetUrl ??= await GM.getValue('sheet_url', ''); }
+    async function getShopName() { return _cfg.shopName ??= await GM.getValue('shop_name', ''); }
+
+    GM.registerMenuCommand('⚙️ Sheet Url Ayarla', async () => {
+        const url = prompt('Sheet URL\'nizi girin:', await getSheetUrl());
+        if (url?.trim()) { _cfg.sheetUrl = url.trim(); await GM.setValue('sheet_url', _cfg.sheetUrl); showToast('✅ Kaydedildi', 'info'); }
     });
-    async function getSheetUrl() {
-        const url = await GM.getValue("sheet_url", "");
-        return url;
-    }
-    GM.registerMenuCommand("⭐ Mağaza Adı", async () => {
-        const currentName = await getShopName();
-        const name = prompt(" Mağaza Adını girin:" ,currentName);
-        if (name) {
-            await GM.setValue("shop_name", name.trim());
-            showToast('✅ Kaydedildi','info');
-        }
+    GM.registerMenuCommand('⭐ Mağaza Adı', async () => {
+        const name = prompt('Mağaza Adını girin:', await getShopName());
+        if (name?.trim()) { _cfg.shopName = name.trim(); await GM.setValue('shop_name', _cfg.shopName); showToast('✅ Kaydedildi', 'info'); }
     });
-    async function getShopName() {
-        const name = await GM.getValue("shop_name", "");
-        return name;
-    }
-    let isProcessing = false; // Flag to prevent multiple executions
-    let toastContainer = null;
-     // Modern Toast Notification System
-    function createToastContainer() {
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            document.body.appendChild(toastContainer);
+    GM.registerMenuCommand('🔄 Güncelle', () => processPage(true));
+
+    // ─────────────────────────────────────────────
+    // TOAST
+    // ─────────────────────────────────────────────
+    let _toastWrap = null;
+    function getToastWrap() {
+        if (!_toastWrap) {
+            _toastWrap = Object.assign(document.createElement('div'), { className:'ef-toast-wrap' });
+            document.body.appendChild(_toastWrap);
         }
-        return toastContainer;
+        return _toastWrap;
+    }
+    function showToast(msg, type = 'success', duration = 3000) {
+        const t = document.createElement('div');
+        t.className = `ef-toast ${type}`;
+        const s = Object.assign(document.createElement('span'), { textContent: msg });
+        const x = Object.assign(document.createElement('button'), { className:'ef-toast-x', innerHTML:'&times;' });
+        x.onclick = () => dismissToast(t);
+        t.append(s, x);
+        getToastWrap().appendChild(t);
+        t.getBoundingClientRect(); // force reflow
+        t.classList.add('show');
+        if (duration > 0) setTimeout(() => dismissToast(t), duration);
+    }
+    function dismissToast(t) {
+        t.classList.remove('show');
+        t.addEventListener('transitionend', () => t.remove(), { once: true });
     }
 
-    function showToast(message, type = 'success', duration = 3000) {
-        const container = createToastContainer();
+    // ─────────────────────────────────────────────
+    // EXCHANGE RATE — localStorage cache (7h TTL)
+    // Cached in-memory after first resolve to avoid repeated LS reads
+    // ─────────────────────────────────────────────
+    const RATE_KEY  = 'excData';
+    const RATE_TS   = 'excData_timestamp';
+    const RATE_TTL  = 7 * 60 * 60 * 1000; // 7 hours
+    let _ratePromise = null;
 
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
+    function getExchangeRate() {
+        if (_ratePromise) return _ratePromise;
 
-        const messageSpan = document.createElement('span');
-        messageSpan.textContent = message;
+        const cached = Number(localStorage.getItem(RATE_KEY));
+        const ts     = Number(localStorage.getItem(RATE_TS));
+        if (cached && ts && Date.now() - ts < RATE_TTL) {
+            return (_ratePromise = Promise.resolve(cached));
+        }
 
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
+        _ratePromise = new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'GET',
+                url: 'https://www.tcmb.gov.tr/kurlar/today.xml',
+                onload(r) {
+                    if (r.status !== 200) return reject(r.statusText);
+                    const xml  = new DOMParser().parseFromString(r.responseText, 'text/xml');
+                    const text = xml.querySelector('Currency[CurrencyCode="USD"] BanknoteSelling')?.textContent;
+                    const rate = Number(text?.replace(',', '.'));
+                    if (!rate) return reject('Kur parse edilemedi');
+                    localStorage.setItem(RATE_KEY, rate);
+                    localStorage.setItem(RATE_TS,  Date.now());
+                    resolve(rate);
+                },
+                onerror: reject,
+            });
         });
-
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeBtn);
-        container.appendChild(toast);
-
-        // Show animation
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        // Auto dismiss
-        if (duration > 0) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
-
-        return toast;
+        return _ratePromise;
     }
 
-    const getExchangeRate = () => new Promise((resolve, reject) => {
-        const cacheKey = 'excData'
-        const cacheTimestampKey = `${cacheKey}_timestamp`
-        const now = Date.now()
+    // ─────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────
+    const parseAmount = str => parseFloat((str ?? '').replace(/[^0-9.-]+/g, '')) || 0;
 
-        const cachedData = Number(localStorage.getItem(cacheKey))
-        const cacheTimestamp = Number(localStorage.getItem(cacheTimestampKey))
-
-        if (cachedData && cacheTimestamp && now - cacheTimestamp < 7 * 60 * 60 * 1000)
-            return resolve(cachedData)
-
-        GM.xmlHttpRequest({
-            method: "GET",
-            url: "https://www.tcmb.gov.tr/kurlar/today.xml",
-            onload: r => {
-                if (r.status !== 200) return reject(r.statusText)
-
-                const xml = new DOMParser().parseFromString(r.responseText, "text/xml")
-                const el = xml.querySelector(`Currency[CurrencyCode="USD"] BanknoteSelling`)
-                if (!el) return reject("Kur bulunamadı")
-
-                const rate = Number(el.textContent.replace(',', '.'))
-                if (!rate) return reject("Kur parse edilemedi")
-
-                localStorage.setItem(cacheKey, rate)
-                localStorage.setItem(cacheTimestampKey, now)
-                resolve(rate)
-            },
-            onerror: reject
-        })
-    })
-    const unformatNumber = (str) => parseFloat(str.replace(/[^0-9.-]+/g, ""))
-
-    // set param: 1 -> Google Sheets'e gönder (bir kez veya period değişince)
-    const processPage = async (set = 0) => {
-        if (isProcessing) return;
-        isProcessing = true;
-
-        const profitElement = document.querySelector('[data-test-id="profit-amount"]')
-        const summaryElements = Array.from(document.querySelectorAll('[data-test-id="summary-module"]'))
-
-        if (!profitElement || summaryElements.length === 0) {
-            isProcessing = false;
-            return;
+    /** Append or update a labelled <span> inside an element */
+    function addText(el, cls, text) {
+        const anchor = el.querySelector?.('[data-test-id="accordion-total"]') ?? el;
+        if (!anchor) return;
+        let span = anchor.querySelector(`span.${cls}`);
+        if (!span) {
+            span = Object.assign(document.createElement('span'), { className: cls });
+            span.style.marginLeft = '0.5em';
+            anchor.appendChild(span);
         }
-
-        const getSummaryTitle = (el) => el.querySelector('button .wt-text-title-01')?.textContent || ""
-
-        const salesSummaryEl = summaryElements.find(el => getSummaryTitle(el) === "Sales")
-        const feesSummaryEl = summaryElements.find(el => getSummaryTitle(el) === "Fees")
-        const marketingSummaryEl = summaryElements.find(el => getSummaryTitle(el) === "Marketing")
-
-        if (!salesSummaryEl || !feesSummaryEl || !marketingSummaryEl) {
-            isProcessing = false;
-            return;
-        }
-
-        let exchangeRate = await getExchangeRate().catch((error) => {
-            console.error("Kur bilgisi alınamadı:", error)
-            isProcessing = false;
-            return null
-        })
-
-        if (!exchangeRate) {
-            isProcessing = false;
-            return;
-        }
-
-        const getProfitElValue = () => unformatNumber(profitElement.textContent)
-        const getSummaryElValue = (el) => {
-            const totalEl = el.querySelector('[data-test-id="accordion-total"]')
-            return totalEl ? unformatNumber(totalEl.textContent) : 0
-        }
-
-        const addText = (el, eclass, text) => {
-            const totalEl = el.querySelector('[data-test-id="accordion-total"]')
-            if (!totalEl) return
-
-            let span = totalEl.querySelector(`span.${eclass}`)
-            if (!span) {
-                span = document.createElement("span")
-                span.classList.add(eclass)
-                span.style.marginLeft = "0.5em"
-                totalEl.appendChild(span)
-            }
-            span.textContent = text
-        }
-
-        if(!salesSummaryEl.textContent.includes("TL")) {
-            exchangeRate = 1;
-        }
-        summaryElements.forEach(el => {
-            const number = getSummaryElValue(el)
-            const usd = number / exchangeRate
-            addText(el, "usd-info", ` | ${usd.toFixed(2)}$`)
-        })
-
-        const profit = getProfitElValue()
-        const profitInUsd = profit / exchangeRate
-        addText(profitElement, "usd-info", ` (${profitInUsd.toFixed(2)} USD)`)
-
-        const sales = getSummaryElValue(salesSummaryEl)
-        const fees = getSummaryElValue(feesSummaryEl)
-        const marketing = getSummaryElValue(marketingSummaryEl)
-
-        if (sales !== 0) {
-            const feesProfit = Math.abs(((fees / sales) * 100).toFixed(2))
-            const marketingProfit = Math.abs(((marketing / sales) * 100).toFixed(2))
-
-            addText(feesSummaryEl, "percent-info", ` | ${feesProfit} %`)
-            addText(marketingSummaryEl, "percent-info", ` | ${marketingProfit} %`)
-
-            const periodEl = document.querySelector("span.wt-menu__trigger__label.month-dropdown-item")
-            const periodText = periodEl ? (periodEl.textContent || "") : ""
-
-            const data = {
-                shopName: await getShopName() || "",
-                sales:Math.round(sales / exchangeRate) || 0,
-                fees: Math.abs(Math.round(fees / exchangeRate)) || 0,
-                marketing: Math.abs(Math.round(marketing / exchangeRate)) || 0,
-                feesProfit: feesProfit.toFixed(2) || 0,
-                marketingProfit: marketingProfit.toFixed(2) || 0,
-                period: periodText,
-                sheetName: 'finans'
-            };
-
-            // Eğer set === 1 ise (bir kez gönder veya period değiştiğinde gönder)
-            if (set == 1) await logToGoogleSheets(data);
-        }
-
-        isProcessing = false;
+        span.textContent = text;
     }
 
-    async function logToGoogleSheets(payload) {
-        const sheetUrl = await getSheetUrl();
-        if (!sheetUrl) return;
+    const getSummaryValue = el =>
+        parseAmount(el.querySelector('[data-test-id="accordion-total"]')?.textContent);
+
+    const getSummaryTitle = el =>
+        el.querySelector('button .wt-text-title-01')?.textContent ?? '';
+
+    // ─────────────────────────────────────────────
+    // GOOGLE SHEETS LOG — fire-and-forget
+    // ─────────────────────────────────────────────
+    async function logToSheets(payload) {
+        const url = await getSheetUrl();
+        if (!url) return;
         GM.xmlHttpRequest({
-            method: "POST",
-            url: sheetUrl,
+            method: 'POST', url,
             data: JSON.stringify(payload),
-            headers: {
-                "Content-Type": "application/json"
-            },
-            onload: function (response) {
+            headers: { 'Content-Type': 'application/json' },
+            onload(r) {
                 try {
-                    const data = JSON.parse(response.response);
-                    if (data.status === 'success') {
-                        showToast('Başarıyla hesaplandı', 'success');
-                        console.log('✅ Gönderildi');
-                    } else {
-                        console.log('❌ Hata:', data.message || 'Bilinmeyen hata');
-                    }
-                } catch (e) {
-                    console.log('❌ JSON parse edilemedi', response.response);
-                }
-            }
-            ,
-            onerror: function(error) {
-                console.log('❌ Gönderilemedi: ' + (error.message || 'Bilinmeyen hata'));
-            }
+                    const d = JSON.parse(r.response);
+                    if (d.status === 'success') showToast('Başarıyla hesaplandı', 'success');
+                    else console.warn('[EF] Sheet error:', d.message);
+                } catch { console.warn('[EF] JSON parse failed:', r.response); }
+            },
+            onerror: err => console.warn('[EF] Request failed:', err),
         });
     }
 
-    // Debounce
-    const debounce = (func, delay) => {
-        let timeout;
-        return function (...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), delay);
-        };
-    };
+    // ─────────────────────────────────────────────
+    // PROCESS PAGE
+    //
+    // sendToSheet=false  → only update UI annotations
+    // sendToSheet=true   → UI + send to Google Sheets
+    // ─────────────────────────────────────────────
+    let _processing = false;
 
-    // Debounced wrapper that calls processPage without triggering sheet-send (set=0)
-    const debouncedProcessPage = debounce(() => processPage(0), 1000);
+    async function processPage(sendToSheet = false) {
+        if (_processing) return;
+        _processing = true;
+        try {
+            await _processPage(sendToSheet);
+        } finally {
+            _processing = false;
+        }
+    }
 
-    // Observe DOM changes generally to update UI (but not to send to sheet)
-    const observer = new MutationObserver(() => {
-        debouncedProcessPage();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+    async function _processPage(sendToSheet) {
+        const profitEl      = document.querySelector('[data-test-id="profit-amount"]');
+        const summaryEls    = [...document.querySelectorAll('[data-test-id="summary-module"]')];
+        if (!profitEl || !summaryEls.length) return;
 
-    // On initial load: run UI update debounce, and also trigger one-time sheet send shortly after load
-    window.addEventListener("load", () => {
-        debouncedProcessPage();
-        // sayfa yüklendikten kısa süre sonra bir kez Google Sheet'e gönder (ör: 2 saniye)
-        setTimeout(() => {
-            processPage(1);
-        }, 2000);
-    });
+        const salesEl      = summaryEls.find(el => getSummaryTitle(el) === 'Sales');
+        const feesEl       = summaryEls.find(el => getSummaryTitle(el) === 'Fees');
+        const marketingEl  = summaryEls.find(el => getSummaryTitle(el) === 'Marketing');
+        if (!salesEl || !feesEl || !marketingEl) return;
 
-    // Ayrıca period (ay seçimi) değişimini izle ve değişince Google Sheet'e gönder
-    const setupPeriodObserver = () => {
-        const periodEl = document.querySelector("span.wt-menu__trigger__label.month-dropdown-item");
-        if (!periodEl) return;
+        let rate;
+        try { rate = await getExchangeRate(); }
+        catch (e) { console.error('[EF] Kur alınamadı:', e); return; }
 
-        // Eğer element zaten izleniyorsa tekrar eklemeyelim
-        if (periodEl.__periodObserverAdded) return;
-        periodEl.__periodObserverAdded = true;
+        // If values are already in USD (no "TL" text), treat rate as 1
+        const divisor = summaryEls[0]?.textContent.includes('TL') ? rate : 1;
 
-        const prev = { text: periodEl.textContent };
-
-        const periodObserver = new MutationObserver((mutations) => {
-            const cur = periodEl.textContent;
-            if (cur !== prev.text) {
-                prev.text = cur;
-                // period değişti, Google Sheet'e gönder (set=1)
-                processPage(1);
-            }
+        // ── Annotate all summary modules ──────────────
+        summaryEls.forEach(el => {
+            const usd = getSummaryValue(el) / divisor;
+            addText(el, 'ef-usd', ` | ${usd.toFixed(2)} $`);
         });
 
-        periodObserver.observe(periodEl, { characterData: true, childList: true, subtree: true });
+        // ── Profit ───────────────────────────────────
+        const profit    = parseAmount(profitEl.textContent);
+        const profitUsd = profit / divisor;
+        addText(profitEl, 'ef-usd', ` (${profitUsd.toFixed(2)} USD)`);
 
-        // Ayrıca dropdown üzerinden seçildiğinde bazen DOM dışından değişebilir; body değişimlerinde period element yeniden seçilebileceği için
-        // periyodik olarak (ör: sayfa değişimleri sonrası) setupPeriodObserver çağıracağız — zaten load ve mutation observer'ımız bunu kapsıyor.
+        // ── Ratios ───────────────────────────────────
+        const sales     = getSummaryValue(salesEl);
+        const fees      = getSummaryValue(feesEl);
+        const marketing = getSummaryValue(marketingEl);
+
+        if (!sales) return;
+
+        const feesPct      = Math.abs((fees      / sales) * 100);
+        const marketingPct = Math.abs((marketing / sales) * 100);
+
+        addText(feesEl,      'ef-pct', ` | ${feesPct.toFixed(2)} %`);
+        addText(marketingEl, 'ef-pct', ` | ${marketingPct.toFixed(2)} %`);
+
+        if (!sendToSheet) return;
+
+        const periodText = document.querySelector('span.wt-menu__trigger__label.month-dropdown-item')?.textContent ?? '';
+        await logToSheets({
+            shopName:        await getShopName(),
+            sales:           Math.round(sales      / divisor),
+            fees:            Math.abs(Math.round(fees      / divisor)),
+            marketing:       Math.abs(Math.round(marketing / divisor)),
+            feesProfit:      feesPct.toFixed(2),
+            marketingProfit: marketingPct.toFixed(2),
+            period:          periodText,
+            sheetName:       'finans',
+        });
+    }
+
+    // ─────────────────────────────────────────────
+    // PERIOD CHANGE DETECTION
+    //
+    // Single MutationObserver on body handles everything:
+    //  • UI re-annotation (debounced, no sheet send)
+    //  • Period element watcher (no separate smallObserver needed)
+    //
+    // Using a single observer eliminates the "two observers on body" pattern.
+    // ─────────────────────────────────────────────
+    let _prevPeriod = '';
+    let _debounce   = null;
+
+    const debounced = () => {
+        clearTimeout(_debounce);
+        _debounce = setTimeout(() => processPage(false), 800);
     };
 
-    // İlk kurulum denemesi
-    setupPeriodObserver();
+    new MutationObserver(() => {
+        // Check if period changed — if so, send to sheet immediately
+        const periodText = document.querySelector('span.wt-menu__trigger__label.month-dropdown-item')?.textContent ?? '';
+        if (periodText && periodText !== _prevPeriod) {
+            _prevPeriod = periodText;
+            processPage(true);
+            return; // skip debounce — processPage will re-annotate anyway
+        }
+        debounced();
+    }).observe(document.body, { childList: true, subtree: true });
 
-    // Period elementi dinamik olarak eklenirse yakalamak için kısa bir observer: (yeni period element eklendiğinde setupPeriodObserver çağrılır)
-    const smallObserver = new MutationObserver(() => {
-        setupPeriodObserver();
-    });
-    smallObserver.observe(document.body, { childList: true, subtree: true });
-    GM.registerMenuCommand("Güncelle", () => processPage(1));
+    // ─────────────────────────────────────────────
+    // INIT — run UI pass on load, then send to sheet after short delay
+    // ─────────────────────────────────────────────
+    processPage(false);
+    setTimeout(() => processPage(true), 2000);
+
 })();
