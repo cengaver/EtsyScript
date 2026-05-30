@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy MesssageOrder CounterIndicator
 // @namespace    https://github.com/cengaver
-// @version      0.11
+// @version      2.0.0
 // @description  Message and Order CounterIndicator panel
 // @match        https://www.etsy.com/your/shops/*
 // @match        https://www.etsy.com/messages*
@@ -21,243 +21,217 @@
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyMessageAndOrderCounter.user.js
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
-        // Modern UI Styles
+
+    // ─── Styles ───────────────────────────────────────────────────────────────
+
     GM.addStyle(`
-        :root {
-            --primary-color: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary-color: #34a853;
-            --secondary-dark: #2e7d32;
-            --danger-color: #ea4335;
-            --danger-dark: #c62828;
-            --warning-color: #fbbc05;
-            --warning-dark: #f57f17;
-            --light-color: #f8f9fa;
-            --dark-color: #202124;
-            --gray-color: #5f6368;
-            --border-radius: 4px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+        .emc-toast-wrap {
+            position: fixed; bottom: 20px; right: 20px;
+            z-index: 10000; display: flex; flex-direction: column; gap: 8px;
+            pointer-events: none;
         }
-
-        /* Toast Notifications */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        .emc-toast {
+            min-width: 240px; padding: 10px 14px;
+            border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,.15);
+            font: 14px 'Segoe UI', Roboto, Arial, sans-serif;
+            display: flex; align-items: center; justify-content: space-between;
+            opacity: 0; transform: translateY(12px);
+            transition: opacity .25s ease, transform .25s ease;
+            pointer-events: all;
         }
-
-        .toast {
-            min-width: 280px;
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            font-family: var(--font-family);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
+        .emc-toast.show { opacity: 1; transform: translateY(0); }
+        .emc-toast--success { background: #34a853; color: #fff; }
+        .emc-toast--error   { background: #ea4335; color: #fff; }
+        .emc-toast--info    { background: #4285f4; color: #fff; }
+        .emc-toast__close {
+            background: none; border: none; color: inherit;
+            cursor: pointer; font-size: 16px; margin-left: 8px; opacity: .7;
         }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .toast-success {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .toast-error {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .toast-info {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: inherit;
-            cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
-            opacity: 0.7;
-        }
-
-        .toast-close:hover {
-            opacity: 1;
-        }
+        .emc-toast__close:hover { opacity: 1; }
     `);
-    let toastContainer = null;
-    // Modern Toast Notification System
-    async function createToastContainer() {
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            document.body.appendChild(toastContainer);
+
+    // ─── Toast ────────────────────────────────────────────────────────────────
+
+    let _toastWrap = null;
+
+    function getToastWrap() {
+        if (!_toastWrap) {
+            _toastWrap = document.createElement('div');
+            _toastWrap.className = 'emc-toast-wrap';
+            document.body.appendChild(_toastWrap);
         }
-        return toastContainer;
+        return _toastWrap;
     }
 
-    async function showToast(message, type = 'success', duration = 3000) {
-        const container = await createToastContainer();
-
+    function showToast(message, type = 'success', duration = 3000) {
+        const wrap  = getToastWrap();
         const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
+        toast.className = `emc-toast emc-toast--${type}`;
 
-        const messageSpan = document.createElement('span');
-        messageSpan.textContent = message;
+        const span = document.createElement('span');
+        span.textContent = message;
 
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        });
+        const btn  = document.createElement('button');
+        btn.className = 'emc-toast__close';
+        btn.innerHTML = '&times;';
+        btn.onclick   = () => dismiss(toast);
 
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeBtn);
-        container.appendChild(toast);
+        toast.append(span, btn);
+        wrap.appendChild(toast);
 
-        // Show animation
-        setTimeout(() => toast.classList.add('show'), 10);
+        requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('show')));
 
-        // Auto dismiss
-        if (duration > 0) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
+        if (duration > 0) setTimeout(() => dismiss(toast), duration);
+
+        function dismiss(el) {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 260);
         }
-
-        return toast;
     }
 
-    GM.registerMenuCommand("⚙️ Sheet Url Ayarla", async () => {
-        const currentUrl = await getSheetUrl();
-        const url = prompt(" Sheet Url'nizi girin:" ,currentUrl);
-        if (url) {
-            await GM.setValue("sheet_url", url.trim());
-            showToast('✅ Kaydedildi','info');
-        }
+    // ─── Settings cache ───────────────────────────────────────────────────────
+
+    const cfg = { sheetUrl: '', shopName: '' };
+
+    async function loadSettings() {
+        [cfg.sheetUrl, cfg.shopName] = await Promise.all([
+            GM.getValue('sheet_url',  ''),
+            GM.getValue('shop_name',  ''),
+        ]);
+    }
+
+    // ─── Menu commands ────────────────────────────────────────────────────────
+
+    GM.registerMenuCommand('⚙️ Sheet Url Ayarla', async () => {
+        const url = prompt('Sheet Url\'nizi girin:', cfg.sheetUrl);
+        if (!url?.trim()) return;
+        cfg.sheetUrl = url.trim();
+        await GM.setValue('sheet_url', cfg.sheetUrl);
+        showToast('✅ Kaydedildi', 'info');
     });
 
-    async function getSheetUrl() {
-        const url = await GM.getValue("sheet_url", "");
-        return url;
-    }
-
-    GM.registerMenuCommand("⚙️ Mağaza Adı", async () => {
-        const current_shop = await getShopName();
-        const shop = prompt(" Mağaza adı girin:" ,current_shop);
-        if (shop) {
-            await GM.setValue("shop_name", shop.trim());
-            showToast('✅ Kaydedildi','info');
-        }
+    GM.registerMenuCommand('⚙️ Mağaza Adı', async () => {
+        const shop = prompt('Mağaza adı girin:', cfg.shopName);
+        if (!shop?.trim()) return;
+        cfg.shopName = shop.trim();
+        await GM.setValue('shop_name', cfg.shopName);
+        showToast('✅ Kaydedildi', 'info');
     });
 
-    async function getShopName() {
-        const shop = await GM.getValue("shop_name", "");
-        return shop;
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    /** Extract a numeric counter from a clg-counter-indicator shadow root */
+    function readCounter(container, appKey) {
+        const text = container
+            .querySelector(`a[data-app-key="${appKey}"] clg-counter-indicator`)
+            ?.shadowRoot
+            ?.querySelector('.clg-counter-indicator__value')
+            ?.textContent;
+        if (!text) return 0;
+        const n = parseInt(text.replace(/\D/g, ''), 10);
+        return Number.isFinite(n) ? n : 0;
     }
 
-     // Google Sheets log fonksiyonun
-    async function sendToSheets(payload) {
-        const sheetUrl = await getSheetUrl();
-        if (!sheetUrl) return;
-        console.log(payload)
+    // ─── Sheet POST ───────────────────────────────────────────────────────────
+
+    function sendToSheets(payload) {
+        if (!cfg.sheetUrl) return;
         GM.xmlHttpRequest({
-            method: "POST",
-            url: sheetUrl,
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            data: JSON.stringify(payload),
-            onload: function(response) {
-            try {
-                const data = JSON.parse(response.responseText);
-                if (data.status === 'success') {
-                        showToast('✅ Güncellendi','success');
+            method:  'POST',
+            url:     cfg.sheetUrl,
+            headers: { 'Content-Type': 'application/json' },
+            data:    JSON.stringify(payload),
+            onload: (res) => {
+                try {
+                    const data = JSON.parse(res.responseText);
+                    if (data.status === 'success') {
+                        showToast('✅ Güncellendi', 'success');
                     } else {
-                        showToast('❌ Hata: ' + (data.message || 'Bilinmeyen hata'),'error');
+                        showToast('❌ Hata: ' + (data.message || 'Bilinmeyen'), 'error');
                     }
-                } catch (e) {
-                   showToast('❌ Yanıt işlenemedi','error');
+                } catch {
+                    showToast('❌ Yanıt işlenemedi', 'error');
                 }
             },
-            onerror: function(error) {
-                showToast('❌ Güncellenmedi: ' + (error.message || 'Bilinmeyen hata'),'error');
-            }
+            onerror: (err) => {
+                showToast('❌ Güncellenmedi: ' + (err?.message || 'Bilinmeyen hata'), 'error');
+            },
         });
     }
 
-    function normalizeNumber(str) {
-        return str == null?0: parseInt(str.replace(/[^\d]/g, ''), 10);
-    }
+    // ─── Core read ────────────────────────────────────────────────────────────
 
-    async function readCounts() {
-        // Dashboard’dan verileri al
-        const container = document.getElementById("shop-manager--tool-links");
+    // Track last sent values to avoid redundant POSTs on identical data
+    let _lastMessage = -1;
+    let _lastOrder   = -1;
+
+    function readCounts() {
+        const container = document.getElementById('shop-manager--tool-links');
         if (!container) return;
 
-        const message = normalizeNumber(
-            container
-            .querySelector('a[data-app-key="messages"] clg-counter-indicator')
-            ?.shadowRoot
-            ?.querySelector('.clg-counter-indicator__value')
-            ?.textContent);
+        const message = readCounter(container, 'messages');
+        const order   = readCounter(container, 'orders');
 
-        const order = normalizeNumber(
-            container
-            .querySelector('a[data-app-key="orders"] clg-counter-indicator')
-            ?.shadowRoot
-            ?.querySelector('.clg-counter-indicator__value')
-            ?.textContent);
+        if (message === 0 && order === 0) return;
+        if (message === _lastMessage && order === _lastOrder) return;   // no change
 
-        if (!message && !order) return;
+        _lastMessage = message;
+        _lastOrder   = order;
 
-        // Google Sheet’e gönderilecek veri objesi
-        const data = {
-            shopName:  await getShopName(),
-            message: message || 0,
-            order: order || 0,
-            sheetName: 'counter'
-        };
-
-        console.log(data);
-        await sendToSheets(data);
+        sendToSheets({
+            shopName:  cfg.shopName,
+            message,
+            order,
+            sheetName: 'counter',
+        });
     }
 
-    const observer=new MutationObserver(readCounts)
+    // ─── Throttled MutationObserver ───────────────────────────────────────────
 
-    observer.observe(
-        document.getElementById("shop-manager--tool-links"),
-        {childList:true,subtree:true,characterData:true}
-    )
-    setInterval(()=>{
-        readCounts()
-        showToast('✅ Okundu','info');
-    },5*60*1000)
-    readCounts()
+    let _mutationTimer = null;
+
+    function scheduledRead() {
+        clearTimeout(_mutationTimer);
+        _mutationTimer = setTimeout(readCounts, 500);
+    }
+
+    /**
+     * Wait for #shop-manager--tool-links to appear before observing.
+     * Handles cases where the element isn't in the DOM at script start.
+     */
+    function attachObserver() {
+        const el = document.getElementById('shop-manager--tool-links');
+        if (el) {
+            new MutationObserver(scheduledRead).observe(el, {
+                childList: true, subtree: true, characterData: true,
+            });
+            readCounts();
+            return;
+        }
+
+        // Element not ready yet — watch body until it appears
+        const bodyWatcher = new MutationObserver(() => {
+            if (document.getElementById('shop-manager--tool-links')) {
+                bodyWatcher.disconnect();
+                attachObserver();   // re-run now that element exists
+            }
+        });
+        bodyWatcher.observe(document.body, { childList: true, subtree: true });
+    }
+
+    // ─── Periodic sync (every 5 min) ─────────────────────────────────────────
+
+    setInterval(() => {
+        // Reset last-seen so the next readCounts always fires a POST
+        _lastMessage = -1;
+        _lastOrder   = -1;
+        readCounts();
+    }, 5 * 60 * 1000);
+
+    // ─── Boot ─────────────────────────────────────────────────────────────────
+
+    loadSettings().then(attachObserver);
+
 })();
