@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Discount Adjust
-// @version      1.25
-// @description  Create daily discount
+// @version      2.00
+// @description  Create daily discount — Optimized v2
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/sales-discounts*
@@ -15,822 +15,258 @@
 // @run-at       document-end
 // ==/UserScript==
 
-
-(async function() {
+(async function () {
     'use strict';
 
-    // Modern UI Styles
+    // ─────────────────────────────────────────────
+    // STYLES — only what's actually used in this script
+    // ─────────────────────────────────────────────
     GM.addStyle(`
         :root {
-            --primary-color: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary-color: #34a853;
-            --secondary-dark: #2e7d32;
-            --danger-color: #ea4335;
-            --danger-dark: #c62828;
-            --warning-color: #fbbc05;
-            --warning-dark: #f57f17;
-            --light-color: #f8f9fa;
-            --dark-color: #202124;
-            --gray-color: #5f6368;
-            --border-radius: 4px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-        }
-
-        /* Toast Notifications */
-        .toast-container {
-            position: fixed;
-            bottom: 50px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toast {
-            min-width: 280px;
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            font-family: var(--font-family);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .toast-success {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .toast-error {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .toast-info {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: inherit;
-            cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
-            opacity: 0.7;
-        }
-
-        .toast-close:hover {
-            opacity: 1;
-        }
-
-        /* Buttons */
-        .etsy-tool-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .etsy-tool-btn:focus {
-            outline: none;
-        }
-
-        .etsy-tool-btn-primary {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-primary:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .etsy-tool-btn-secondary {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-secondary:hover {
-            background-color: var(--secondary-dark);
-        }
-
-        .etsy-tool-btn-danger {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-danger:hover {
-            background-color: var(--danger-dark);
-        }
-
-        .etsy-tool-btn-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .etsy-tool-btn-warning:hover {
-            background-color: var(--warning-dark);
-        }
-
-        .etsy-tool-btn-light {
-            background-color: var(--light-color);
-            color: var(--dark-color);
-            border: 1px solid #ddd;
-        }
-
-        .etsy-tool-btn-light:hover {
-            background-color: #e9ecef;
-        }
-
-        .etsy-tool-btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-
-        .etsy-tool-btn-lg {
-            padding: 10px 16px;
-            font-size: 16px;
-        }
-
-        .etsy-tool-btn-icon {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            border-radius: 50%;
-        }
-
-        /* Inputs */
-        .etsy-tool-input {
-            padding: 2px 4px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 16px;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
-
-        .etsy-tool-select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 14px;
-            background-color: white;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
-
-        /* Panels */
-        .etsy-tool-panel {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            overflow: hidden;
-        }
-
-        .etsy-tool-panel-header {
-            padding: 12px 16px;
-            background-color: var(--primary-color);
-            color: white;
-            font-family: var(--font-family);
-            font-size: 16px;
-            font-weight: 500;
-            display: flex;
-            cursor: move;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .etsy-tool-panel-body {
-            padding: 16px;
-        }
-
-        /* Main Toolbar */
-        .etsy-tool-toolbar {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            display: flex;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            flex-direction: column;
-            gap: 10px;
-            width: 300px;
-        }
-
-        /* Image Thumbnails */
-        .etsy-tool-thumbnails {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .etsy-tool-thumbnail {
-            position: relative;
-            width: 100%;
-            padding-top: 100%; /* 1:1 Aspect Ratio */
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            cursor: pointer;
-            box-shadow: var(--box-shadow);
-            transition: var(--transition);
-        }
-
-        .etsy-tool-thumbnail:hover {
-            transform: scale(1.05);
-        }
-
-        .etsy-tool-thumbnail img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .etsy-tool-thumbnail-actions {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: flex;
-            justify-content: space-around;
-            padding: 5px;
-            opacity: 0;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-thumbnail:hover .etsy-tool-thumbnail-actions {
-            opacity: 1;
-        }
-
-        /* Modal */
-        .etsy-tool-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .etsy-tool-modal {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow: auto;
-            transform: translateY(-20px);
-            transition: var(--transition);
-        }
-
-        .etsy-tool-modal-overlay.show .etsy-tool-modal {
-            transform: translateY(0);
-        }
-
-        .etsy-tool-modal-header {
-            padding: 16px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .etsy-tool-modal-title {
-            font-family: var(--font-family);
-            font-size: 18px;
-            font-weight: 500;
-            margin: 0;
-        }
-
-        .etsy-tool-modal-close {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--gray-color);
-        }
-
-        .etsy-tool-modal-body {
-            padding: 16px;
-        }
-
-        .etsy-tool-modal-footer {
-            padding: 16px;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        /* Image Viewer */
-        .etsy-tool-image-viewer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .etsy-tool-image-viewer img {
-            max-width: 100%;
-            max-height: 70vh;
-            object-fit: contain;
-        }
-
-        /* PNG Filter Panel */
-        .etsy-tool-png-filter {
-            margin-top: 10px;
-        }
-
-        .etsy-tool-png-list {
-            margin-top: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .etsy-tool-png-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-png-item:hover {
-            background-color: #f5f5f5;
-        }
-
-        .etsy-tool-png-item.selected {
-            background-color: rgba(66, 133, 244, 0.1);
-        }
-
-        .etsy-tool-png-item-checkbox {
-            margin-right: 10px;
-        }
-
-        .etsy-tool-png-item-thumbnail {
-            width: 40px;
-            height: 40px;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            margin-right: 10px;
-        }
-
-        .etsy-tool-png-item-thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .etsy-tool-png-item-info {
-            flex: 1;
-        }
-
-        .etsy-tool-png-item-title {
-            font-weight: 500;
-            margin-bottom: 2px;
-        }
-
-        .etsy-tool-png-item-sku {
-            font-size: 12px;
-            color: var(--gray-color);
-        }
-
-        /* Loading Spinner */
-        .etsy-tool-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .etsy-tool-toolbar {
-                width: 250px;
-            }
-
-            .etsy-tool-thumbnails {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
+            --pc:#4285f4; --pc-d:#3367d6;
+            --sc:#34a853; --sc-d:#2e7d32;
+            --dc:#ea4335;
+            --wc:#fbbc05; --dk:#202124;
+            --gc:#5f6368;
+            --br:4px; --bs:0 2px 10px rgba(0,0,0,.1);
+            --tr:all .3s ease; --ff:'Segoe UI',Roboto,Arial,sans-serif;
+        }
+        .eda-toast-wrap { position:fixed; bottom:50px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+        .eda-toast { min-width:280px; padding:12px 16px; border-radius:var(--br); box-shadow:var(--bs); font:14px var(--ff); display:flex; align-items:center; justify-content:space-between; opacity:0; transform:translateY(16px); transition:var(--tr); pointer-events:all; }
+        .eda-toast.show { opacity:1; transform:translateY(0); }
+        .eda-toast.success { background:var(--sc); color:#fff; }
+        .eda-toast.error   { background:var(--dc); color:#fff; }
+        .eda-toast.warning { background:var(--wc); color:var(--dk); }
+        .eda-toast.info    { background:var(--pc); color:#fff; }
+        .eda-toast-x { background:none; border:none; color:inherit; cursor:pointer; font-size:16px; margin-left:10px; opacity:.7; }
+        .eda-toast-x:hover { opacity:1; }
+
+        .eda-btn { padding:8px 12px; border:none; border-radius:var(--br); font:500 14px var(--ff); cursor:pointer; transition:var(--tr); display:inline-flex; align-items:center; gap:6px; }
+        .eda-btn:focus { outline:none; }
+        .eda-btn-primary { background:var(--pc); color:#fff; } .eda-btn-primary:hover { background:var(--pc-d); }
+        .eda-btn-light   { background:#f8f9fa; color:var(--dk); border:1px solid #ddd; } .eda-btn-light:hover { background:#e9ecef; }
+
+        .eda-input { padding:6px 8px; border:1px solid #ddd; border-radius:var(--br); font:14px var(--ff); transition:var(--tr); width:100%; box-sizing:border-box; }
+        .eda-input:focus { outline:none; border-color:var(--pc); box-shadow:0 0 0 2px rgba(66,133,244,.2); }
+
+        .eda-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:9999; opacity:0; visibility:hidden; transition:var(--tr); }
+        .eda-overlay.show { opacity:1; visibility:visible; }
+        .eda-modal { background:#fff; border-radius:var(--br); box-shadow:var(--bs); width:90%; max-width:480px; max-height:90vh; overflow:auto; transform:translateY(-20px); transition:var(--tr); }
+        .eda-overlay.show .eda-modal { transform:translateY(0); }
+        .eda-modal-hd { padding:16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; }
+        .eda-modal-title { font:500 18px var(--ff); margin:0; }
+        .eda-modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--gc); }
+        .eda-modal-bd { padding:16px; }
+        .eda-modal-ft { padding:16px; border-top:1px solid #eee; display:flex; justify-content:flex-end; gap:10px; }
+        .eda-field { margin-bottom:14px; }
+        .eda-field label { display:block; margin-bottom:4px; font-weight:600; font-size:13px; }
     `);
 
-    // Config yapısı
-    const DEFAULT_CONFIG = {
-        discount: 25,
-        discountName: "",
-        mount: 1,
-        lastDay: 1,
-        fullYear: 2025,
-    };
+    // ─────────────────────────────────────────────
+    // CONFIG
+    // ─────────────────────────────────────────────
+    const DEFAULT_CONFIG = { discount:25, discountName:'', mount:1, lastDay:1, fullYear:2025 };
+    let config = { ...DEFAULT_CONFIG };
 
-    // Global değişkenler
-    let config = {...DEFAULT_CONFIG};
-    let toastContainer = null;
-
-    // Config yönetimi
     async function loadConfig() {
-        try {
-            const savedConfig = await GM.getValue('Config');
-            if (savedConfig) {
-                config = {...DEFAULT_CONFIG, ...savedConfig};
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.error('Config yükleme hatası:', error);
-            return false;
+        const saved = await GM.getValue('Config').catch(() => null);
+        if (saved) config = { ...DEFAULT_CONFIG, ...saved };
+    }
+    const saveConfig = () => GM.setValue('Config', config);
+
+    // ─────────────────────────────────────────────
+    // TOAST
+    // ─────────────────────────────────────────────
+    let _toastWrap = null;
+    function getToastWrap() {
+        if (!_toastWrap) {
+            _toastWrap = Object.assign(document.createElement('div'), { className:'eda-toast-wrap' });
+            document.body.appendChild(_toastWrap);
         }
+        return _toastWrap;
     }
-
-    async function saveConfig() {
-        await GM.setValue('Config', config);
-    }
-
-    // Config kontrol fonksiyonu
-    async function checkConfig() {
-        return await loadConfig();
-    }
-
-    // Config doğrulama
-    async function validateConfig() {
-        if (!await checkConfig()) {
-            showToast('Config yüklenemedi', 'error');
-            return false;
-        }
-
-        if (!config.discount) {
-            showToast('Discount missing', 'error');
-            return false;
-        }
-        return true;
-    }
-
-    // Modern Toast Notification System
-    function createToastContainer() {
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            document.body.appendChild(toastContainer);
-        }
-        return toastContainer;
-    }
-
     function showToast(message, type = 'success', duration = 3000) {
-        const container = createToastContainer();
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-
-        const messageSpan = document.createElement('span');
-        messageSpan.textContent = message;
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        });
-
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeBtn);
-        container.appendChild(toast);
-
-        // Show animation
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        // Auto dismiss
-        if (duration > 0) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
-
-        return toast;
+        const t = document.createElement('div');
+        t.className = `eda-toast ${type}`;
+        const s = Object.assign(document.createElement('span'), { textContent:message });
+        const x = Object.assign(document.createElement('button'), { className:'eda-toast-x', innerHTML:'&times;' });
+        x.onclick = () => dismissToast(t);
+        t.append(s, x);
+        getToastWrap().appendChild(t);
+        t.getBoundingClientRect(); // force reflow
+        t.classList.add('show');
+        if (duration > 0) setTimeout(() => dismissToast(t), duration);
+    }
+    function dismissToast(t) {
+        t.classList.remove('show');
+        t.addEventListener('transitionend', () => t.remove(), { once:true });
     }
 
-    // Modern Config Dialog
-    async function showConfigMenu() {
-        // Create modal overlay
+    // ─────────────────────────────────────────────
+    // CONFIG MODAL
+    // ─────────────────────────────────────────────
+    const FIELDS = [
+        { id:'discount',      label:'Discount %',       type:'number' },
+        { id:'discountName',  label:'Discount Name',    type:'text'   },
+        { id:'mount',         label:'Ay (mount)',        type:'number' },
+        { id:'lastDay',       label:'Gün (lastDay)',     type:'number' },
+        { id:'fullYear',      label:'Yıl (fullYear)',    type:'number' },
+    ];
+
+    function showConfigMenu() {
         const overlay = document.createElement('div');
-        overlay.className = 'etsy-tool-modal-overlay';
+        overlay.className = 'eda-overlay';
 
-        // Create modal
-        const modal = document.createElement('div');
-        modal.className = 'etsy-tool-modal';
+        const bodyHTML = FIELDS.map(f => `
+            <div class="eda-field">
+                <label for="cfg_${f.id}">${f.label}</label>
+                <input id="cfg_${f.id}" type="${f.type}" class="eda-input" value="${config[f.id] ?? ''}">
+            </div>`).join('');
 
-        // Modal header
-        const header = document.createElement('div');
-        header.className = 'etsy-tool-modal-header';
+        overlay.innerHTML = `
+            <div class="eda-modal">
+                <div class="eda-modal-hd">
+                    <h3 class="eda-modal-title">Discount Tool Ayarları</h3>
+                    <button class="eda-modal-close">&times;</button>
+                </div>
+                <div class="eda-modal-bd">${bodyHTML}</div>
+                <div class="eda-modal-ft">
+                    <button class="eda-btn eda-btn-light" id="eda_cancel">İptal</button>
+                    <button class="eda-btn eda-btn-primary" id="eda_save">Kaydet</button>
+                </div>
+            </div>`;
 
-        const title = document.createElement('h3');
-        title.className = 'etsy-tool-modal-title';
-        title.textContent = 'Etsy Discount Tool Ayarları';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'etsy-tool-modal-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        header.appendChild(title);
-        header.appendChild(closeBtn);
-
-        // Modal body
-        const body = document.createElement('div');
-        body.className = 'etsy-tool-modal-body';
-        // Form fields
-        const fields = [
-            { id: 'discount', label: 'discount (25)', type: 'number', value: config.discount },
-            { id: 'discountName', label: 'Discount Name(APR)', type: 'text', value: config.discountName },
-            { id: 'mount', label: 'mount', type: 'number', value: config.mount },
-            { id: 'lastDay', label: 'lastDay (1)', type: 'number', value: config.lastDay },
-            { id: 'fullYear', label: 'fullYear (2025)', type: 'number', value: config.fullYear }
-        ];
-
-        fields.forEach(field => {
-            const fieldContainer = document.createElement('div');
-            fieldContainer.style.marginBottom = '15px';
-
-            const label = document.createElement('label');
-            label.textContent = field.label;
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.fontWeight = 'bold';
-
-            let input;
-            if (field.type === 'textarea') {
-                input = document.createElement('textarea');
-                input.style.height = '100px';
-            } else {
-                input = document.createElement('input');
-                input.type = field.type;
-            }
-
-            input.id = field.id;
-            input.className = 'etsy-tool-input';
-            input.value = field.value;
-            input.style.width = '100%';
-
-            fieldContainer.appendChild(label);
-            fieldContainer.appendChild(input);
-            body.appendChild(fieldContainer);
-        });
-
-        // Modal footer
-        const footer = document.createElement('div');
-        footer.className = 'etsy-tool-modal-footer';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'etsy-tool-btn etsy-tool-btn-light';
-        cancelBtn.textContent = 'İptal';
-        cancelBtn.addEventListener('click', () => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'etsy-tool-btn etsy-tool-btn-primary';
-        saveBtn.textContent = 'Kaydet';
-        saveBtn.addEventListener('click', async () => {
-            // Save config
-            fields.forEach(field => {
-                config[field.id] = field.type=='number' ? parseFloat(document.getElementById(field.id).value) : document.getElementById(field.id).value;
-            });
-
-            await saveConfig();
-            showToast('Ayarlar başarıyla kaydedildi', 'success');
-
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        footer.appendChild(cancelBtn);
-        footer.appendChild(saveBtn);
-
-        // Assemble modal
-        modal.appendChild(header);
-        modal.appendChild(body);
-        modal.appendChild(footer);
-        overlay.appendChild(modal);
-
-        // Add to document
         document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('show'));
 
-        // Show with animation
-        setTimeout(() => overlay.classList.add('show'), 10);
+        const close = () => {
+            overlay.classList.remove('show');
+            overlay.addEventListener('transitionend', () => overlay.remove(), { once:true });
+        };
+
+        overlay.querySelector('.eda-modal-close').onclick = close;
+        overlay.querySelector('#eda_cancel').onclick      = close;
+        overlay.querySelector('#eda_save').onclick = async () => {
+            FIELDS.forEach(f => {
+                const val = document.getElementById(`cfg_${f.id}`).value;
+                config[f.id] = f.type === 'number' ? parseFloat(val) || 0 : val;
+            });
+            await saveConfig();
+            showToast('Ayarlar kaydedildi', 'success');
+            close();
+        };
     }
 
-    async function main(send = false) {
-        const lastDayStr = String(config.lastDay).padStart(2, '0');
-        if(config.lastDay>31) {
-            showToast("Yeni aya geç: "+config.lastDay, 'error');
+    // ─────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────
+    const VALID_DISCOUNTS = new Set([25, 30, 35, 40, 45, 50]);
+
+    /** Fire both input + change events — needed for React/Preact controlled inputs */
+    function fireEvents(el) {
+        el.dispatchEvent(new Event('input',  { bubbles:true, composed:true }));
+        el.dispatchEvent(new Event('change', { bubbles:true, composed:true }));
+    }
+
+    function setNativeValue(el, val) {
+        // For React-controlled inputs that ignore direct .value assignment
+        const setter = Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value')?.set;
+        if (setter) setter.call(el, val);
+        else el.value = val;
+        fireEvents(el);
+    }
+
+    const rand = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+
+    // ─────────────────────────────────────────────
+    // MAIN — fill form fields
+    // ─────────────────────────────────────────────
+    async function main() {
+        if (config.lastDay > 31) {
+            showToast('Yeni aya geç: ' + config.lastDay, 'error');
             return;
         }
-        const mountStr = String(config.mount).padStart(2, '0');
-        // Inputlara tarih yaz
-        const dateInputsStart = document.querySelector('#sales-and-coupons--start-date');
-        const dateInputsEnd = document.querySelector('#sales-and-coupons--end-date');
-        console.log("date inputlar bulundu")
-        //if (dateInputsStart.length >= 1 && dateInputsEnd.length >= 1) {
-            const dateStr = `${config.fullYear}-${mountStr}-${lastDayStr}`;
-            console.log("date inputlar bulundu");
-            // İlk input
-            dateInputsStart.value = dateStr;
-            dateInputsStart.focus();
-            dateInputsStart.click();
-            dateInputsStart.blur();
-            dateInputsStart.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-            dateInputsStart.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
 
-            // İkinci input
-            dateInputsEnd.value = dateStr;
-            dateInputsEnd.focus();
-            dateInputsEnd.click();
-            dateInputsEnd.blur();
-            dateInputsEnd.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-            dateInputsEnd.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-        //}
+        const dd  = String(config.lastDay).padStart(2, '0');
+        const mm  = String(config.mount).padStart(2, '0');
+        const dateStr = `${config.fullYear}-${mm}-${dd}`;
 
-        // 2. Select'i seçili hale getir
-        const select = document.querySelector("#reward-percentage");
+        // ── Dates ──────────────────────────────────
+        const startEl = document.querySelector('#sales-and-coupons--start-date');
+        const endEl   = document.querySelector('#sales-and-coupons--end-date');
+
+        if (startEl) { startEl.focus(); setNativeValue(startEl, dateStr); startEl.blur(); }
+        if (endEl)   { endEl.focus();   setNativeValue(endEl,   dateStr); endEl.blur(); }
+
+        // ── Discount select ─────────────────────────
+        const select = document.querySelector('#reward-percentage');
         if (select) {
             const discount = Number(config.discount);
-            if (discount == 25 || discount == 30 || discount == 35 || discount == 40 || discount == 45 || discount == 50 ){
-            const option = [...select.options].find(opt => opt.value === String(discount));
-                if (option) option.selected = true;
-                select.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-                select.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
-            }else{
-                select.value = 1;
-                select.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-                select.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
-                setTimeout(() => {
-                    const custom = document.querySelector("input[type='number'], input[data-discount-input]") || document.querySelector("#wt-modal-container input[type='number']");
-                    if (custom) {
-                        custom.value = discount;
-                        custom.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-                        custom.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
-                    }
-                }, 500); // 500ms bekleyin veya gerektiği gibi ayarlayın
+            if (VALID_DISCOUNTS.has(discount)) {
+                const opt = [...select.options].find(o => o.value === String(discount));
+                if (opt) {
+                    select.value = opt.value;
+                    fireEvents(select);
+                }
+            } else {
+                // Use "custom" option (value=1) then fill the number input
+                select.value = '1';
+                fireEvents(select);
+                // Wait for custom input to appear
+                await wait(500);
+                const custom = document.querySelector(
+                    "input[data-discount-input], #wt-modal-container input[type='number']"
+                );
+                if (custom) setNativeValue(custom, discount);
             }
         }
-        // 3. Kupon ismini gir: DD + DISC + YY
-        const couponInput = document.querySelector('#name-your-coupon');
-        if (couponInput) {
-            couponInput.value = `${lastDayStr}${config.discountName}${config.discount}`;
-            couponInput.dispatchEvent(new Event('input', { bubbles: true })); // "input" etkinliğini tetikle
-            couponInput.dispatchEvent(new Event('change', { bubbles: true })); // "change" etkinliğini tetikle
-        }
 
-        // 4. lastDay + 1 olarak güncelle
-        // Update last lastDay in config
-        config.lastDay = config.lastDay + 1;
+        // ── Coupon name ─────────────────────────────
+        const couponEl = document.querySelector('#name-your-coupon');
+        if (couponEl) setNativeValue(couponEl, `${dd}${config.discountName}${config.discount}`);
+
+        // ── Advance day counter ─────────────────────
+        config.lastDay += 1;
         await saveConfig();
-        showToast("Başarıyla eklendi: "+config.lastDay);
-        console.log("Başarıyla eklendi: ",config.lastDay);
+        showToast('Eklendi. Sonraki gün: ' + config.lastDay);
     }
 
-    // Ctrl + Space ile sadece doldurma
-    document.addEventListener("keydown", (event) => {
-        if (event.ctrlKey && event.code === "Space") {
-            main(false); // Sadece doldur
-        }
-    });
-
-    // Ctrl + Alt ile ilerle
-    document.addEventListener("keydown", (event) => {
-        if (event.ctrlKey && event.altKey) {
-            nextStep();
-        }
-    });
-
-    const getRandomInt = (start, end) =>
-    Math.floor(Math.random() * (end - start + 1)) + start
-    async function delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
+    // ─────────────────────────────────────────────
+    // NEXT STEP — click through modal wizard
+    // ─────────────────────────────────────────────
     async function nextStep() {
-        const step = document.querySelector("#wt-modal-container > div.wt-overlay.wt-overlay--will-animate.wt-overlay--full-screen.wt-overlay--no-animation > div > div.wt-overlay__sticky-footer-container.wt-z-index-1.wt-shadow-elevation-3 > div");
+        const MODAL_SEL = '#wt-modal-container > div.wt-overlay.wt-overlay--will-animate.wt-overlay--full-screen.wt-overlay--no-animation > div > div.wt-overlay__sticky-footer-container.wt-z-index-1.wt-shadow-elevation-3 > div';
+        const step = document.querySelector(MODAL_SEL);
+        if (!step) { showToast('Modal bulunamadı', 'error'); return; }
 
-        // Step 1
-        let delayMs = getRandomInt(1200, 1800)
-        await delay(delayMs);
-        let next = step.querySelector("div.wt-overlay__footer__action > button");
-        if (next) {
-            next.click();
-            console.log("step 1");
-        }
+        const click = async sel => {
+            await wait(rand(1200, 1800));
+            const btn = step.querySelector(sel);
+            if (btn) { btn.click(); } else { console.warn('[EDA] Button not found:', sel); }
+        };
 
-        // Step 2
-        delayMs = getRandomInt(1200, 1800)
-        await delay(delayMs);
-        next = step.querySelector("div:nth-child(3) > button");
-        if (next) {
-            next.click();
-            console.log("step 2");
-        }
+        await click('div.wt-overlay__footer__action > button'); // step 1
+        await click('div:nth-child(3) > button');               // step 2
+        await click('div:nth-child(3) > button');               // step 3
 
-        // Step 3
-        delayMs = getRandomInt(1200, 1800)
-        await delay(delayMs);
-        next = step.querySelector("div:nth-child(3) > button");
-        if (next) {
-            next.click();
-            console.log("step 3");
-        }
-
-        // Close and go forward
-        delayMs = getRandomInt(800, 1000)
-        await delay(delayMs);
-        window.location.href = "https://www.etsy.com/your/shops/me/sales-discounts/step/createSale";
-        console.log("bitti");
+        await wait(rand(800, 1000));
+        window.location.href = 'https://www.etsy.com/your/shops/me/sales-discounts/step/createSale';
     }
 
+    // ─────────────────────────────────────────────
+    // KEYBOARD — single listener (was two separate ones)
+    // ─────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+        if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); main(); }
+        if (e.ctrlKey && e.altKey)           { nextStep(); }
+    });
 
-    // Initialize
-    async function initialize() {
-        // Load config
-        await loadConfig();
+    // ─────────────────────────────────────────────
+    // INIT
+    // ─────────────────────────────────────────────
+    await loadConfig();
+    GM.registerMenuCommand('⚙️ Ayarlar', showConfigMenu);
+    showToast('Discount Tool: Ctrl+Space → doldur | Ctrl+Alt → ilerle', 'info', 4000);
 
-        // Register menu commands
-        GM.registerMenuCommand("Ayarlar", showConfigMenu);
-
-        // Show welcome message
-        showToast('Discount Tool : CTRL + Space ve CTRL + Alt', 'info');
-    }
-
-    // Start the script
-    initialize();
 })();
