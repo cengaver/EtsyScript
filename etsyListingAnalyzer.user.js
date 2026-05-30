@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
-// @description  Etsy Listing Inline Analyzer
-// @version      1.45
+// @description  Etsy Listing Inline Analyzer — Optimized v2
+// @version      2.00
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings/*
@@ -18,502 +18,321 @@
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/etsyListingAnalyzer.user.js
 // ==/UserScript==
 
-(async function(){
+(async function () {
     'use strict';
-    // Modern UI Styles
+
+    // ─────────────────────────────────────────────
+    // STYLES
+    // ─────────────────────────────────────────────
     GM.addStyle(`
         :root {
-            --primary-color: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary-color: #34a853;
-            --secondary-dark: #2e7d32;
-            --danger-color: #ea4335;
-            --danger-dark: #c62828;
-            --warning-color: #fbbc05;
-            --warning-dark: #f57f17;
-            --light-color: #f8f9fa;
-            --dark-color: #202124;
-            --gray-color: #5f6368;
-            --border-radius: 4px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            --pc:#4285f4; --sc:#34a853; --dc:#ea4335;
+            --wc:#fbbc05; --dk:#202124; --gc:#5f6368;
+            --br:4px; --bs:0 2px 10px rgba(0,0,0,.1);
+            --tr:all .3s ease; --ff:'Segoe UI',Roboto,Arial,sans-serif;
         }
-
-        /* Toast Notifications */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toast {
-            min-width: 280px;
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            font-family: var(--font-family);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .toast-success {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .toast-error {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .toast-info {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: inherit;
-            cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
-            opacity: 0.7;
-        }
-
-        .toast-close:hover {
-            opacity: 1;
+        .ela-toast-wrap { position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+        .ela-toast { min-width:260px; padding:10px 14px; border-radius:var(--br); box-shadow:var(--bs); font:14px var(--ff); display:flex; align-items:center; justify-content:space-between; opacity:0; transform:translateY(16px); transition:var(--tr); pointer-events:all; }
+        .ela-toast.show { opacity:1; transform:translateY(0); }
+        .ela-toast.success { background:var(--sc); color:#fff; }
+        .ela-toast.error   { background:var(--dc); color:#fff; }
+        .ela-toast.warning { background:var(--wc); color:var(--dk); }
+        .ela-toast.info    { background:var(--pc); color:#fff; }
+        .ela-toast-x { background:none; border:none; color:inherit; cursor:pointer; font-size:16px; margin-left:8px; opacity:.7; }
+        .ela-toast-x:hover { opacity:1; }
+        .ela-tip {
+            position:fixed; background:#fff; border:1px solid #ddd;
+            padding:10px; font-size:12px; font-family:var(--ff);
+            box-shadow:0 4px 12px rgba(0,0,0,.15);
+            display:none; z-index:9999; width:270px;
+            border-radius:var(--br); line-height:1.5;
         }
     `);
-    let toastContainer = null;
-    // Modern Toast Notification System
-    async function createToastContainer() {
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            document.body.appendChild(toastContainer);
+
+    // ─────────────────────────────────────────────
+    // TOAST
+    // ─────────────────────────────────────────────
+    let _toastWrap = null;
+    function getToastWrap() {
+        if (!_toastWrap) {
+            _toastWrap = Object.assign(document.createElement('div'), { className:'ela-toast-wrap' });
+            document.body.appendChild(_toastWrap);
         }
-        return toastContainer;
+        return _toastWrap;
     }
-
-    async function showToast(message, type = 'success', duration = 3000) {
-        const container = await createToastContainer();
-
+    function showToast(message, type = 'success', duration = 3000) {
         const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-
-        const messageSpan = document.createElement('span');
-        messageSpan.textContent = message;
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        });
-
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeBtn);
-        container.appendChild(toast);
-
-        // Show animation
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        // Auto dismiss
-        if (duration > 0) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
-
-        return toast;
+        toast.className = `ela-toast ${type}`;
+        const span = Object.assign(document.createElement('span'), { textContent: message });
+        const btn  = Object.assign(document.createElement('button'), { className:'ela-toast-x', innerHTML:'&times;' });
+        btn.onclick = () => dismissToast(toast);
+        toast.append(span, btn);
+        getToastWrap().appendChild(toast);
+        toast.getBoundingClientRect(); // force reflow
+        toast.classList.add('show');
+        if (duration > 0) setTimeout(() => dismissToast(toast), duration);
+    }
+    function dismissToast(t) {
+        t.classList.remove('show');
+        t.addEventListener('transitionend', () => t.remove(), { once:true });
     }
 
-    GM.registerMenuCommand("⚙️ Sheet Url Ayarla", async () => {
-        const currentUrl = await getSheetUrl();
-        const url = prompt(" Sheet Url'nizi girin:" ,currentUrl);
-        if (url) {
-            await GM.setValue("sheet_url", url.trim());
-            showToast('✅ Kaydedildi','info');
-        }
+    // ─────────────────────────────────────────────
+    // SETTINGS — in-memory cache, one GM.getValue each
+    // ─────────────────────────────────────────────
+    const _cfg = { sheetUrl: null, shopName: null, version: null };
+
+    async function getSheetUrl()  { return _cfg.sheetUrl  ??= await GM.getValue('sheet_url',  ''); }
+    async function getShopName()  { return _cfg.shopName  ??= await GM.getValue('shop_name',  ''); }
+    async function getVersion()   { return _cfg.version   ??= await GM.getValue('version',    '7'); }
+
+    GM.registerMenuCommand('⚙️ Sheet Url Ayarla', async () => {
+        const url = prompt('Sheet URL\'nizi girin:', await getSheetUrl());
+        if (url?.trim()) { _cfg.sheetUrl = url.trim(); await GM.setValue('sheet_url', _cfg.sheetUrl); showToast('✅ Kaydedildi', 'info'); }
+    });
+    GM.registerMenuCommand('⚙️ Mağaza Adı', async () => {
+        const shop = prompt('Mağaza adı girin:', await getShopName());
+        if (shop?.trim()) { _cfg.shopName = shop.trim(); await GM.setValue('shop_name', _cfg.shopName); showToast('✅ Kaydedildi', 'info'); }
+    });
+    GM.registerMenuCommand('⚙️ Versiyon', async () => {
+        const ver = prompt('Versiyon Numarası:', await getVersion());
+        if (ver?.trim()) { _cfg.version = ver.trim(); await GM.setValue('version', _cfg.version); showToast('✅ Kaydedildi', 'info'); }
     });
 
-    async function getSheetUrl() {
-        const url = await GM.getValue("sheet_url", "");
-        return url;
-    }
+    // ─────────────────────────────────────────────
+    // SENT-KEY / localStorage
+    // ─────────────────────────────────────────────
+    const VERSION  = await getVersion();
+    const SENT_KEY = `etsy_analyzer_sent_v${VERSION}`;
 
-    GM.registerMenuCommand("⚙️ Mağaza Adı", async () => {
-        const current_shop = await getShopName();
-        const shop = prompt(" Mağaza adı girin:" ,current_shop);
-        if (shop) {
-            await GM.setValue("shop_name", shop.trim());
-            showToast('✅ Kaydedildi','info');
-        }
+    // Load once; keep in memory; flush to localStorage on write
+    const sent = JSON.parse(localStorage.getItem(SENT_KEY) || '{}');
+
+    // Purge stale version keys
+    const PREFIX = 'etsy_analyzer_sent_';
+    Object.keys(localStorage).forEach(k => {
+        if (k.startsWith(PREFIX) && k !== SENT_KEY) localStorage.removeItem(k);
     });
 
-    async function getShopName() {
-        const shop = await GM.getValue("shop_name", "");
-        return shop;
+    // ─────────────────────────────────────────────
+    // SCAN — debounced to avoid hammering on rapid DOM updates
+    // ─────────────────────────────────────────────
+    const seen = new Set();
+    let _scanTimer = null;
+
+    function scheduleScan() {
+        clearTimeout(_scanTimer);
+        _scanTimer = setTimeout(scan, 150);
     }
 
-    GM.registerMenuCommand("⚙️ Versiyon", async () => {
-        const current_version = await getVersion();
-        const ver = prompt(" Versiyon Numarası:" ,current_version);
-        if (ver) {
-            await GM.setValue("version", ver.trim());
-            showToast('✅ Kaydedildi','info');
-        }
-    });
-
-    async function getVersion() {
-        const ver = await GM.getValue("version", "7");
-        return ver;
-    }
-
-    const version_number = await getVersion();
-    const SENT_KEY="etsy_analyzer_sent_v"+version_number;
-    const sent=JSON.parse(localStorage.getItem(SENT_KEY)||"{}");
-
-    const seen=new Set();
-
-    const obs=new MutationObserver(scan)
-    obs.observe(document.body,{childList:true,subtree:true})
-    setTimeout(scan,2000)
-
-    cleanupOldAnalyzerKeys(SENT_KEY);
-
-    function cleanupOldAnalyzerKeys(CURRENT_KEY){
-
-        const PREFIX = "etsy_analyzer_sent_";
-
-        Object.keys(localStorage).forEach(k=>{
-            if(k.startsWith(PREFIX) && k!==CURRENT_KEY){
-                localStorage.removeItem(k);
-            }
-        });
-    }
-
-    function scan(){
-        document.querySelectorAll('.card-actions.card-actions-3').forEach(actions=>{
-            const card=findCard(actions);
-            if(!card)return;
-
-            const id=getListingId(card);
-            if(!id||seen.has(id))return;
+    function scan() {
+        document.querySelectorAll('.card-actions.card-actions-3').forEach(actions => {
+            const card = findCard(actions);
+            if (!card) return;
+            const id = getListingId(card);
+            if (!id || seen.has(id)) return;
             seen.add(id);
-            analyze(card,actions,id);
+            analyze(card, actions, id);
         });
     }
 
-    function findCard(el){
-        let cur=el;
-        for(let i=0;i<10;i++){
-            if(!cur)return null;
-            if(/sales|favorites|visits/i.test(cur.innerText))return cur;
-            cur=cur.parentElement;
+    // ─────────────────────────────────────────────
+    // DOM HELPERS
+    // ─────────────────────────────────────────────
+    function findCard(el) {
+        let cur = el;
+        for (let i = 0; i < 10; i++) {
+            if (!cur) return null;
+            if (/sales|favorites|visits/i.test(cur.innerText)) return cur;
+            cur = cur.parentElement;
         }
         return null;
     }
 
-    function getListingId(card){
-        const a=card.querySelector('a[href*="/listing/"]');
-        if(!a)return null;
-        const m=a.href.match(/\/listing\/(\d+)/);
-        return m?m[1]:null;
+    function getListingId(card) {
+        const m = card.querySelector('a[href*="/listing/"]')?.href.match(/\/listing\/(\d+)/);
+        return m?.[1] ?? null;
     }
 
-    async function analyze(card,actions,id){
-        const t=card.innerText;
-        //console.log(actions)
-        const sales=pick(t,/(\d+)\s+sales?/i);
-        const favs=pick(t,/(\d+)\s+favorites?/i);
-        const visits=pick(t,/(\d+)\s+visits?/i);
-        const renewal=pick(t,/(\d+)\s+renewal?/i);
-        const renewText=parseRenew(t);
-        const renewDate=parseRenewDate(renewText);
-        const expires=isExpires(t)
-        const age=ageFromRenew(renewDate,renewal,sales);
-        const title=getTitleFromRow(card,id);
-        const sku=getSkuFromRow(card,id);
-        const img=getImgFromRow(card,id);
-
-        const issues=buildIssues({age,visits,favs,sales});
-        const issues2=decision2({age,visits,favs,sales});
-        const shop_name = await getShopName();
-        const data ={
-            id,
-            title,
-            sku,
-            age,
-            visits,
-            favs,
-            sales,
-            renewal,
-            issues,
-            issues2,
-            img,
-            expires,
-            shopName:shop_name,
-            sheetName: 'analiz'
-        }
-        //console.table(data)
-        inject(actions,data);
+    function getSkuFromRow(card) {
+        const span = card.querySelector('.card-meta-row-sku span');
+        return span ? (span.getAttribute('title') || span.textContent || '').trim() : '';
     }
 
-    function inject(actions,data){
-        const level=getLevel(data.age,data.sales,data.expires);
-        const badgeDiv=document.createElement('div');
-        badgeDiv.classList.add('wt-flex-xs-1');
-        const badge=document.createElement('span');
-        badge.textContent=level.icon;
-        badge.style.cssText=`
-            margin-left:8px;
-            font-size:18px;
-            cursor:pointer;
-            color:${level.color};
-        `;
+    function getImgFromRow(card) {
+        return card.querySelector('.card-img-wrap img')?.src?.trim() ?? '';
+    }
 
-        const tip=document.createElement('div');
-        tip.style.cssText=`
-             position:fixed;
-             background:#fff;
-             border:1px solid #ccc;
-             padding:10px;
-             font-size:12px;
-             box-shadow:0 4px 12px rgba(0,0,0,.15);
-             display:none;
-             z-index:9999;
-             width:260px;
-        `;
+    function getTitleFromRow(card) {
+        const h2 = card.querySelector('h2.card-title');
+        return h2 ? (h2.getAttribute('title') || h2.textContent || '').trim() : '';
+    }
 
-        tip.innerHTML=`
-            <div style="font-weight:bold;font-size:13px;margin-bottom:6px;">
-                ${level.icon} ${level.label}
-            </div>
+    // ─────────────────────────────────────────────
+    // ANALYSIS
+    // ─────────────────────────────────────────────
+    const pick = (t, r) => { const m = t.match(r); return m ? +m[1] : 0; };
 
-            <div style="font-weight:bold;margin-bottom:6px;">
-                ${data.title||'Untitled'}
-            </div>
+    function isExpires(t)    { return /\bExpires\b/i.test(t); }
+    function parseRenew(t)   { return t.match(/(?:Auto[-\s]?renews?|Expires)\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i)?.[1] ?? null; }
+    function parseRenewDate(text) { return text ? new Date(text) : null; }
 
+    function ageFromRenew(d, r, s) {
+        if (!d) return 0;
+        const MS = 86400000, PERIOD = 120;
+        let pub = d.getTime() - PERIOD * MS;
+        if (s === 0 && r > 0) pub -= r * PERIOD * MS;
+        return Math.max(0, Math.floor((Date.now() - pub) / MS));
+    }
+
+    async function analyze(card, actions, id) {
+        const t       = card.innerText;
+        const sales   = pick(t, /(\d+)\s+sales?/i);
+        const favs    = pick(t, /(\d+)\s+favorites?/i);
+        const visits  = pick(t, /(\d+)\s+visits?/i);
+        const renewal = pick(t, /(\d+)\s+renewal?/i);
+        const renewDate = parseRenewDate(parseRenew(t));
+        const expires = isExpires(t);
+        const age     = ageFromRenew(renewDate, renewal, sales);
+        const title   = getTitleFromRow(card);
+        const sku     = getSkuFromRow(card);
+        const img     = getImgFromRow(card);
+
+        const data = {
+            id, title, sku, age, visits, favs, sales, renewal,
+            issues:  buildIssues({ age, visits, favs, sales }),
+            issues2: decision2({ age, visits, favs, sales }),
+            img, expires,
+            shopName:  await getShopName(),
+            sheetName: 'analiz',
+        };
+
+        inject(actions, data);
+    }
+
+    // ─────────────────────────────────────────────
+    // INJECT badge + tooltip
+    // ─────────────────────────────────────────────
+    function inject(actions, data) {
+        const target = actions.querySelector('.wt-display-flex-xs.wt-align-items-center');
+        if (!target) return;
+
+        const level = getLevel(data.age, data.sales, data.expires);
+
+        // Tooltip — shared singleton approach: one per badge
+        const tip = document.createElement('div');
+        tip.className = 'ela-tip';
+        tip.innerHTML = `
+            <div style="font-weight:700;font-size:13px;margin-bottom:6px">${level.icon} ${level.label}</div>
+            <div style="font-weight:600;margin-bottom:6px">${data.title || 'Untitled'}</div>
             Sales: ${data.sales}<br>
             Favorites: ${data.favs}<br>
             Visits: ${data.visits}<br>
             Age: ${data.age} gün<br>
-            Renewal: ${data.renewal||'N/A'}<br><br>
-
-            <b>Issues</b><br>
-            ${data.issues.map(i=>'• '+i).join('<br>')}<br><br>
-
-            <b>Issues 2</b><br>
-            ${data.issues2.map(i=>'• '+i).join('<br>')}
+            Renewal: ${data.renewal || 'N/A'}<br><br>
+            <b>Issues</b><br>${data.issues.map(i => '• ' + i).join('<br>')}<br><br>
+            <b>Issues 2</b><br>${data.issues2.map(i => '• ' + i).join('<br>')}
         `;
-
-        badge.onmouseenter=e=>{
-            tip.style.display='block';
-
-            const margin=12;
-            const tipRect=tip.getBoundingClientRect();
-            const vw=window.innerWidth;
-            const vh=window.innerHeight;
-
-            let top=e.clientY+margin;
-            let left=e.clientX+margin;
-
-            if(top+tipRect.height>vh)
-                top=e.clientY-tipRect.height-margin;
-
-            if(left+tipRect.width>vw)
-                left=e.clientX-tipRect.width-margin;
-
-            tip.style.top=Math.max(8,top)+'px';
-            tip.style.left=Math.max(8,left)+'px';
-        };
-
-        badge.onmouseleave=()=>tip.style.display='none';
         document.body.appendChild(tip);
+
+        const badge = document.createElement('span');
+        badge.textContent = level.icon;
+        badge.title = level.label;
+        badge.style.cssText = `margin-left:8px;font-size:18px;cursor:pointer;color:${level.color};`;
+
+        badge.addEventListener('mouseenter', e => {
+            tip.style.display = 'block';
+            const margin = 12, vw = window.innerWidth, vh = window.innerHeight;
+            const { width: tw, height: th } = tip.getBoundingClientRect();
+            const top  = e.clientY + margin + th > vh ? e.clientY - th - margin : e.clientY + margin;
+            const left = e.clientX + margin + tw > vw ? e.clientX - tw - margin : e.clientX + margin;
+            tip.style.top  = Math.max(8, top)  + 'px';
+            tip.style.left = Math.max(8, left) + 'px';
+        });
+        badge.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+
+        const badgeDiv = document.createElement('div');
+        badgeDiv.classList.add('wt-flex-xs-1');
         badgeDiv.appendChild(badge);
-        const target = actions.querySelector('.wt-display-flex-xs.wt-align-items-center');
         target.appendChild(badgeDiv);
-        if(!sent[data.id]){
+
+        // Send to Sheets only once per listing per session
+        if (!sent[data.id]) {
             sendToSheets(data);
-            //console.log(data)
-            sent[data.id]=Date.now();
-            localStorage.setItem(SENT_KEY,JSON.stringify(sent));
+            sent[data.id] = Date.now();
+            localStorage.setItem(SENT_KEY, JSON.stringify(sent));
         }
     }
 
-    function getLevel(age,sales,expires){
-        if(sales>0) return {icon:"🟢",color:"#2ecc71",label:"Satış Var"};
-        if(age<=14) return {icon:"🟡",color:"#f1c40f",label:"Yeni – Dokunma"};
-        if(age<=30) return {icon:"🟠",color:"#e67e22",label:"İzleme Aşaması"};
-        if(age<=60) return {icon:"🔴",color:"#e74c3c",label:"Güçlü Optimizasyon"};
-        if(expires) return {icon:"🚧",color:"#8e44ad",label:"Başarısız – Kapat/Yenile"};
-        return {icon:"🚨",color:"#8e44ad",label:"Başarısız – Kapat/Yenile"};
+    // ─────────────────────────────────────────────
+    // LEVEL
+    // ─────────────────────────────────────────────
+    function getLevel(age, sales, expires) {
+        if (sales > 0)  return { icon:'🟢', color:'#2ecc71', label:'Satış Var' };
+        if (age <= 14)  return { icon:'🟡', color:'#f1c40f', label:'Yeni – Dokunma' };
+        if (age <= 30)  return { icon:'🟠', color:'#e67e22', label:'İzleme Aşaması' };
+        if (age <= 60)  return { icon:'🔴', color:'#e74c3c', label:'Güçlü Optimizasyon' };
+        if (expires)    return { icon:'🚧', color:'#8e44ad', label:'Başarısız – Kapat/Yenile' };
+        return             { icon:'🚨', color:'#8e44ad', label:'Başarısız – Kapat/Yenile' };
     }
 
-    function decision2({age,visits,favs,sales}){
-        const issues2=[];
-        if(sales>0){issues2.push("Satış almış – dokunma");return issues2;}
-        if(visits>3 && favs>=1)issues2.push("A. Yüksek trafik ve ilgi var, satış olmaması fiyat,<br> kargo veya güven/teklif kaynaklı bir dönüşüm sorunudur.<br> Eylem: Fiyat/Teklif Optimizasyonu.");
-        if(visits>3 && favs===0)issues2.push("B. Yüksek trafik var ancak ürün ilgiyi (favori) çekemiyor.<br> Sorun, listelemenin vitrininde (görsel, başlık) olmalı.<br> Eylem: Görsel/Başlık/Açıklama Optimizasyonu.");
-        if(visits>=1 && visits<=3 && favs>=1)issues2.push("C. Ortalama trafik ve ilgi var. <br>Hem görünürlük (SEO) hem de satışa dönüştürme (Fiyat/Teklif) sorunu.<br> Eylem: Dönüşüm Odaklı SEO ve İyileştirme.");
-        if(visits>=1 && visits<=3 && favs===0)issues2.push("D. Ortalama trafik var ancak ilgi (favori) çekemiyor.<br> Sorun, listelemenin vitrininde (görsel, başlık) olmalı.<br> Eylem: Başlık/Ana Görsel Testi ve SEO İncelemesi.");
-        if(visits<1 && favs>=1)issues2.push("E. Listeleme potansiyel (Fav) gösteriyor ancak trafik alamıyor.<br> Öncelikli sorun görünürlük (SEO/Yenileme).<br> Eylem: Acil SEO ve Yenileme.");
-        if(visits<1 && favs===0)issues2.push("F. En düşük öncelikli, hem trafik hem de ilgi yok.<br> Ya temel SEO eksik ya da ürün/pazar uyumu zayıf.<br> Eylem: Temel SEO Kontrolü ve Sil/Değiştir Kararı.");
-        if(!issues2.length)issues2.push("İzlenmeli");
-        return issues2;
+    // ─────────────────────────────────────────────
+    // ISSUE BUILDERS
+    // ─────────────────────────────────────────────
+    function buildIssues({ age, visits, favs, sales }) {
+        if (sales > 0)  return ['Satış almış – dokunma'];
+        if (age <= 14)  return ['Yeni listing (0–14 gün)', 'Öneri: Dokunma, veri birikmesini bekle'];
+        if (age <= 30) {
+            if (visits >= 50 && favs === 0) return ['İlgi çekmiyor (favori yok)', 'Öneri: Ana görsel / başlık hafif test'];
+            return ['15–30 gün – izleme aşaması', 'Öneri: Küçük testler (görsel veya fiyat)'];
+        }
+        if (age <= 60) {
+            if (visits >= 100 && favs === 0) return ['Yüksek trafik var, ilgi yok', 'Öneri: Görsel + başlık köklü değişim'];
+            if (favs > 0)                    return ['Favori var, satış yok', 'Öneri: Fiyat / kargo / güven optimizasyonu'];
+            if (visits < 30)                 return ['Düşük trafik', 'Öneri: SEO ve yenileme'];
+            return ['30–60 gün – satış yok', 'Öneri: Güçlü genel optimizasyon'];
+        }
+        return ['60+ gün – satış yok (başarısız)', 'Öneri: Yeniden aç, varyasyon değiştir veya kapat'];
     }
 
-    function buildIssues({age,visits,favs,sales}) {
-        const issues=[];
-
-        // 1️⃣ Satış varsa net bitir
-        if(sales>0){
-            issues.push("Satış almış – dokunma");
-            return issues;
-        }
-
-        // 2️⃣ 0–14 gün: satmıyor sayılmaz
-        if(age<=14){
-            issues.push("Yeni listing (0–14 gün)");
-            issues.push("Öneri: Dokunma, veri birikmesini bekle");
-            return issues;
-        }
-
-        // 3️⃣ 15–30 gün: izleme + hafif sinyal analizi
-        if(age<=30){
-            if(visits>=50 && favs===0){
-                issues.push("İlgi çekmiyor (favori yok)");
-                issues.push("Öneri: Ana görsel / başlık hafif test");
-            } else {
-                issues.push("15–30 gün – izleme aşaması");
-                issues.push("Öneri: Küçük testler (görsel veya fiyat)");
-            }
-            return issues;
-        }
-
-        // 4️⃣ 30–60 gün: artık satmıyor sayılır
-        if(age<=60){
-            if(visits>=100 && favs===0){
-                issues.push("Yüksek trafik var, ilgi yok");
-                issues.push("Öneri: Görsel + başlık köklü değişim");
-            } else if(favs>0){
-                issues.push("Favori var, satış yok");
-                issues.push("Öneri: Fiyat / kargo / güven optimizasyonu");
-            } else if(visits<30){
-                issues.push("Düşük trafik");
-                issues.push("Öneri: SEO ve yenileme");
-            } else {
-                issues.push("30–60 gün – satış yok");
-                issues.push("Öneri: Güçlü genel optimizasyon");
-            }
-            return issues;
-        }
-
-        // 5️⃣ 60+ gün: başarısız kabul edilir
-        issues.push("60+ gün – satış yok (başarısız)");
-        issues.push("Öneri: Yeniden aç, varyasyon değiştir veya kapat");
-        return issues;
+    function decision2({ age, visits, favs, sales }) {
+        if (sales > 0) return ['Satış almış – dokunma'];
+        const out = [];
+        if (visits > 3  && favs >= 1) out.push('A. Yüksek trafik ve ilgi var, satış olmaması fiyat,<br> kargo veya güven/teklif kaynaklı bir dönüşüm sorunudur.<br> Eylem: Fiyat/Teklif Optimizasyonu.');
+        if (visits > 3  && favs === 0) out.push('B. Yüksek trafik var ancak ürün ilgiyi (favori) çekemiyor.<br> Sorun, listelemenin vitrininde (görsel, başlık) olmalı.<br> Eylem: Görsel/Başlık/Açıklama Optimizasyonu.');
+        if (visits >= 1 && visits <= 3 && favs >= 1) out.push('C. Ortalama trafik ve ilgi var.<br> Hem görünürlük (SEO) hem de satışa dönüştürme (Fiyat/Teklif) sorunu.<br> Eylem: Dönüşüm Odaklı SEO ve İyileştirme.');
+        if (visits >= 1 && visits <= 3 && favs === 0) out.push('D. Ortalama trafik var ancak ilgi (favori) çekemiyor.<br> Sorun, listelemenin vitrininde (görsel, başlık) olmalı.<br> Eylem: Başlık/Ana Görsel Testi ve SEO İncelemesi.');
+        if (visits < 1  && favs >= 1)  out.push('E. Listeleme potansiyel (Fav) gösteriyor ancak trafik alamıyor.<br> Öncelikli sorun görünürlük (SEO/Yenileme).<br> Eylem: Acil SEO ve Yenileme.');
+        if (visits < 1  && favs === 0) out.push('F. En düşük öncelikli, hem trafik hem de ilgi yok.<br> Ya temel SEO eksik ya da ürün/pazar uyumu zayıf.<br> Eylem: Temel SEO Kontrolü ve Sil/Değiştir Kararı.');
+        return out.length ? out : ['İzlenmeli'];
     }
 
-    function pick(t,r){const m=t.match(r);return m?+m[1]:0;}
-     // Google Sheets log fonksiyonun
+    // ─────────────────────────────────────────────
+    // SHEETS — fire-and-forget, Content-Type düzeltildi
+    // ─────────────────────────────────────────────
     async function sendToSheets(payload) {
-        const sheetUrl = await getSheetUrl();
-        if (!sheetUrl) return;
-        console.log(payload)
+        const url = await getSheetUrl();
+        if (!url) return;
         GM.xmlHttpRequest({
-            method: "POST",
-            url: sheetUrl,
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
+            method:  'POST',
+            url,
+            headers: { 'Content-Type': 'application/json' },
+            data:    JSON.stringify(payload),
+            onload(r) {
+                try {
+                    const d = JSON.parse(r.responseText);
+                    if (d.status === 'success') showToast('✅ Analiz edildi', 'success');
+                    else showToast('❌ ' + (d.message || 'Hata'), 'error');
+                } catch { showToast('❌ Yanıt işlenemedi', 'error'); }
             },
-            data: JSON.stringify(payload),
-            onload: function(response) {
-            try {
-                const data = JSON.parse(response.responseText);
-                if (data.status === 'success') {
-                        showToast('✅ Analiz edildi','success');
-                    } else {
-                        showToast('❌ Hata: ' + (data.message || 'Bilinmeyen hata'),'error');
-                    }
-                } catch (e) {
-                   showToast('❌ Yanıt işlenemedi','error');
-                }
-            },
-            onerror: function(error) {
-                showToast('❌ Güncellenmedi: ' + (error.message || 'Bilinmeyen hata'),'error');
-            }
+            onerror() { showToast('❌ Gönderilemedi', 'error'); },
         });
     }
 
-    function isExpires(t){
-        return /\bExpires\b/i.test(t);
-    }
-
-    function parseRenew(t){
-        const m=t.match(/(?:Auto[-\s]?renews?|Expires)\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
-        return m?m[1]:null;
-    }
-
-    function parseRenewDate(text){
-        if(!text)return null;
-        return new Date(text);
-    }
-
-    function ageFromRenew(d,r,s){
-        if(!d)return 0;
-        const MS=86400000;
-        const PERIOD=120;
-        const now=Date.now();
-        // base publish date (son yenilemeden geriye)
-        let publishedAt=d.getTime()-PERIOD*MS;
-        // satış yoksa renewal sayısını yaşa ekle
-        if(s===0 && r>0){
-            publishedAt-=r*PERIOD*MS;
-        }
-        return Math.max(0,Math.floor((now-publishedAt)/MS));
-    }
-
-    function getSkuFromRow(card){
-        const span=card.querySelector('.card-meta-row-sku span');
-        if(!span)return "";
-        return (span.getAttribute("title")||span.textContent||"").trim();
-    }
-
-    function getImgFromRow(card){
-        const img=card.querySelector('.card-img-wrap img');
-        if(!img)return "";
-        return (img.src||"").trim();
-    }
-
-    function getTitleFromRow(card){
-        const h2=card.querySelector('h2.card-title');
-        if(!h2)return "";
-        return (h2.getAttribute("title")||h2.textContent||"").trim();
-    }
+    // ─────────────────────────────────────────────
+    // INIT
+    // ─────────────────────────────────────────────
+    new MutationObserver(scheduleScan).observe(document.body, { childList:true, subtree:true });
+    setTimeout(scan, 800); // ilk yükleme — biraz bekle, Etsy SPA'sının listelemeleri render etmesi için
 
 })();
