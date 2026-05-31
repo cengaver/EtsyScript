@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.00
+// @version      6.01
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -228,7 +228,7 @@
     // UTILS
     // ─────────────────────────────────────────────
     const getText = (sel, doc = document) => doc.querySelector(sel)?.textContent.trim() ?? null;
-    const unformatNumber = str => parseFloat((str ?? '').replace(/[^0-9.,-]+/g, '').replace(',', '.')) || 0;
+    const unformatNumber = (str) => parseFloat(str.replace(/[^0-9,-]+/g, ""))
     const parseNumFromEl = el => { const m = el?.textContent.match(/[\d.]+/); return m ? parseFloat(m[0]) : 0; };
 
     const safeClick = el => {
@@ -417,6 +417,7 @@
             const credit  = unformatNumber(creditEl.textContent);
             const balance = unformatNumber(balanceEl.textContent);
             const extra   = config.credit || 0;
+            console.log(credit,balance,extra,rate);
             addTl(creditEl,  'tl-info', ` (${Math.round(credit * rate)} ₺)`);
             addTl(balanceEl, 'tl-info', ` (${Math.round(balance * rate)} ₺)\n  (${Math.round(balance + extra)} $) (${Math.round((balance + extra) * rate)} ₺)`);
         } catch (err) {
