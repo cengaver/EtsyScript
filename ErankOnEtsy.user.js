@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      4.46
+// @version      5.01
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -16,12 +16,10 @@
 // @require      https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @grant        GM.xmlHttpRequest
-// @grant        GM_xmlhttpRequest
 // @grant        GM.getValue
 // @grant        GM.setValue
+// @grant        GM.deleteValue
 // @grant        GM.registerMenuCommand
-// @grant        GM.addElement
-// @grant        GM.getResourceText
 // @grant        GM.addStyle
 // @grant        unsafeWindow
 // @connect      ehunt.ai
@@ -38,715 +36,166 @@
 (async function () {
     "use strict";
 
-    // Modern UI Styles
+    // ─── STYLES ──────────────────────────────────────────────────────────────────
     GM.addStyle(`
         :root {
-            --primary-color: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary-color: #34a853;
-            --secondary-dark: #2e7d32;
-            --danger-color: #ea4335;
-            --danger-dark: #c62828;
-            --warning-color: #fbbc05;
-            --warning-dark: #f57f17;
-            --light-color: #f8f9fa;
-            --dark-color: #202124;
-            --gray-color: #5f6368;
-            --border-radius: 4px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-        }
-
-        /* Toast Notifications */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toast {
-            min-width: 280px;
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            font-family: var(--font-family);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .toast-success {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .toast-error {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .toast-info {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: inherit;
-            cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
-            opacity: 0.7;
-        }
-
-        .toast-close:hover {
-            opacity: 1;
-        }
-
-        /* Buttons */
-        .etsy-tool-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .etsy-tool-btn:focus {
-            outline: none;
-        }
-
-        .etsy-tool-btn-primary {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-primary:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .etsy-tool-btn-secondary {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-secondary:hover {
-            background-color: var(--secondary-dark);
-        }
-
-        .etsy-tool-btn-danger {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .etsy-tool-btn-danger:hover {
-            background-color: var(--danger-dark);
-        }
-
-        .etsy-tool-btn-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .etsy-tool-btn-warning:hover {
-            background-color: var(--warning-dark);
-        }
-
-        .etsy-tool-btn-light {
-            background-color: var(--light-color);
-            color: var(--dark-color);
-            border: 1px solid #ddd;
-        }
-
-        .etsy-tool-btn-light:hover {
-            background-color: #e9ecef;
-        }
-
-        .etsy-tool-btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-
-        .etsy-tool-btn-lg {
-            padding: 10px 16px;
-            font-size: 16px;
-        }
-
-        .etsy-tool-btn-icon {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            border-radius: 50%;
-        }
-
-        /* Inputs */
-        .etsy-tool-input {
-            padding: 2px 4px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 16px;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
-
-        .etsy-tool-select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 14px;
-            background-color: white;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
-
-        /* Panels */
-        .etsy-tool-panel {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            overflow: hidden;
-        }
-
-        .etsy-tool-panel-header {
-            padding: 12px 16px;
-            background-color: var(--primary-color);
-            color: white;
-            font-family: var(--font-family);
-            font-size: 16px;
-            font-weight: 500;
-            display: flex;
-            cursor: move;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .etsy-tool-panel-body {
-            padding: 16px;
-        }
-
-        /* Main Toolbar */
-        .etsy-tool-toolbar {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            display: flex;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            flex-direction: column;
-            gap: 10px;
-            width: 300px;
-        }
-
-        /* Image Thumbnails */
-        .etsy-tool-thumbnails {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .etsy-tool-thumbnail {
-            position: relative;
-            width: 100%;
-            padding-top: 100%; /* 1:1 Aspect Ratio */
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            cursor: pointer;
-            box-shadow: var(--box-shadow);
-            transition: var(--transition);
-        }
-
-        .etsy-tool-thumbnail:hover {
-            transform: scale(1.05);
-        }
-
-        .etsy-tool-thumbnail img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .etsy-tool-thumbnail-actions {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: flex;
-            justify-content: space-around;
-            padding: 5px;
-            opacity: 0;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-thumbnail:hover .etsy-tool-thumbnail-actions {
-            opacity: 1;
-        }
-
-        /* Modal */
-        .etsy-tool-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .etsy-tool-modal {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow: auto;
-            transform: translateY(-20px);
-            transition: var(--transition);
-        }
-
-        .etsy-tool-modal-overlay.show .etsy-tool-modal {
-            transform: translateY(0);
-        }
-
-        .etsy-tool-modal-header {
-            padding: 16px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .etsy-tool-modal-title {
-            font-family: var(--font-family);
-            font-size: 18px;
-            font-weight: 500;
-            margin: 0;
-        }
-
-        .etsy-tool-modal-close {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--gray-color);
-        }
-
-        .etsy-tool-modal-body {
-            padding: 16px;
-        }
-
-        .etsy-tool-modal-footer {
-            padding: 16px;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        /* Image Viewer */
-        .etsy-tool-image-viewer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .etsy-tool-image-viewer img {
-            max-width: 100%;
-            max-height: 70vh;
-            object-fit: contain;
-        }
-
-        /* PNG Filter Panel */
-        .etsy-tool-png-filter {
-            margin-top: 10px;
-        }
-
-        .etsy-tool-png-list {
-            margin-top: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .etsy-tool-png-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .etsy-tool-png-item:hover {
-            background-color: #f5f5f5;
-        }
-
-        .etsy-tool-png-item.selected {
-            background-color: rgba(66, 133, 244, 0.1);
-        }
-
-        .etsy-tool-png-item-checkbox {
-            margin-right: 10px;
-        }
-
-        .etsy-tool-png-item-thumbnail {
-            width: 40px;
-            height: 40px;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            margin-right: 10px;
-        }
-
-        .etsy-tool-png-item-thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .etsy-tool-png-item-info {
-            flex: 1;
-        }
-
-        .etsy-tool-png-item-title {
-            font-weight: 500;
-            margin-bottom: 2px;
-        }
-
-        .etsy-tool-png-item-sku {
-            font-size: 12px;
-            color: var(--gray-color);
-        }
-
-        /* Loading Spinner */
-        .etsy-tool-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .etsy-tool-toolbar {
-                width: 250px;
-            }
-
-            .etsy-tool-thumbnails {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        #erank-table-modal{
-          position:fixed;inset:0;z-index:999999;
-          background:rgba(0,0,0,.6);
-          display:flex;align-items:center;justify-content:center;
-          font-family:Arial,sans-serif
-        }
-        .erank-box{
-          background:#fff;width:95%;max-width:1400px;
-          max-height:90vh;overflow:hidden;
-          border-radius:12px;display:flex;flex-direction:column
-        }
-        .erank-header{
-          padding:12px 16px;border-bottom:1px solid #ddd;
-          display:flex;align-items:center;gap:12px
-        }
-        .erank-header input{
-          padding:6px 10px;width:260px
-        }
-        .erank-close{margin-left:auto;cursor:pointer;font-size:20px}
-        .erank-table-wrap{overflow:auto}
-        table{border-collapse:collapse;width:100%}
-        thead th{
-          position:sticky;top:0;background:#f6f6f6;
-          cursor:pointer;border-bottom:1px solid #ccc;
-          padding:8px;font-size:14px;white-space:nowrap
-        }
-        tbody td{
-          border-bottom:1px solid #eee;
-          padding:8px;font-size:16px;vertical-align:middle
-        }
-        tbody tr:hover{background:#fafafa}
-        #erank-table-modal img{
-          width:72px;
-          height:72px;
-          object-fit:cover;
-          border-radius:6px;
-        }
-        .num{text-align:right}
-        .erank-table-wrap img{cursor:pointer}
-        .erank-table-wrap a:hover img{opacity:.85}
-        .erank-preview{
-          position:fixed;
-          z-index:1000000;
-          pointer-events:none;
-          background:#fff;
-          border-radius:10px;
-          box-shadow:0 10px 30px rgba(0,0,0,.35);
-          padding:6px;
-          display:none
-        }
-       .erank-preview img{
-         max-width:300px;
-         max-height:300px;
-         width:auto;
-         height:auto;
-       }
-       .erank-box{
-         background:#ffffff;
-         color:#222;
-       }
-       .erank-box thead th{
-         background:#f6f6f6;
-         color:#222;
-       }
-       .erank-box tbody tr:hover{
-         background:#f2f2f2;
-       }
-       .erank-dark{
-         background:#121212;
-         color:#e6e6e6;
-       }
-       .erank-dark .erank-header{
-         background:#181818;
-         border-bottom:1px solid #2a2a2a;
-       }
-       .erank-dark input{
-         background:#1f1f1f;
-         color:#eee;
-         border:1px solid #333;
-       }
-       .erank-dark table{
-         background:#121212;
-       }
-       .erank-dark thead th{
-         background:#1a1a1a;
-         color:#ddd;
-         border-bottom:1px solid #333;
-       }
-       .erank-dark tbody td{
-         border-bottom:1px solid #242424;
-         color:#e0e0e0;
-       }
-       .erank-dark tbody tr:hover{
-         background:#1e1e1e;
-       }
-       .erank-dark .num{
-         color:#bdbdbd;
-       }
-       .erank-dark .erank-table-wrap img{
-         box-shadow:0 0 0 1px #333;
-       }
-       .erank-dark .erank-close{
-         color:#aaa;
-       }
-       .erank-dark .erank-close:hover{
-         color:#fff;
-       }
-       .erank-dark td[style]{
-        box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
-       }
-       .erank-dark span[style*="border-radius"]{
-         box-shadow:0 0 0 1px rgba(255,255,255,.15);
-       }
-       th.sort-active{
-         background:#2b2b2b;
-         color:#fff;
-       }
-       th.sort-active::after{
-         content:" ▴▾";
-         font-size:10px;
-         opacity:.8;
-       }
-       th.sort-active.asc::after{content:" ▲"}
-       th.sort-active.desc::after{content:" ▼"}
-
-       /* preview dark uyumu */
-       .erank-preview{
-         background:#111;
-       }
-       .erank-filter-row input{
-         padding:2px 4px;
-         font-size:11px;
-       }
-       .erank-dark .erank-filter-row input{
-         background:#1f1f1f;
-         color:#eee;
-         border:1px solid #333;
-       }
-       .erank-dark th.sort-active{background:#444}
+            --er-primary: #4285f4; --er-primary-d: #3367d6;
+            --er-green: #34a853;   --er-green-d: #2e7d32;
+            --er-red: #ea4335;     --er-red-d: #c62828;
+            --er-yellow: #fbbc05;  --er-yellow-d: #f57f17;
+            --er-light: #f8f9fa;   --er-dark: #202124;
+            --er-gray: #5f6368;    --er-radius: 4px;
+            --er-shadow: 0 2px 10px rgba(0,0,0,.1);
+            --er-trans: all .3s ease;
+            --er-font: 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+        .er-toast-wrap { position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px; }
+        .er-toast {
+            min-width:280px;padding:12px 16px;border-radius:var(--er-radius);
+            box-shadow:var(--er-shadow);font-family:var(--er-font);font-size:14px;
+            display:flex;align-items:center;justify-content:space-between;
+            opacity:0;transform:translateY(20px);transition:var(--er-trans);
+        }
+        .er-toast.show { opacity:1;transform:translateY(0); }
+        .er-toast-success { background:var(--er-green);color:#fff; }
+        .er-toast-error   { background:var(--er-red);color:#fff; }
+        .er-toast-warning { background:var(--er-yellow);color:var(--er-dark); }
+        .er-toast-info    { background:var(--er-primary);color:#fff; }
+        .er-toast-x { background:none;border:none;color:inherit;cursor:pointer;font-size:16px;margin-left:10px;opacity:.7; }
+        .er-toast-x:hover { opacity:1; }
+        .er-btn {
+            padding:8px 12px;border:none;border-radius:var(--er-radius);
+            font-family:var(--er-font);font-size:14px;font-weight:500;
+            cursor:pointer;transition:var(--er-trans);
+            display:inline-flex;align-items:center;justify-content:center;gap:6px;
+        }
+        .er-btn:focus { outline:none; }
+        .er-btn-primary   { background:var(--er-primary);color:#fff; } .er-btn-primary:hover   { background:var(--er-primary-d); }
+        .er-btn-secondary { background:var(--er-green);color:#fff; }   .er-btn-secondary:hover { background:var(--er-green-d); }
+        .er-btn-danger    { background:var(--er-red);color:#fff; }     .er-btn-danger:hover    { background:var(--er-red-d); }
+        .er-btn-light     { background:var(--er-light);color:var(--er-dark);border:1px solid #ddd; } .er-btn-light:hover { background:#e9ecef; }
+        .er-input {
+            padding:4px 8px;border:1px solid #ddd;border-radius:var(--er-radius);
+            font-family:var(--er-font);font-size:14px;transition:var(--er-trans);
+        }
+        .er-input:focus { outline:none;border-color:var(--er-primary);box-shadow:0 0 0 2px rgba(66,133,244,.2); }
+        .er-overlay {
+            position:fixed;inset:0;background:rgba(0,0,0,.5);
+            display:flex;align-items:center;justify-content:center;z-index:9999;
+            opacity:0;visibility:hidden;transition:var(--er-trans);
+        }
+        .er-overlay.show { opacity:1;visibility:visible; }
+        .er-modal {
+            background:#fff;border-radius:var(--er-radius);box-shadow:var(--er-shadow);
+            width:90%;max-width:600px;max-height:90vh;overflow:auto;
+            transform:translateY(-20px);transition:var(--er-trans);
+        }
+        .er-overlay.show .er-modal { transform:translateY(0); }
+        .er-modal-hd {
+            padding:16px;border-bottom:1px solid #eee;
+            display:flex;align-items:center;justify-content:space-between;
+        }
+        .er-modal-title { font-family:var(--er-font);font-size:18px;font-weight:500;margin:0; }
+        .er-modal-x { background:none;border:none;font-size:20px;cursor:pointer;color:var(--er-gray); }
+        .er-modal-bd { padding:16px; }
+        .er-modal-ft { padding:16px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:10px; }
+
+        /* ── eRank Table Modal ── */
+        #er-tbl-modal {
+            position:fixed;inset:0;z-index:999999;
+            background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;
+            font-family:Arial,sans-serif;
+        }
+        .er-box {
+            background:#fff;width:95%;max-width:1400px;max-height:90vh;overflow:hidden;
+            border-radius:12px;display:flex;flex-direction:column;color:#222;
+        }
+        .er-box-hd {
+            padding:12px 16px;border-bottom:1px solid #ddd;
+            display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+        }
+        .er-box-hd input { padding:6px 10px;width:220px; }
+        .er-close { margin-left:auto;cursor:pointer;font-size:20px; }
+        .er-tbl-wrap { overflow:auto; }
+        .er-tbl-wrap table { border-collapse:collapse;width:100%; }
+        .er-tbl-wrap thead th {
+            position:sticky;top:0;background:#f6f6f6;cursor:pointer;
+            border-bottom:1px solid #ccc;padding:8px;font-size:13px;white-space:nowrap;
+        }
+        .er-tbl-wrap tbody td { border-bottom:1px solid #eee;padding:6px 8px;font-size:14px;vertical-align:middle; }
+        .er-tbl-wrap tbody tr:hover { background:#fafafa; }
+        .er-tbl-wrap img { width:64px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer; }
+        .er-tbl-wrap a:hover img { opacity:.85; }
+        .er-num { text-align:right; }
+        .er-preview {
+            position:fixed;z-index:1000000;pointer-events:none;
+            background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);
+            padding:6px;display:none;
+        }
+        .er-preview img { max-width:300px;max-height:300px;width:auto;height:auto; }
+        /* Dark mode */
+        .er-dark { background:#121212 !important;color:#e6e6e6; }
+        .er-dark .er-box-hd { background:#181818;border-bottom:1px solid #2a2a2a; }
+        .er-dark input { background:#1f1f1f;color:#eee;border:1px solid #333; }
+        .er-dark .er-tbl-wrap table { background:#121212; }
+        .er-dark .er-tbl-wrap thead th { background:#1a1a1a;color:#ddd;border-bottom:1px solid #333; }
+        .er-dark .er-tbl-wrap tbody td { border-bottom:1px solid #242424;color:#e0e0e0; }
+        .er-dark .er-tbl-wrap tbody tr:hover { background:#1e1e1e; }
+        .er-dark .er-num { color:#bdbdbd; }
+        .er-dark .er-tbl-wrap img { box-shadow:0 0 0 1px #333; }
+        .er-dark .er-close { color:#aaa; } .er-dark .er-close:hover { color:#fff; }
+        .er-dark .er-preview { background:#111; }
+        .er-dark .er-filter-lbl input { background:#1f1f1f;color:#eee;border:1px solid #333; }
+        .er-th-sort { background:#2b2b2b;color:#fff; }
+        .er-th-sort::after { content:" ▴▾";font-size:10px;opacity:.8; }
+        .er-th-sort.asc::after { content:" ▲"; }
+        .er-th-sort.desc::after { content:" ▼"; }
+        .er-dark .er-th-sort { background:#444; }
+        .er-filter-lbl input { padding:2px 4px;font-size:11px; }
     `);
 
-    /**
-     * @param rawResponse {Record<string, unknown>|"CACHED"}
-     * @param element {HTMLElement}
-     */
-    async function EE_Ingest(id,rawResponse, element) {
-        try {
-            const liTagUnderRoot = element.closest("li")
-            const allListingEls = document.querySelectorAll(
-                "ul[data-results-grid-container] > li"
-            )
-
-            const searchRank =
-                  allListingEls.length && liTagUnderRoot
-            ? [...allListingEls].indexOf(liTagUnderRoot) + 1
-            : null
-
-            const data = JSON.stringify({
-                id,
-                scraped_at: new Date().toISOString(),
-                page_url: window.location.href,
-                search_rank: searchRank,
-                raw_html: element?.outerHTML ?? null,
-                payload: rawResponse,
-                team: config.team
-            })
-
-            await GM.xmlHttpRequest({
-                method: "POST",
-                url: "https://ee-ingest.lifecodeof.workers.dev/ingest?key=trust-me-bro",
-                data,
-                nocache: true,
-                redirect: "follow"
-            })
-        } catch (error) {
-            console.error("[EE]:", error)
-        }
-    }
-
-    // Config yapısı
-    const DEFAULT_CONFIG = {
-        apiKeyUspto: await GM.getValue('apiKeyUspto', ''),
-        sheetId: await GM.getValue('sheetId', ''),
-        sheetId2: await GM.getValue('sheetId2', ''),
-        range: await GM.getValue('range', ''),
-        rangeLink: await GM.getValue('rangeLink', ''),
-        privateKey: await GM.getValue('privateKey', ''),
-        clientEmail: await GM.getValue('clientEmail', ''),
-        team: await GM.getValue('team', 'X'),
-        manager: await GM.getValue('manager', '')
+    // ─── CONFIG ───────────────────────────────────────────────────────────────────
+    const CONFIG_DEFAULTS = {
+        apiKeyUspto: '', sheetId: '', sheetId2: '', range: '',
+        rangeLink: '', privateKey: '', clientEmail: '',
+        team: 'X', manager: '', authorization: '', config_version: null
     };
 
-    // Global değişkenler
-    let config = {...DEFAULT_CONFIG};
-    let configLoaded = false; // Add a flag to track if config is loaded
-    let toastContainer = null;
+    let config = { ...CONFIG_DEFAULTS };
+    let configLoaded = false;
 
-    // Config kontrol fonksiyonu
-    async function checkConfig() {
-        if (!configLoaded) {
-            await loadConfig();
-        }
-        return configLoaded;
-    }
-
-    // Config yönetimi
     async function loadConfig() {
+        if (configLoaded) return true;
         try {
-            const savedConfig = await GM.getValue('Config');
-            if (savedConfig) {
-                config = {...DEFAULT_CONFIG, ...savedConfig};
+            const saved = await GM.getValue('Config');
+            if (saved) {
+                config = { ...CONFIG_DEFAULTS, ...saved };
                 configLoaded = true;
                 return true;
-            }else if(DEFAULT_CONFIG.privateKey){
-                await migrateConfig()
+            }
+            // Legacy migration: individual keys → single 'Config' object
+            const legacy = await GM.getValue('privateKey', '');
+            if (legacy) {
+                const keys = Object.keys(CONFIG_DEFAULTS);
+                const vals = await Promise.all(keys.map(k => GM.getValue(k, CONFIG_DEFAULTS[k])));
+                keys.forEach((k, i) => { config[k] = vals[i]; });
+                await GM.setValue('Config', config);
+                await Promise.all(keys.map(k => GM.deleteValue(k)));
                 configLoaded = true;
                 return true;
             }
             return false;
-        } catch (error) {
-            console.error('Config yükleme hatası:', error);
+        } catch (err) {
+            console.error('[ErankOnEtsy] Config load error:', err);
             return false;
         }
-    }
-
-    async function migrateConfig() {
-        await saveConfig();
-        for (const key of Object.keys(DEFAULT_CONFIG)) await GM.deleteValue(key);
     }
 
     async function saveConfig() {
         await GM.setValue('Config', config);
     }
 
-    async function isConfigured() {
-
-        if (!config.deviceId) {
-            //showToast('Account credentials missing', 'error');
-            return false;
-        }
-        return true;
-    }
-
-    async function validateConfig() {
-        if (!configLoaded) {
-            await loadConfig(); // Ensure config is loaded
-        }
-
+    function validateConfig() {
         if (!config.clientEmail || !config.privateKey) {
             showToast('Google Service Account credentials missing', 'error');
             return false;
@@ -754,728 +203,602 @@
         return true;
     }
 
-    // Modern Toast Notification System
-    function createToastContainer() {
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            document.body.appendChild(toastContainer);
+    // ─── TOAST ────────────────────────────────────────────────────────────────────
+    let _toastWrap = null;
+    function getToastWrap() {
+        if (!_toastWrap) {
+            _toastWrap = document.createElement('div');
+            _toastWrap.className = 'er-toast-wrap';
+            document.body.appendChild(_toastWrap);
         }
-        return toastContainer;
+        return _toastWrap;
     }
 
-    function showToast(message, type = 'success', duration = 3000) {
-        const container = createToastContainer();
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-
-        const messageSpan = document.createElement('span');
-        messageSpan.textContent = message;
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        });
-
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeBtn);
-        container.appendChild(toast);
-
-        // Show animation
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        // Auto dismiss
-        if (duration > 0) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
-
-        return toast;
+    function showToast(msg, type = 'success', duration = 3000) {
+        const wrap = getToastWrap();
+        const t = document.createElement('div');
+        t.className = `er-toast er-toast-${type}`;
+        const span = document.createElement('span');
+        span.textContent = msg;
+        const x = document.createElement('button');
+        x.className = 'er-toast-x';
+        x.innerHTML = '&times;';
+        x.onclick = () => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); };
+        t.append(span, x);
+        wrap.appendChild(t);
+        requestAnimationFrame(() => t.classList.add('show'));
+        if (duration > 0) setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, duration);
     }
 
-    // Modern Config Dialog
-    async function showConfigMenu() {
-        // Create modal overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'etsy-tool-modal-overlay';
-
-        // Create modal
-        const modal = document.createElement('div');
-        modal.className = 'etsy-tool-modal';
-
-        // Modal header
-        const header = document.createElement('div');
-        header.className = 'etsy-tool-modal-header';
-
-        const title = document.createElement('h3');
-        title.className = 'etsy-tool-modal-title';
-        title.textContent = 'Etsy Erank Tool Ayarları';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'etsy-tool-modal-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        header.appendChild(title);
-        header.appendChild(closeBtn);
-
-        // Modal body
-        const body = document.createElement('div');
-        body.className = 'etsy-tool-modal-body';
-
-        // Form fields
-        const fields = [
-            { id: 'apiKeyUspto', label: 'KeyUspto', type: 'text', value: config.apiKeyUspto },
-            { id: 'clientEmail', label: 'Client Email', type: 'text', value: config.clientEmail },
-            { id: 'privateKey', label: 'Private Key', type: 'textarea', value: config.privateKey },
-            { id: 'rangeLink', label: 'Range Link', type: 'text', value: config.rangeLink },
-            { id: 'sheetId', label: 'Sheet ID', type: 'text', value: config.sheetId },
-            { id: 'range', label: 'Range ', type: 'text', value: config.range },
-            { id: 'sheetId2', label: 'SheetId2', type: 'text', value: config.sheetId2 },
-            { id: 'team', label: 'Team', type: 'text', value: config.team },
-            { id: 'manager', label: 'manager', type: 'text', value: config.manager }
+    // ─── CONFIG DIALOG ────────────────────────────────────────────────────────────
+    function showConfigMenu() {
+        const FIELDS = [
+            { id: 'apiKeyUspto',  label: 'USPTO API Key',  type: 'text' },
+            { id: 'clientEmail',  label: 'Client Email',   type: 'text' },
+            { id: 'privateKey',   label: 'Private Key',    type: 'textarea' },
+            { id: 'rangeLink',    label: 'Range Link',     type: 'text' },
+            { id: 'sheetId',      label: 'Sheet ID',       type: 'text' },
+            { id: 'range',        label: 'Range',          type: 'text' },
+            { id: 'sheetId2',     label: 'Sheet ID 2',     type: 'text' },
+            { id: 'team',         label: 'Team',           type: 'text' },
+            { id: 'manager',      label: 'Manager',        type: 'text' },
         ];
 
-        fields.forEach(field => {
-            const fieldContainer = document.createElement('div');
-            fieldContainer.style.marginBottom = '15px';
+        const overlay = document.createElement('div');
+        overlay.className = 'er-overlay';
 
-            const label = document.createElement('label');
-            label.textContent = field.label;
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.fontWeight = 'bold';
-
-            let input;
-            if (field.type === 'textarea') {
-                input = document.createElement('textarea');
-                input.style.height = '100px';
-            } else {
-                input = document.createElement('input');
-                input.type = field.type;
-            }
-
-            input.id = field.id;
-            input.className = 'etsy-tool-input';
-            input.value = field.value;
-            input.style.width = '100%';
-
-            fieldContainer.appendChild(label);
-            fieldContainer.appendChild(input);
-            body.appendChild(fieldContainer);
-        });
-
-        // Modal footer
-        const footer = document.createElement('div');
-        footer.className = 'etsy-tool-modal-footer';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'etsy-tool-btn etsy-tool-btn-light';
-        cancelBtn.textContent = 'İptal';
-        cancelBtn.addEventListener('click', () => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'etsy-tool-btn etsy-tool-btn-primary';
-        saveBtn.textContent = 'Kaydet';
-        saveBtn.addEventListener('click', async () => {
-            // Save config
-            fields.forEach(field => {
-                config[field.id] = field.type=='number' ? parseFloat(document.getElementById(field.id).value) : document.getElementById(field.id).value;
-            });
-
-            await saveConfig();
-            showToast('Ayarlar başarıyla kaydedildi', 'success');
-
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.remove(), 300);
-        });
-
-        footer.appendChild(cancelBtn);
-        footer.appendChild(saveBtn);
-
-        // Assemble modal
-        modal.appendChild(header);
-        modal.appendChild(body);
-        modal.appendChild(footer);
-        overlay.appendChild(modal);
-
-        // Add to document
-        document.body.appendChild(overlay);
-
-        // Show with animation
-        setTimeout(() => overlay.classList.add('show'), 10);
-    }
-
-    // Elementi sürüklenebilir yap
-    function makeDraggable(element, handle) {
-        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-
-        handle.onmousedown = dragMouseDown;
-
-        function dragMouseDown(e) {
-            e = e || window.event;
-            e.preventDefault();
-            // Fare pozisyonunu al
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            document.onmouseup = closeDragElement;
-            // Fare hareket ettiğinde çağrılacak fonksiyon
-            document.onmousemove = elementDrag;
-        }
-
-        function elementDrag(e) {
-            e = e || window.event;
-            e.preventDefault();
-            // Yeni pozisyonu hesapla
-            pos1 = pos3 - e.clientX;
-            pos2 = pos4 - e.clientY;
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            // Elementin pozisyonunu ayarla
-            element.style.top = (element.offsetTop - pos2) + "px";
-            element.style.left = (element.offsetLeft - pos1) + "px";
-            // Sabit konumdan çıkar
-            element.style.bottom = "auto";
-            element.style.right = "auto";
-        }
-
-        function closeDragElement() {
-            // Sürükleme işlemini durdur
-            document.onmouseup = null;
-            document.onmousemove = null;
-        }
-    }
-
-    function observeElements(selector, callback, document) {
-        const observedElements = new WeakSet();
-
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === 1) {
-                        if (node.matches(selector) && !observedElements.has(node)) {
-                            observedElements.add(node);
-                            callback(node);
-                        }
-                        node.querySelectorAll(selector).forEach((child) => {
-                            if (!observedElements.has(child)) {
-                                observedElements.add(child);
-                                callback(child);
+        overlay.innerHTML = `
+            <div class="er-modal">
+                <div class="er-modal-hd">
+                    <h3 class="er-modal-title">Etsy Erank Tool Ayarları</h3>
+                    <button class="er-modal-x">&times;</button>
+                </div>
+                <div class="er-modal-bd">
+                    ${FIELDS.map(f => `
+                        <div style="margin-bottom:14px">
+                            <label style="display:block;margin-bottom:4px;font-weight:bold">${f.label}</label>
+                            ${f.type === 'textarea'
+                                ? `<textarea id="cfg-${f.id}" class="er-input" style="width:100%;height:90px">${config[f.id] || ''}</textarea>`
+                                : `<input id="cfg-${f.id}" type="text" class="er-input" style="width:100%" value="${config[f.id] || ''}">`
                             }
-                        });
-                    }
-                });
-            });
-        });
+                        </div>`).join('')}
+                </div>
+                <div class="er-modal-ft">
+                    <button class="er-btn er-btn-light" id="cfg-cancel">İptal</button>
+                    <button class="er-btn er-btn-primary" id="cfg-save">Kaydet</button>
+                </div>
+            </div>`;
 
-        observer.observe(document.body, { childList: true, subtree: true });
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('show'));
 
-        document.querySelectorAll(selector).forEach((element) => {
-            if (!observedElements.has(element)) {
-                observedElements.add(element);
-                callback(element);
+        const close = () => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 300); };
+        overlay.querySelector('.er-modal-x').onclick = close;
+        overlay.querySelector('#cfg-cancel').onclick = close;
+        overlay.querySelector('#cfg-save').onclick = async () => {
+            FIELDS.forEach(f => { config[f.id] = document.getElementById(`cfg-${f.id}`).value; });
+            await saveConfig();
+            showToast('Ayarlar kaydedildi', 'success');
+            close();
+        };
+    }
+
+    // ─── DOM HELPERS ──────────────────────────────────────────────────────────────
+    function observeElements(selector, callback, doc) {
+        const seen = new WeakSet();
+        const handle = node => {
+            if (!seen.has(node)) { seen.add(node); callback(node); }
+        };
+        new MutationObserver(muts => {
+            for (const m of muts) {
+                for (const n of m.addedNodes) {
+                    if (n.nodeType !== 1) continue;
+                    if (n.matches(selector)) handle(n);
+                    n.querySelectorAll(selector).forEach(handle);
+                }
             }
-        });
+        }).observe(doc.body, { childList: true, subtree: true });
+        doc.querySelectorAll(selector).forEach(handle);
     }
 
-    async function fetchConfig() {
-        const CONFIG_URL = "https://raw.githubusercontent.com/cengaver/EtsyScript/refs/heads/main/config.json";
+    function onLoaded(doc, fn) {
+        if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', fn);
+        else fn();
+    }
+
+    async function waitFor(fn, delay = 300, timeout = 20_000) {
+        const t0 = Date.now();
+        while (!fn()) {
+            if (Date.now() - t0 > timeout) throw new Error('waitFor timeout');
+            await new Promise(r => setTimeout(r, delay));
+        }
+    }
+
+    // ─── GM XHR WRAPPER ───────────────────────────────────────────────────────────
+    function gmFetch(opts) {
         return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                method: "GET",
-                url: CONFIG_URL + "?t=" + Date.now(),
-                onload: r => {
-                    if (r.status !== 200) return reject();
-                    resolve(JSON.parse(r.responseText));
-                },
-                onerror: reject
+            GM.xmlHttpRequest({
+                ...opts,
+                onload: r => (r.status >= 200 && r.status < 300) ? resolve(r) : reject(r),
+                onerror: reject,
+                ontimeout: () => reject(new Error('timeout'))
             });
         });
     }
+
+    // ─── REMOTE CONFIG / BEARER ───────────────────────────────────────────────────
+    const CONFIG_URL = "https://raw.githubusercontent.com/cengaver/EtsyScript/refs/heads/main/config.json";
+    let _bearerFetchPromise = null;
 
     async function ensureBearer() {
-        console.log("Authorization güncellemesi kontrol ediliyor.")
-        const localVersion = config.config_version ?? null;
-        try {
-            const cfg = await fetchConfig();
-            //showToast('Remote versiyon: ' + cfg.version, 'info');
+        if (_bearerFetchPromise) return _bearerFetchPromise;
+        _bearerFetchPromise = (async () => {
+            try {
+                const r = await gmFetch({ method: 'GET', url: CONFIG_URL });
+                const cfg = JSON.parse(r.responseText);
+                if (cfg.version !== config.config_version) {
+                    config.authorization = cfg.bearer;
+                    config.config_version = cfg.version;
+                    await saveConfig();
+                    showToast('Authorization güncellendi', 'success');
+                }
+            } catch { /* keep existing bearer */ }
+            return config.authorization;
+        })();
+        // Reset after completion so next page load re-checks
+        _bearerFetchPromise.finally(() => { _bearerFetchPromise = null; });
+        return _bearerFetchPromise;
+    }
 
-            if (cfg.version !== localVersion) {
-                config.authorization = cfg.bearer;
-                config.config_version = cfg.version;
-                await saveConfig();
-                showToast('Authorization güncellendi', 'success');
+    // ─── JWT / GOOGLE AUTH ────────────────────────────────────────────────────────
+    const TOKEN_URI = "https://oauth2.googleapis.com/token";
+    let _accessTokenPromise = null;
+
+    async function getAccessToken() {
+        const cached = sessionStorage.getItem('er_at');
+        if (cached) return cached;
+        if (_accessTokenPromise) return _accessTokenPromise;
+        if (!validateConfig()) return null;
+
+        _accessTokenPromise = (async () => {
+            const jwt = await _createJwt();
+            if (!jwt) { showToast('Failed to create JWT', 'error'); return null; }
+
+            const res = await fetch(TOKEN_URI, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    assertion: jwt
+                })
+            });
+            const d = await res.json();
+            if (d.access_token) {
+                sessionStorage.setItem('er_at', d.access_token);
+                return d.access_token;
             }
+            console.error('[ErankOnEtsy] Token error:', d);
+            return null;
+        })();
+        _accessTokenPromise.finally(() => { _accessTokenPromise = null; });
+        return _accessTokenPromise;
+    }
 
-            return config.authorization;
-        } catch {
-            return config.authorization;
+    function _b64url(obj) {
+        return btoa(JSON.stringify(obj)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    }
+
+    async function _createJwt() {
+        try {
+            const now = Math.floor(Date.now() / 1000);
+            const header  = _b64url({ alg: 'RS256', typ: 'JWT' });
+            const payload = _b64url({
+                iss: config.clientEmail,
+                scope: 'https://www.googleapis.com/auth/spreadsheets',
+                aud: TOKEN_URI,
+                exp: now + 3600,
+                iat: now
+            });
+            const toSign = `${header}.${payload}`;
+            const sig = await _signRsa(toSign);
+            return `${toSign}.${sig}`;
+        } catch (e) {
+            console.error('[ErankOnEtsy] JWT error:', e);
+            return null;
         }
     }
 
-    async function doTheThing(window) {
-        // Önce config'in yüklendiğinden emin ol
-        if (!await checkConfig()) {
-            showToast('Config yüklenemedi', 'error');
+    async function _signRsa(data) {
+        const pem = config.privateKey.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s+/g, '');
+        const bin = atob(pem);
+        const buf = new Uint8Array(bin.length).map((_, i) => bin.charCodeAt(i)).buffer;
+        const key = await crypto.subtle.importKey(
+            'pkcs8', buf,
+            { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+            false, ['sign']
+        );
+        const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(data));
+        return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    }
+
+    // ─── EE INGEST ────────────────────────────────────────────────────────────────
+    // Fire-and-forget, non-blocking
+    function EE_Ingest(id, payload, element) {
+        try {
+            const lis = document.querySelectorAll('ul[data-results-grid-container] > li');
+            const li  = element.closest('li');
+            const rank = lis.length && li ? [...lis].indexOf(li) + 1 : null;
+            GM.xmlHttpRequest({
+                method: 'POST',
+                url: 'https://ee-ingest.lifecodeof.workers.dev/ingest?key=trust-me-bro',
+                data: JSON.stringify({ id, scraped_at: new Date().toISOString(), page_url: location.href, search_rank: rank, raw_html: element?.outerHTML ?? null, payload, team: config.team }),
+                nocache: true,
+                redirect: 'follow',
+                onerror: e => console.error('[EE ingest]', e)
+            });
+        } catch (e) {
+            console.error('[EE ingest]', e);
+        }
+    }
+
+    // ─── UTILITIES ────────────────────────────────────────────────────────────────
+    function toNum(s) {
+        if (s == null) return null;
+        const n = Number(String(s).replace(/,/g, ''));
+        return Number.isFinite(n) ? n : null;
+    }
+
+    function toInt(v) {
+        v = String(v).trim().toLowerCase();
+        if (v.endsWith('k')) return Math.round(parseFloat(v) * 1000);
+        return Math.round(parseFloat(v)) || 0;
+    }
+
+    function pastDateFromText(v) {
+        const s = String(v).toLowerCase();
+        const y = s.match(/(\d+)\s*year/), m = s.match(/(\d+)\s*month/);
+        if (!y && !m) return '';
+        const d = new Date();
+        if (y) d.setFullYear(d.getFullYear() - +y[1]);
+        if (m) d.setMonth(d.getMonth() - +m[1]);
+        return `${d.getFullYear()}:${String(d.getMonth()+1).padStart(2,'0')}:${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function parsePriceToNumber(s) {
+        if (!s) return null;
+        s = String(s).trim().replace(/\s+/g,'').replace(/[^0-9.,\-]/g,'');
+        const lc = s.lastIndexOf(','), ld = s.lastIndexOf('.');
+        if (lc > -1 && ld > -1) { s = lc > ld ? s.replace(/\./g,'').replace(',','.') : s.replace(/,/g,''); }
+        else if (lc > -1) s = s.replace(',','.');
+        const n = parseFloat(s);
+        return Number.isFinite(n) ? n : null;
+    }
+
+    function simplifyEtsyUrl(url) {
+        try {
+            const p = new URL(url).pathname.split('/');
+            if (p.length > 3) return `https://www.etsy.com/listing/${p[2]}/${p[3]}`;
+        } catch {}
+        return url;
+    }
+
+    function toFullImg(url, size = 120) {
+        if (!url) return url;
+        return url.replace(/il_\d+x\d+N?_?|il_\d+xN|\b\d+x\d+\b/, `il_${size}x${size}`);
+    }
+
+    function extractFirstParts(text) {
+        const kws = ['Sweatshirt','T Shirt','T-Shirt','Tshirt','Shirt','Hoodie','Png','Svg','Tee','DTF'];
+        const lower = text.toLowerCase();
+        let minPos = Infinity, kw = '';
+        for (const k of kws) {
+            const p = lower.indexOf(k.toLowerCase());
+            if (p !== -1 && p < minPos) { minPos = p; kw = k; }
+        }
+        const raw = kw ? lower.slice(0, minPos).trim().replace(/comfort colors /i, '') : lower;
+        return raw.replace(/&#39;|'/g, "'").replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function norm(v, min, max) {
+        if (max <= min) return 0;
+        return Math.min(1, Math.max(0, (v - min) / (max - min)));
+    }
+
+    function salesColor(v, min, max) { return `rgba(76,175,80,${0.15 + 0.6 * norm(v, min, max)})`; }
+    function convColor(v, min, max)  {
+        const t = norm(v, min, max);
+        return `rgba(${Math.round(33*(1-t))},${Math.round(150+80*t)},243,${0.15+0.6*t})`;
+    }
+
+    // ─── LOCAL STORAGE HELPERS ────────────────────────────────────────────────────
+    function clearErankCache() {
+        const toDelete = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('erank')) toDelete.push(k);
+        }
+        toDelete.forEach(k => localStorage.removeItem(k));
+        showToast(`${toDelete.length} erank cache kaydı silindi.`, 'info');
+    }
+
+    function safeSet(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            if (e.name === 'QuotaExceededError' || e.code === 22) {
+                clearErankCache();
+                try { localStorage.setItem(key, value); } catch {}
+            }
+        }
+    }
+
+    // ─── GOOGLE SHEETS ────────────────────────────────────────────────────────────
+    // Cache for column data per sheet (lives for 1h in localStorage)
+    async function fetchColumnData(sheetSlot = 1) {
+        const sheet = sheetSlot === 2 ? config.sheetId2 : config.sheetId;
+        if (!sheet) return;
+
+        const cKey = `er_cd_${sheetSlot}`, tKey = `${cKey}_ts`;
+        const now = Date.now();
+        const cached = JSON.parse(localStorage.getItem(cKey));
+        const ts     = +localStorage.getItem(tKey);
+
+        if (cached && now - ts < 60 * 60 * 1000) return;
+        if (cached) localStorage.removeItem(cKey);
+
+        const token = await getAccessToken();
+        if (!token) return;
+
+        try {
+            const r = await gmFetch({
+                method: 'GET',
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${config.range}`,
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const { values = [] } = JSON.parse(r.responseText);
+            const processed = values
+                .filter(row => row[0])
+                .map(row => ({
+                    id:       row[row.length - 1],
+                    dnoValue: row[0],
+                    gDrive:   row[row.length - 3],
+                    team:     row[5]
+                }));
+            localStorage.setItem(cKey, JSON.stringify(processed));
+            localStorage.setItem(tKey, String(now));
+        } catch (e) {
+            sessionStorage.removeItem('er_at');
+            console.error('[ErankOnEtsy] fetchColumnData error:', e);
+        }
+    }
+
+    function findById(id, slot = 1) {
+        const data = JSON.parse(localStorage.getItem(`er_cd_${slot}`)) || [];
+        const m = data.find(r => r.id === id);
+        return { dnoValue: m?.dnoValue ?? null, gDrive: m?.gDrive ?? null, teamname: m?.team ?? null };
+    }
+
+    async function saveToGoogleSheet(sheet, link, title, img, sales, age, tags) {
+        const token = await getAccessToken();
+        if (!token) return;
+
+        const tagStr = Array.isArray(tags) ? tags.join(', ') : tags;
+
+        // 1. Check existing links
+        let lastRow = 0, exists = false;
+        try {
+            const r = await gmFetch({
+                method: 'GET',
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${config.rangeLink}?majorDimension=COLUMNS`,
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const d = JSON.parse(r.responseText);
+            const col = d.values?.[0] ?? [];
+            if (col.includes(link)) { exists = true; }
+            lastRow = col.length;
+        } catch (e) {
+            sessionStorage.removeItem('er_at');
+            showToast('Sheet okuma hatası', 'error');
             return;
         }
 
-        await getErankButtons();
-        const tokenUri = "https://oauth2.googleapis.com/token";
+        if (exists) { showToast(`${title}\nzaten var!`, 'error'); return; }
 
-        // Then call this before attempting to create JWT
-        async function createJwtToken() {
-            try {
-                const header = {
-                    alg: "RS256",
-                    typ: "JWT",
-                };
+        const newRow = lastRow + 1;
+        const isListe = config.rangeLink === 'Liste!D:D';
+        const sheetName = isListe ? 'Liste' : config.rangeLink.split('!')[0];
+        const range = isListe ? `Liste!D${newRow}:J${newRow}` : `${sheetName}!F${newRow}:P${newRow}`;
+        const values = isListe
+            ? [[link, img, title, null, tagStr, sales, age]]
+            : [[link, img, title, null, config.team, config.manager, tagStr, null, null, sales, age]];
 
-                const now = Math.floor(Date.now() / 1000);
-                const payload = {
-                    iss: config.clientEmail,
-                    scope: "https://www.googleapis.com/auth/spreadsheets", // Adjust scope as needed
-                    aud: tokenUri,
-                    exp: now + 3600, // 1 hour expiration
-                    iat: now,
-                };
-
-                // Function to base64 encode JSON strings
-                function base64Encode(obj) {
-                    return btoa(JSON.stringify(obj))
-                        .replace(/=/g, "")
-                        .replace(/\+/g, "-")
-                        .replace(/\//g, "_");
-                }
-
-                const encodedHeader = base64Encode(header);
-                const encodedPayload = base64Encode(payload);
-
-                // Sign the token using the private key
-                const toSign = `${encodedHeader}.${encodedPayload}`;
-                const signature = await signWithPrivateKey(toSign);
-                return `${toSign}.${signature}`;
-            } catch (error) {
-                console.error('JWT creation failed:', error);
-                return null;
-            }
-        }
-
-        async function signWithPrivateKey(data) {
-            try {
-                const crypto = window.crypto.subtle || window.crypto.webkitSubtle;
-
-                // Clean and prepare the private key
-                const pemContents = config.privateKey
-                .replace(/-----BEGIN PRIVATE KEY-----/, '')
-                .replace(/-----END PRIVATE KEY-----/, '')
-                .replace(/\s+/g, '');
-
-                // Convert from Base64 to ArrayBuffer
-                const binaryString = atob(pemContents);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                // Import the key
-                const key = await crypto.importKey(
-                    'pkcs8',
-                    bytes.buffer,
-                    { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } },
-                    false,
-                    ['sign']
-                );
-
-                // Sign the data
-                const signature = await crypto.sign(
-                    'RSASSA-PKCS1-v1_5',
-                    key,
-                    new TextEncoder().encode(data)
-                );
-
-                // Convert signature to Base64URL
-                return btoa(String.fromCharCode(...new Uint8Array(signature)))
-                    .replace(/=/g, '')
-                    .replace(/\+/g, '-')
-                    .replace(/\//g, '_');
-            } catch (error) {
-                console.error('Error in signWithPrivateKey:', error);
-                showToast('JWT signing failed. Check private key format.', 'error');
-                throw error; // Re-throw to be caught by caller
-            }
-        }
-
-        // Helper: Convert PEM private key to ArrayBuffer
-        function pemToArrayBuffer(pem) {
-            const base64 = pem
-            .replace(/-----BEGIN PRIVATE KEY-----/, "")
-            .replace(/-----END PRIVATE KEY-----/, "")
-            .replace(/\n/g, "");
-            //console.log(base64);
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        // Modify getAccessToken to wait for config
-        async function getAccessToken(e) {
-            let AccToken = JSON.parse(sessionStorage.getItem('AccessToken')) || null;
-            if (AccToken) {
-                return AccToken;
-            }
-
-            if (!await validateConfig()) return null;
-
-            // Rest of the function remains the same...
-            const jwt = await createJwtToken();
-            if (!jwt) {
-                showToast('Failed to create JWT token', 'error');
-                return null;
-            }
-
-            const response = await fetch(tokenUri, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                    grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                    assertion: jwt,
-                }),
+        try {
+            await gmFetch({
+                method: 'PUT',
+                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${range}?valueInputOption=RAW`,
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                data: JSON.stringify({ range, majorDimension: 'ROWS', values })
             });
-
-            const data = await response.json();
-            sessionStorage.setItem('AccessToken', JSON.stringify(data.access_token));
-            return data.access_token;
+            showToast(`${title}\nlisteye eklendi!`);
+        } catch (e) {
+            showToast('Sheet yazma hatası', 'error');
+            console.error('[ErankOnEtsy] saveToSheet error:', e);
         }
+    }
 
-
-        function convertToNumber(age) {
-            // Virgülü kaldırıp noktaya çeviriyoruz
-            let cleanedAge = age.replace(',', '');
-            // Number ile dönüştürüyoruz
-            let numericAge = Number(cleanedAge);
-
-            // Sayı değilse bir hata mesajı verebiliriz
-            if (isNaN(numericAge)) {
-                console.error("Geçerli bir sayı değil:", age);
-                return null;
-            }
-
-            return numericAge;
-        }
-
-        // Google Sheets'e link ekle
-        async function saveToGoogleSheet(sheet, link, title, img, sales, age, tag) {
-            const accessToken = await getAccessToken();
-            if(!accessToken) return;
-
-            const tags = tag!=""?tag.join(", "):tag;
-            // 1. Mevcut son dolu satırı bul
-            let linkAlreadyExists = false;
-            let lastRow = 0;
-            await GM.xmlHttpRequest({
-                method: "GET",
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${config.rangeLink}?majorDimension=COLUMNS`,
-                headers: {
-                    "Authorization": `Bearer ${accessToken}`
-                },
-                onload: function (response) {
-                    if (response.status === 200) {
-                        const data = JSON.parse(response.responseText);
-                        if (data.values && data.values[0]) {
-                            // Mevcut linklerle karşılaştır
-                            if (data.values[0].includes(link)) {
-                                linkAlreadyExists = true; // Link zaten mevcut
-                            }
-                        }
-                        if (data.values && data.values.length > 0) {
-                            lastRow = data.values[0].length; // En son dolu satır sayısını al
-                        }
-                    } else {
-                        sessionStorage.removeItem('AccessToken');
-                        console.error("Veri alınırken hata oluştu:", response.responseText);
-                        showToast('Veri alınırken hata oluştu', 'error');
-                    }
-                },
-                onerror: function (error) {
-                    console.error("GET isteği hatası:", error);
-                    showToast("GET isteği hatası", 'error');
-                }
-            });
-
-            // Eğer link zaten varsa, işlem yapılmasın ve uyarı verilsin
-            if (linkAlreadyExists) {
-                showToast(title + '\n zaten var!', 'error');
-                return; // İşlem sonlanır, link eklenmez
-            }
-            // 2. Linki en son satırın altına ekle
-            const newRow = lastRow + 1;
-
-            let body;
-
-            if (config.rangeLink == "Liste!D:D") {
-                body = {
-                    range: `Liste!D${newRow}:J${newRow}`,
-                    majorDimension: "ROWS",
-                    values: [
-                        [
-                            link,
-                            img,
-                            title,
-                            null,
-                            tags,
-                            sales,
-                            age
-                        ]
-                    ]
-                };
-            } else {
-                const sheetName = config.rangeLink.split("!")[0];
-                body = {
-                    range: `${sheetName}!F${newRow}:P${newRow}`,
-                    majorDimension: "ROWS",
-                    values: [
-                        [
-                            link,
-                            img,
-                            title,
-                            null,
-                            config.team,
-                            config.manager,
-                            tags,
-                            null,
-                            null,
-                            sales,
-                            age
-                        ]
-                    ]
-                };
-            }
-
-            await GM.xmlHttpRequest({
-                method: "PUT",
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${body.range}?valueInputOption=RAW`,
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${accessToken}`
-                },
-                data: JSON.stringify(body),
-                onload: function (response) {
-                    if (response.status === 200 || response.status === 201) {
-                        console.log("Başarıyla eklendi:", link);
-                        console.log("Başarıyla resim eklendi:", img);
-                        showToast(title + '\n listeye eklendi!');
-                    } else {
-                        console.error("Ekleme hatası:", response.responseText);
-                    }
-                },
-                onerror: function (error) {
-                    console.error("PUT isteği hatası:", error);
-                }
-            });
-        }
-
-        // Google Sheets ve eRank işlemleri için aynı kodları kullandım.
-        const fetchColumnData = async (sID = null) => {
-            if (!config.sheetId && !config.sheetId2) return
-            let cacheKey;
-            let sheet;
-            if (sID && config.sheetId2) {
-                cacheKey = 'cachedData2';
-                sheet = config.sheetId2;
-            } else {
-                cacheKey = 'cachedData';
-                sheet = config.sheetId;
-            }
-            const cacheTimestampKey = `${cacheKey}_timestamp`;
-            const now = Date.now();
-            const cachedData = JSON.parse(localStorage.getItem(cacheKey));
-            const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
-
-            if (cachedData && cacheTimestamp && now - parseInt(cacheTimestamp) < 1 * 60 * 60 * 1000) {
-                return cachedData;
-            }
-            if (cachedData) { localStorage.removeItem(cacheKey) }
-
-            const accessToken = await getAccessToken();
-            if(!accessToken) return;
-
-            await GM.xmlHttpRequest({
-                method: "GET",
-                url: `https://sheets.googleapis.com/v4/spreadsheets/${sheet}/values/${config.range}`,
-                headers: {
-                    "Authorization": `Bearer ${accessToken}`
-                },
-                onload: function (response) {
-                    if (response.status === 200) {
-                        const data = JSON.parse(response.responseText);
-                        const processedData = data.values
-                        .filter(row => row[0] != null && row[0] !== '') // row[0] boş değilse devam et
-                        .map(row => ({
-                            id: row[row.length - 1], // AD sütunu (son sütun)
-                            dnoValue: row[0], // E sütunu (ilk sütun)
-                            gDrive: row[row.length - 3], // AB gDrive serach
-                            team: row[5], // J sütunu
-                        }));
-                        localStorage.setItem(cacheKey, JSON.stringify(processedData));
-                        localStorage.setItem(cacheTimestampKey, now.toString());
-                        return { processedData };
-                    } else {
-                        sessionStorage.removeItem('AccessToken');
-                        console.error("Veri alınırken hata oluştu:", response.responseText);
-                    }
-                },
-                onerror: function (error) {
-                    console.error("GET isteği hatası:", error);
-                }
-            });
+    async function logToGoogleSheets(data) {
+        const url = "https://script.google.com/macros/s/AKfycbxuh_lJRDY4ZCVY3js2JVlIdusGmb3RtDd4IlH82hisewmwR13PUogxW9pUuX8h0C-e/exec";
+        const body = data.sheetName ? data : {
+            id: String(data.id), link: data.link||'', img: data.img||'', title: data.title||'',
+            tag: data.tag||'', sls: data.sls||'', day: data.day||'',
+            quantity: data.quantity||'', views: data.views||'', favorers: data.favorers||'',
+            est_conversion_rate: data.est_conversion_rate||'', team: config.team||''
         };
+        try {
+            await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+        } catch {}
+    }
 
-        const findEValueById = (id, sID = null) => {
-            let cacheKey;
-            if (sID) {
-                cacheKey = 'cachedData2';
-            } else {
-                cacheKey = 'cachedData';
+    // ─── ERANK API ────────────────────────────────────────────────────────────────
+    async function getErankData(id, el, imgUrl = null, link = null) {
+        const key = `erank_${id}`;
+        const cached = JSON.parse(localStorage.getItem(key));
+        if (cached && Date.now() - +cached.timestamp < 48 * 60 * 60 * 1000 && cached.tags && cached.title) {
+            EE_Ingest(id, { type: 'cached', data: cached }, el);
+            return cached;
+        }
+        if (cached) localStorage.removeItem(key);
+
+        try {
+            const res = await eRankNative.extFetch(`ext/listing/${id}`, 'GET');
+            if (!res.success) return { error: res.status === 404 ? 'Not found' : 'Error' };
+
+            const d = res.data;
+            EE_Ingest(id, { type: 'raw', data: d }, el);
+
+            const age   = toNum(d.stats.listing_age);
+            const sales = toNum(d.stats.est_sales.label);
+            const erankData = {
+                sales, age, title: d.title,
+                timestamp: String(Date.now()),
+                tags:      Object.keys(d.tags),
+                link, img: imgUrl,
+                quantity:            toNum(d.stats.quantity),
+                views:               toNum(d.stats.views),
+                favorers:            toNum(d.stats.favorers),
+                est_conversion_rate: d.stats.est_conversion_rate.value
+            };
+            safeSet(key, JSON.stringify(erankData));
+
+            if (age >= 1 && age <= 50 && sales / 1.3 > age) {
+                logToGoogleSheets({ id, link, img: imgUrl, title: d.title, tag: erankData.tags, sls: sales, day: age, quantity: erankData.quantity, views: erankData.views, favorers: erankData.favorers, est_conversion_rate: erankData.est_conversion_rate });
             }
-            const cachedData = JSON.parse(localStorage.getItem(cacheKey)) || [];
-            const match = cachedData.find(row => row.id === id);
-            const dnoValue = match ? match.dnoValue : null;
-            const gDrive = match ? match.gDrive : null;
-            const teamname = match ? match.team : null;
-            return { dnoValue, gDrive, teamname };
+            return erankData;
+        } catch (e) {
+            console.error('[ErankOnEtsy] getErankData:', e);
+            return null;
+        }
+    }
+
+    // ─── TREND SCORING ────────────────────────────────────────────────────────────
+    function buildStats(data) {
+        const s = arr => [...arr].sort((a, b) => a - b);
+        const p = (arr, x) => arr[Math.floor(arr.length * x)] || 0;
+        const sales = s(data.map(d => d.sales || 0));
+        const spd   = s(data.map(d => (d.sales || 0) / (d.age || 1)));
+        const conv  = s(data.map(d => d.est_conversion_rate || 0));
+        const views = s(data.map(d => d.views || 0));
+        return {
+            salesMedian: p(sales,.5), salesP75: p(sales,.75),
+            spdP20: p(spd,.2), spdP30: p(spd,.3), spdP40: p(spd,.4),
+            spdP50: p(spd,.5), spdP75: p(spd,.75),
+            convP30: p(conv,.3), viewsP75: p(views,.75)
         };
+    }
 
-        const getErankData = async (id, el, imgUrl=null, link=null) => {
-            const cacheKey = `erank_${id}`;
-            const now = Date.now();
-            const cachedData = JSON.parse(localStorage.getItem(cacheKey));
+    function convScore(v) {
+        if (!v || v <= 0) return .3;
+        if (v < .5)  return .5;
+        if (v < 1)   return .7;
+        if (v < 2)   return .85;
+        return 1;
+    }
 
-            if (
-                cachedData &&
-                now - parseInt(cachedData.timestamp) < 48 * 60 * 60 * 1000 &&
-                "tags" in cachedData &&
-                "title" in cachedData
-            ) {
-                EE_Ingest(id, { type: "cached", data: cachedData }, el);
-                return cachedData;
-            }
-            if (cachedData) { localStorage.removeItem(cacheKey) }
-            // if (!await isConfigured()) return;
+    function trendScore(d, stats) {
+        const age = d.age || 1, sales = d.sales || 0, views = d.views || 0, fav = d.favorers || 0, conv = d.est_conversion_rate || 0;
+        if (!sales) return age <= 14 ? .15 : .03;
+        const spd      = sales / age;
+        const velocity = norm(spd, stats.spdP30 || 0, stats.spdP75 || Math.max(spd, 1));
+        const favRate  = norm(fav / (views || 1), 0, .2);
+        const momentum = velocity * .5 + convScore(conv) * .35 + favRate * .15;
+        const ageBias  = age < 7 ? .85 : age <= 30 ? 1 : age <= 120 ? .9 : .75;
+        const decay    = age > 240 && velocity < .15 ? .2 : age > 120 && velocity < .25 ? .4 : 1;
+        return +Math.min(1, Math.max(0, momentum * ageBias * decay)).toFixed(4);
+    }
+
+    function trendDelta(d, stats) {
+        const age = d.age || 1, sales = d.sales || 0;
+        if (!sales) return 0;
+        const v = norm(sales / age, stats.spdP30 || 0, stats.spdP75 || Math.max(sales / age, 1));
+        return age <= 14 ? v*.6 : age <= 45 ? v*.8 : age <= 120 ? v*.4 : v*.15;
+    }
+
+    function buildRankIndex(data, stats) {
+        return [...data].map(d => ({ d, s: trendScore(d, stats) })).sort((a,b) => b.s - a.s).map(x => x.d);
+    }
+
+    function rankBucket(d, idx) {
+        const i = idx.indexOf(d);
+        if (i < 0) return 1;
+        const p = i / idx.length;
+        return p <= .10 ? .10 : p <= .25 ? .25 : p <= .50 ? .50 : 1;
+    }
+
+    function trendBadge(d, stats, idx) {
+        const score = trendScore(d, stats), delta = trendDelta(d, stats);
+        const age = d.age || 0, sales = d.sales || 0, spd = sales / (age || 1);
+        if (!sales && age > 30)             return { t: '❌ DEAD',       c: '#991b1b' };
+        if (score >= .75 && delta > .5  && rankBucket(d, idx) <= .10) return { t: '🔥 HOT',        c: '#15803d' };
+        if (score >= .6  && delta > .35 && age <= 60)                 return { t: '🚀 RISING',     c: '#f97316' };
+        if (score >= .45)                   return { t: '✅ STABLE',     c: '#2563eb' };
+        if (age > 180 && spd < .04)         return { t: '⚠️ SATURATED', c: '#a855f7' };
+        if (score < .15)                    return { t: '❌ DEAD',       c: '#991b1b' };
+        return { t: '🧪 LOW SIGNAL', c: '#6b7280' };
+    }
+
+    // ─── ERANK TABLE MODAL ────────────────────────────────────────────────────────
+    function getAllErankItems() {
+        const rows = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k?.startsWith('erank_')) continue;
             try {
-                const response = await eRankNative.extFetch(`ext/listing/${id}`, "GET")
-
-                if (!response.success) {
-                    console.error("eRank API error:", response.error);
-                    return {
-                        error: response.status === 404 ? "Not found" : "Error",
-                    };
+                const row = JSON.parse(localStorage.getItem(k));
+                if (row && 'img' in row) {
+                    const id = k.slice(6);
+                    if (config.sheetId) {
+                        const { dnoValue, gDrive, teamname } = findById(id);
+                        row.dnoValue = dnoValue; row.gDrive = gDrive; row.teamname = teamname;
+                    }
+                    rows.push(row);
                 }
+            } catch {}
+        }
+        return rows;
+    }
 
-                const data = response.data;
+    function openErankTableModal(win) {
+        const doc = win.document;
+        if (doc.getElementById('er-tbl-modal')) return;
 
-                EE_Ingest(id, { type: "raw", data }, el);
-                const age = convertToNumber(data.stats.listing_age);
-                const sales = convertToNumber(data.stats.est_sales.label);
-                const erankData = {
-                    sales: sales,
-                    age: age,
-                    title: data.title,
-                    timestamp: now.toString(),
-                    tags: Object.keys(data.tags),
-                    link: link,
-                    img: imgUrl,
-                    quantity: convertToNumber(data.stats.quantity),
-                    views: convertToNumber(data.stats.views),
-                    favorers: convertToNumber(data.stats.favorers),
-                    est_conversion_rate: data.stats.est_conversion_rate.value
-                };
-                const erankLogData = {
-                    id: id,
-                    link: link,
-                    img: imgUrl,
-                    title: data.title,
-                    tag: Object.keys(data.tags),
-                    sls: sales,
-                    day: age,
-                    quantity: convertToNumber(data.stats.quantity),
-                    views: convertToNumber(data.stats.views),
-                    favorers: convertToNumber(data.stats.favorers),
-                    est_conversion_rate: data.stats.est_conversion_rate.value
-                };
-                safeSetItem(cacheKey, JSON.stringify(erankData));
-                if ((age >= 1 && age <= 50) && ( sales / 1.3 > age) ){
-                    await logToGoogleSheets(erankLogData);
-                }
-                return erankData;
-            } catch (error) {
-                //showToast('Erank Login OL', 'error');
-                console.error("eRank data fetch error:", error);
-            }
-        };
+        const base = getAllErankItems();
+        const stats = buildStats(base);
+        const idx   = buildRankIndex(base, stats);
+        const salesVals = base.map(d => +d.sales || 0), convVals = base.map(d => +d.est_conversion_rate || 0);
+        const [salesMin, salesMax] = [Math.min(...salesVals), Math.max(...salesVals)];
+        const [convMin,  convMax]  = [Math.min(...convVals),  Math.max(...convVals)];
 
-        function openErankTableModal(){
-            if(window.document.getElementById("erank-table-modal")) return
-
-            let data=getAllErankItems()
-            const baseData=[...data]
-            const state={
-                q:"",
-                sMin:NaN,sMax:NaN,
-                aMin:NaN,aMax:NaN,
-                rank:NaN,
-                titleType:"all", // all | with | without
-                sortKey:null,
-                sortDir:1
-            }
-
-            const stats = buildStats(data)
-            const modal=window.document.createElement("div")
-            modal.id="erank-table-modal"
-
-            modal.innerHTML=`
-           <div class="erank-box">
-              <div class="erank-header">
+        const modal = doc.createElement('div');
+        modal.id = 'er-tbl-modal';
+        modal.innerHTML = `
+            <div class="er-box">
+              <div class="er-box-hd">
                 <strong>eRank Cache</strong>
-                <input id="erank-search" placeholder="Title ara…">
-                <span id="erank-count"></span>
-                <span class="erank-filter-row">Sales:
-                  <input id="sales-min" placeholder="min" type="number" style="width:60px">
-                  <input id="sales-max" placeholder="max" type="number" style="width:60px">
+                <input id="er-search" placeholder="Title ara…">
+                <span id="er-count"></span>
+                <span class="er-filter-lbl">Sales:
+                  <input id="sf-smin" placeholder="min" type="number" style="width:58px">–
+                  <input id="sf-smax" placeholder="max" type="number" style="width:58px">
                 </span>
-                <span class="erank-filter-row">Age:
-                  <input id="age-min" placeholder="min" type="number" style="width:50px">
-                  <input id="age-max" placeholder="max" type="number" style="width:50px">
+                <span class="er-filter-lbl">Age:
+                  <input id="sf-amin" placeholder="min" type="number" style="width:48px">–
+                  <input id="sf-amax" placeholder="max" type="number" style="width:48px">
                 </span>
-                <span class="erank-filter-row">
-                  Title:
-                  <select id="title-type-filter">
-                    <option value="all">Hepsi</option>
-                    <option value="with">PNG / SVG</option>
-                    <option value="without">Fiziksel</option>
-                  </select>
+                <span class="er-filter-lbl">Title:
+                  <select id="sf-title"><option value="all">Hepsi</option><option value="with">PNG/SVG</option><option value="without">Fiziksel</option></select>
                 </span>
-                <span class="erank-filter-row">
-                  Rank:
-                  <select id="rank-filter">
+                <span class="er-filter-lbl">Rank:
+                  <select id="sf-rank">
                     <option value="">All</option>
                     <option value="hot">🔥 HOT</option>
                     <option value="rising">🚀 RISING</option>
@@ -1484,1092 +807,423 @@
                     <option value="dead">❌ DEAD</option>
                   </select>
                 </span>
-
-                <button id="erank-theme-toggle"
-                  style="margin-left:auto;padding:4px 10px;cursor:pointer">
-                  🌙 Dark
-                </button>
-                <button id="erank-clear"
-                  style="margin-left:auto;padding:4px 10px;cursor:pointer">
-                  Clear
-                </button>
-                <span class="erank-close" id="erank-close">✕</span>
+                <button id="er-theme" style="padding:4px 10px;cursor:pointer">🌙 Dark</button>
+                <button id="er-clear" style="padding:4px 10px;cursor:pointer">🗑 Clear</button>
+                <span class="er-close" id="er-close">✕</span>
               </div>
-
-             <div class="erank-table-wrap">
-               <table>
-                 <thead>
-                   <tr>
-                     <th>Img</th>
-                     <th data-k="title">Title</th>
-                     <th data-k="sales">Sales</th>
-                     <th data-k="rank">Rank</th>
-                     <th data-k="views">Views</th>
-                     <th data-k="favorers">Fav</th>
-                     <th data-k="quantity">Qty</th>
-                     <th data-k="est_conversion_rate">Conv %</th>
-                     <th data-k="age">Age</th>
-                   </tr>
-                 </thead>
-                 <tbody id="erank-body"></tbody>
-               </table>
-             </div>
-           </div>
-           `
-            window.document.body.appendChild(modal)
-            const body=modal.querySelector("#erank-body")
-            const count=modal.querySelector("#erank-count")
-            const search=modal.querySelector("#erank-search")
-
-            function render(rows,stats){
-                body.innerHTML = rows.map(d => {
-                    const s=trendScore(d,stats)
-                    const b = trendBadgeV3(d,stats,rankIndex)
-                    return `
-                 <tr>
-                   <td>
-                     ${d.link
-                        ? `<a href="${d.link}" target="_blank" class="erank-img-link">
-                            <img src="${toFullImg(d.img||"")}" data-previews="${toFullImg(d.img||"",200)}">
-                          </a>`
-                    : `<img src="${toFullImg(d.img||"")}" data-previews="${toFullImg(d.img||"",200)}">`
-                }
-                   </td>
-                   <td>
-                     ${
-                       d.gDrive
-                         ? `
-                           <a href="${d.gDrive}"
-                              title="${(d.teamname||"-")+" - "+(d.dnoValue||"-")}"
-                              target="_blank"
-                              style="text-decoration:none;margin-left:6px;">
-                              💖
-                           </a>
-                           `
-                         : d.dnoValue
-                           ? `
-                           <span
-                             title="${(d.teamname||"-")+" - "+(d.dnoValue||"-")}"
-                             style="margin-left:6px;">
-                             ❤️
-                           </span>
-                           `
-                           : `
-                           <div class="heartWrapper"
-                                data-currenturl="${d.link}"
-                                data-title="${d.title}"
-                                data-img="${toFullImg(d.img||"",200)}"
-                                data-sales="${d.sales}"
-                                data-age="${d.age}"
-                                data-tags="${encodeURIComponent(JSON.stringify(d.tags||[]))}"
-                                style="display:inline-block;position:relative;margin-left:6px;">
-                             <a href="#"
-                                title="Listeye EKLE!"
-                                style="text-decoration:none;cursor:cell;">
-                                🤍
-                             </a>
-                           </div>
-                           `
-                     }
-                     ${d.title||"-"}
-                   </td>
-                   <td class="num"
-                     style="background:${salesColor(d.sales||0,salesMin,salesMax)}">
-                     ${d.sales??""}
-                   </td>
-                   <td>
-                    <span style="
-                      display:inline-flex;
-                      align-items:center;
-                      gap:4px;
-                      padding:2px 8px;
-                      border-radius:12px;
-                      font-size:11px;
-                      font-weight:600;
-                      line-height:1;
-                      white-space:nowrap;
-                      background:${b.c};
-                      color:#fff">
-                      ${b.t}
-                    </span>
-                   </td>
-                   <td class="num">${d.views??""}</td>
-                   <td class="num">${d.favorers??""}</td>
-                   <td class="num">${d.quantity??""}</td>
-                   <td class="num"
-                     style="background:${convColor(d.est_conversion_rate||0,convMin,convMax)}">
-                     ${d.est_conversion_rate??""}
-                   </td>
-                   <td class="num">${d.age??""}</td>
-                 </tr>
-               `
-                }).join("")
-                count.textContent = `(${rows.length})`
-            }
-            window.document.addEventListener("click",async e=>{
-                const w=e.target.closest(".heartWrapper")
-                if(!w)return
-                e.preventDefault()
-
-                const a=w.querySelector("a")
-                a.style.backgroundColor="orange"
-
-                await saveToGoogleSheet(
-                    config.sheetId,
-                    w.dataset.currenturl,
-                    w.dataset.title,
-                    w.dataset.img,
-                    Number(w.dataset.sales),
-                    Number(w.dataset.age),
-                    JSON.parse(decodeURIComponent(w.dataset.tags))
-                )
-
-                a.textContent="❤️"
-                a.style.backgroundColor=null
-            })
-
-            const salesVals=data.map(d=>Number(d.sales)||0)
-            const convVals=data.map(d=>Number(d.est_conversion_rate)||0)
-            const salesMin=Math.min(...salesVals)
-            const salesMax=Math.max(...salesVals)
-            const convMin=Math.min(...convVals)
-            const convMax=Math.max(...convVals)
-            const rankIndex = buildRankIndex(baseData,stats)
-
-            function updateSortHeader(){
-                modal.querySelectorAll("thead th").forEach(th=>{
-                    th.classList.remove("sort-active","asc","desc")
-                    if(th.dataset.k===state.sortKey){
-                        th.classList.add("sort-active",state.sortDir>0?"asc":"desc")
-                    }
-                })
-            }
-            applyPipeline()
-
-            modal.querySelectorAll("thead th[data-k]").forEach(th=>{
-                th.onclick=()=>{
-                    const k=th.dataset.k
-                    state.sortDir=(state.sortKey===k)?-state.sortDir:1
-                    state.sortKey=k
-                    applyPipeline()
-                }
-            })
-
-            search.oninput=()=>{
-                state.q=search.value.toLowerCase()
-                applyPipeline()
-            }
-            const titleTypeSelect = window.document.getElementById("title-type-filter")
-            titleTypeSelect.onchange=()=>{
-                state.titleType = titleTypeSelect.value
-                applyPipeline()
-            }
-
-            const rankSelect=window.document.getElementById("rank-filter")
-            rankSelect.onchange=()=>{
-                state.rank=rankSelect.value
-                applyPipeline()
-            }
-
-            const preview=window.document.createElement("div")
-            preview.className="erank-preview"
-            preview.innerHTML="<img>"
-            window.document.body.appendChild(preview)
-            window.document.body.addEventListener("mousemove",e=>{
-                const t=e.target
-                if(t.tagName==="IMG" && t.dataset.previews){
-                    const img=preview.querySelector("img")
-                    if(img.src!==t.dataset.previews) img.src=t.dataset.previews
-
-                    preview.style.display="block"
-
-                    const pad=20
-                    const pw=preview.offsetWidth
-                    const ph=preview.offsetHeight
-                    const vw=window.innerWidth
-                    const vh=window.innerHeight
-
-                    let x=e.clientX+pad
-                    let y=e.clientY+pad
-
-                    if(x+pw>vw) x=e.clientX-pw-pad
-                    if(y+ph>vh) y=e.clientY-ph-pad
-
-                    preview.style.left=x+"px"
-                    preview.style.top=y+"px"
-                }else{
-                    preview.style.display="none"
-                }
-            })
-            const clearData=modal.querySelector("#erank-clear")
-            clearData.onclick=()=>{
-                handleLocalStorageQuota();
-                clearData.textContent="Deleted";
-            }
-            const box=modal.querySelector(".erank-box")
-            const toggle=modal.querySelector("#erank-theme-toggle")
-
-            const savedTheme=localStorage.getItem("erank_theme")||"dark"
-            if(savedTheme==="dark"){
-                box.classList.add("erank-dark")
-                toggle.textContent="☀️ Light"
-            }
-
-            toggle.onclick=()=>{
-                const dark=box.classList.toggle("erank-dark")
-                localStorage.setItem("erank_theme",dark?"dark":"light")
-                toggle.textContent=dark?"☀️ Light":"🌙 Dark"
-            }
-
-            function applyPipeline(){
-                let rows=baseData
-
-                if(state.q)
-                    rows=rows.filter(d=>(d.title||"").toLowerCase().includes(state.q))
-
-                if(state.rank){
-                    rows = rows.filter(d=>{
-                        const b = trendBadgeV3(d,stats,rankIndex).t
-                        if(state.rank==="hot") return b.includes("HOT")
-                        if(state.rank==="rising") return b.includes("RISING")
-                        if(state.rank==="stable") return b.includes("STABLE")
-                        if(state.rank==="sat") return b.includes("SATURATED")
-                        if(state.rank==="dead") return b.includes("DEAD")
-
-                        return true
-                    })
-                }
-
-                rows=rows.filter(d=>{
-                    const s=Number(d.sales)||0
-                    const a=Number(d.age)||0
-                    if(!Number.isNaN(state.sMin)&&s<state.sMin) return false
-                    if(!Number.isNaN(state.sMax)&&s>state.sMax) return false
-                    if(!Number.isNaN(state.aMin)&&a<state.aMin) return false
-                    if(!Number.isNaN(state.aMax)&&a>state.aMax) return false
-                    return true
-                })
-
-                if(state.titleType!=="all"){
-                    rows = rows.filter(d=>{
-                        const t=(d.title||"").toLowerCase()
-                        const has = t.includes("png") || t.includes("svg") || t.includes("design") || t.includes("template") ||  t.includes("dtf") ||  t.includes("pdf") || t.includes("mockup") || t.includes("Digital") || t.includes("pattern") || t.includes("download")
-                        return state.titleType==="with" ? has : !has
-                    })
-                }
-
-                if(state.sortKey)
-                    rows=[...rows].sort((a,b)=>{
-                        let av,bv
-
-                        if(state.sortKey==="rank"){
-                            av=trendScore(a,stats)
-                            bv=trendScore(b,stats)
-                            return (av-bv)*state.sortDir
-                        }
-
-                        if(state.sortKey==="title"){
-                            av=(a.title||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase()
-                            bv=(b.title||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase()
-                            return av.localeCompare(bv)*state.sortDir
-                        }
-
-                        av=Number(a[state.sortKey]||0)
-                        bv=Number(b[state.sortKey]||0)
-                        return (av-bv)*state.sortDir
-                    })
-
-
-                render(rows,stats)
-                updateSortHeader()
-            }
-
-            function readFilters(){
-                state.sMin=getNum("sales-min")
-                state.sMax=getNum("sales-max")
-                state.aMin=getNum("age-min")
-                state.aMax=getNum("age-max")
-                applyPipeline()
-            }
-
-            ["sales-min","sales-max","age-min","age-max"].forEach(id=>{
-                const el=window.document.getElementById(id)
-                if(el) el.oninput=readFilters
-            })
-            modal.querySelector("#erank-close").onclick=()=>modal.remove()
-        }
-
-        function buildStats(data){
-            const salesArr = data.map(d=>d.sales||0).sort((a,b)=>a-b)
-            const spdArr   = data.map(d=>(d.sales||0)/(d.age||1)).sort((a,b)=>a-b)
-            const convArr  = data.map(d=>d.est_conversion_rate||0).sort((a,b)=>a-b)
-            const viewsArr = data.map(d=>d.views||0).sort((a,b)=>a-b)
-
-            const p = (arr,x)=>arr[Math.floor(arr.length*x)]||0
-
-            return {
-                salesMedian: p(salesArr,0.50),
-                salesP75:    p(salesArr,0.75),
-
-                spdP20: p(spdArr,0.20),
-                spdP30: p(spdArr,0.30),
-                spdP40: p(spdArr,0.40),
-                spdP50: p(spdArr,0.50),
-                spdP75: p(spdArr,0.75),
-
-                convP30: p(convArr,0.30),
-                viewsP75:p(viewsArr,0.75)
-            }
-        }
-
-        function getNum(id){
-            const v=window.document.getElementById(id)?.value
-            return v===""||v==null ? NaN : Number(v)
-        }
-
-        function convScore(v){
-            if(!v||v<=0) return 0.3
-            if(v<0.5) return 0.5
-            if(v<1) return 0.7
-            if(v<2) return 0.85
-            return 1
-        }
-
-        function trendBadgeV3(d,stats,rankIndex){
-            const score = trendScore(d,stats)
-            const delta = trendDelta(d,stats)
-            const age = d.age||0
-            const sales = d.sales||0
-            const spd = sales/(age||1)
-            const bucket = rankBucket(d,rankIndex)
-
-            if(sales===0 && age>30)
-                return {t:"❌ DEAD",c:"#991b1b"}
-
-            if(score>=0.75 && delta>0.5 && bucket<=0.10)
-                return {t:"🔥 HOT",c:"#15803d"}
-
-            if(score>=0.6 && delta>0.35 && age<=60)
-                return {t:"🚀 RISING",c:"#f97316"}
-
-            if(score>=0.45)
-                return {t:"✅ STABLE",c:"#2563eb"}
-
-            if(age>180 && spd<0.04)
-                return {t:"⚠️ SATURATED",c:"#a855f7"}
-
-            if(score<0.15)
-                return {t:"❌ DEAD",c:"#991b1b"}
-
-            return {t:"🧪 LOW SIGNAL",c:"#6b7280"}
-        }
-
-        function trendScore(d,stats){
-            const age=d.age||1
-            const sales=d.sales||0
-            const views=d.views||0
-            const fav=d.favorers||0
-            const conv=d.est_conversion_rate||0
-
-            if(sales===0){
-                if(age<=14) return 0.15
-                return 0.03
-            }
-
-            const spd = sales/age
-
-            const velocity = norm(
-                spd,
-                stats.spdP30 || 0,
-                stats.spdP75 || Math.max(spd,1)
-            )
-
-            const convW = convScore(conv)
-            const favRate = norm(fav/(views||1),0,0.2)
-
-            const momentum =
-                  velocity*0.50 +
-                  convW*0.35 +
-                  favRate*0.15
-
-            let ageBias=1
-            if(age<7) ageBias=0.85
-            else if(age<=30) ageBias=1
-            else if(age<=120) ageBias=0.9
-            else ageBias=0.75
-
-            let decay=1
-            if(age>120 && velocity<0.25) decay=0.4
-            if(age>240 && velocity<0.15) decay=0.2
-
-            const score = momentum * ageBias * decay
-
-            return Number(Math.min(1,Math.max(0,score)).toFixed(4))
-        }
-
-        function trendDelta(d,stats){
-            const age=d.age||1
-            const sales=d.sales||0
-            if(sales===0) return 0
-
-            const spd = sales/age
-            const v = norm(spd, stats.spdP30||0, stats.spdP75||Math.max(spd,1))
-
-            if(age<=14) return v*0.6
-            if(age<=45) return v*0.8
-            if(age<=120) return v*0.4
-            return v*0.15
-        }
-
-        function buildRankIndex(data,stats){
-            return [...data]
-                .map(d=>({d,score:trendScore(d,stats)}))
-                .sort((a,b)=>b.score-a.score)
-                .map(x=>x.d)
-        }
-
-        function rankBucket(d,rankIndex){
-            const i = rankIndex.indexOf(d)
-            if(i<0) return 1
-            const p = i / rankIndex.length
-            if(p<=0.10) return 0.10
-            if(p<=0.25) return 0.25
-            if(p<=0.50) return 0.50
-            return 1
-        }
-
-        function norm(v,min,max){
-            if(max<=min) return 0
-            const n=(v-min)/(max-min)
-            return Math.min(1,Math.max(0,n))
-        }
-
-        function salesColor(v,min,max){
-            const t=norm(v,min,max)
-            return `rgba(76,175,80,${0.15+0.6*t})`
-        }
-
-        function convColor(v,min,max){
-            const t=norm(v,min,max)
-            return `rgba(${Math.round(33*(1-t))},${Math.round(150+80*t)},243,${0.15+0.6*t})`
-        }
-
-        function toFullImg(url,size=120){
-            if(!url) return url
-            return url.replace(/il_\d+x\d+|il_\d+xN|il_\d+x\d+_|\b\d+x\d+\b/,`il_${size}x${size}`)
-        }
-
-        async function getErankButtons(){
-            const b=window.document.createElement("button")
-            b.textContent="📊 eRank Table"
-            b.style.cssText="position:fixed;bottom:20px;right:20px;z-index:999999"
-            b.onclick=openErankTableModal
-            window.document.body.appendChild(b)
-        }
-
-        function getAllErankItems(){
-            const rows=[]
-            for(let i=0;i<localStorage.length;i++){
-                const k=localStorage.key(i)
-                if(k.startsWith("erank_")){
-                    try{
-                        const row=JSON.parse(localStorage.getItem(k))
-                        if(row&&"img"in row){
-                            const id=k.slice(6)
-                            if(config.sheetId!==""){
-                                const {dnoValue,gDrive,teamname}=findEValueById(id)
-                                row.dnoValue=dnoValue
-                                row.gDrive=gDrive
-                                row.teamname=teamname
-                            }
-                            rows.push(row)
-                        }
-                    }catch(e){}
-                }
-            }
-
-            return rows
-        }
-
-        function shopDataFetch() {
-            if (!window.document.location.href.startsWith('https://www.etsy.com/shop/')) return
-            if (!window.document.querySelector('h1.shop-name')) return
-            return {
-                name: window.document.querySelector('h1.shop-name')?.innerText.trim(),
-                location: window.document.querySelector('.sb-shop-location')?.innerText.trim(),
-                icon: window.document.querySelector('img.shop-icon-external')?.src,
-                starSeller: !!window.document.querySelector('.star-seller-badge'),
-                rating: window.document.querySelector('[data-review-ratings-count]')?.getAttribute('data-rating'),
-                reviews: toInt(window.document.querySelector('.rating-and-reviews-count__reviews-count')?.innerText.replace(/[()]/g,'')?.trim()),
-                sales: toInt(window.document.querySelector('[data-highlight="sales"] .highlight__primary-content')?.innerText.trim()),
-                onEtsy: pastDateFromText(window.document.querySelector('[data-highlight="on_etsy"] .highlight__primary-content')?.innerText.trim()),
-                latestActivity: window.document.querySelector('[data-latest-activity-date]')?.innerText.replace('Latest activity:','').trim(),
-                latestActivityTs: window.document.querySelector('[data-latest-activity-date]')?.getAttribute('data-latest-activity-date'),
-                link: 'https://www.etsy.com/shop/' + window.document.querySelector('h1.shop-name')?.innerText.trim(),
-                team: config.team || "",
-                sheetName:'Shop'
-            }
-        }
-
-        function simplifyEtsyUrl(url) {
-            try {
-                let urlObj = new URL(url);
-                let pathParts = urlObj.pathname.split('/');
-                if (pathParts.length > 3) {
-                    return `https://www.etsy.com/listing/${pathParts[2]}/${pathParts[3]}`;
-                }
-                console.error('format beklenmedik', url);
-                return url; // Eğer format beklenmedikse orijinal URL'yi döndür
-            } catch (error) {
-                console.error('Geçersiz URL:', error);
-                return null;
-            }
-        }
-
-        function handleLocalStorageQuota() {
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith('erank')) {
-                    localStorage.removeItem(key);
-                    i--; // Silme sonrası indeks kaymasını önlemek için azalt
-                }
-            }
-            showToast("LocalStorage doldu, 'erank' ile başlayan tüm anahtarlar silindi.", 'error');
-            console.log("LocalStorage doldu, 'erank' ile başlayan tüm anahtarlar silindi.");
-        }
-
-        function safeSetItem(key, value) {
-            try {
-                localStorage.setItem(key, value);
-            } catch (e) {
-                if (e.name === 'QuotaExceededError' || e.code === 22) {
-                    console.warn("LocalStorage dolu! 'erank' anahtarlarını temizliyorum...");
-                    handleLocalStorageQuota();
-                    try {
-                        localStorage.setItem(key, value); // Tekrar dene
-                    } catch (error) {
-                        console.error("Yeterli alan açılamadı. LocalStorage işlemi başarısız.", error);
-                    }
+              <div class="er-tbl-wrap">
+                <table>
+                  <thead><tr>
+                    <th>Img</th>
+                    <th data-k="title">Title</th>
+                    <th data-k="sales">Sales</th>
+                    <th data-k="rank">Rank</th>
+                    <th data-k="views">Views</th>
+                    <th data-k="favorers">Fav</th>
+                    <th data-k="quantity">Qty</th>
+                    <th data-k="est_conversion_rate">Conv%</th>
+                    <th data-k="age">Age</th>
+                  </tr></thead>
+                  <tbody id="er-tbody"></tbody>
+                </table>
+              </div>
+            </div>`;
+        doc.body.appendChild(modal);
+
+        const state = { q:'', sMin:NaN, sMax:NaN, aMin:NaN, aMax:NaN, rank:'', titleType:'all', sortKey:null, sortDir:1 };
+        const tbody = doc.getElementById('er-tbody');
+        const count = doc.getElementById('er-count');
+
+        function renderRows(rows) {
+            tbody.innerHTML = rows.map(d => {
+                const b = trendBadge(d, stats, idx);
+                const img = toFullImg(d.img||'');
+                const imgPrev = toFullImg(d.img||'', 200);
+                const imgTag = d.link
+                    ? `<a href="${d.link}" target="_blank"><img src="${img}" data-previews="${imgPrev}"></a>`
+                    : `<img src="${img}" data-previews="${imgPrev}">`;
+
+                let heartHtml;
+                if (d.gDrive) {
+                    heartHtml = `<a href="${d.gDrive}" title="${d.teamname||'-'} – ${d.dnoValue||'-'}" target="_blank" style="text-decoration:none">💖</a>`;
+                } else if (d.dnoValue) {
+                    heartHtml = `<span title="${d.teamname||'-'} – ${d.dnoValue||'-'}">❤️</span>`;
                 } else {
-                    console.error("LocalStorage hatası:", e);
+                    heartHtml = `<div class="heartWrapper"
+                        data-currenturl="${d.link||''}" data-title="${d.title||''}"
+                        data-img="${imgPrev}" data-sales="${d.sales||0}" data-age="${d.age||0}"
+                        data-tags="${encodeURIComponent(JSON.stringify(d.tags||[]))}"
+                        style="display:inline-block;cursor:cell">🤍</div>`;
                 }
-            }
+
+                return `<tr>
+                  <td>${imgTag}</td>
+                  <td>${heartHtml} ${d.title||'-'}</td>
+                  <td class="er-num" style="background:${salesColor(d.sales||0,salesMin,salesMax)}">${d.sales??''}</td>
+                  <td><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;background:${b.c};color:#fff">${b.t}</span></td>
+                  <td class="er-num">${d.views??''}</td>
+                  <td class="er-num">${d.favorers??''}</td>
+                  <td class="er-num">${d.quantity??''}</td>
+                  <td class="er-num" style="background:${convColor(d.est_conversion_rate||0,convMin,convMax)}">${d.est_conversion_rate??''}</td>
+                  <td class="er-num">${d.age??''}</td>
+                </tr>`;
+            }).join('');
+            count.textContent = `(${rows.length})`;
         }
 
-        function extractFirstParts(text) {
-            const keywords = ['Sweatshirt', 'T Shirt', 'T-Shirt', 'Tshirt', 'Shirt', 'Hoodie', 'Png', 'Svg', 'Tee','DTF'].map(k => k.toLowerCase());
-            const lowerText = text.toLowerCase();
-            let minPosition = Infinity;
-            let closestKeyword = '';
-
-            for (let keyword of keywords) {
-                const position = lowerText.indexOf(keyword);
-                if (position !== -1 && position < minPosition) {
-                    minPosition = position;
-                    closestKeyword = keyword;
-                }
+        function applyPipeline() {
+            let rows = base;
+            if (state.q)         rows = rows.filter(d => (d.title||'').toLowerCase().includes(state.q));
+            if (state.rank)      rows = rows.filter(d => { const t = trendBadge(d,stats,idx).t; return state.rank==='hot'?t.includes('HOT'):state.rank==='rising'?t.includes('RISING'):state.rank==='stable'?t.includes('STABLE'):state.rank==='sat'?t.includes('SATURATED'):t.includes('DEAD'); });
+            if (!Number.isNaN(state.sMin)) rows = rows.filter(d => (+d.sales||0) >= state.sMin);
+            if (!Number.isNaN(state.sMax)) rows = rows.filter(d => (+d.sales||0) <= state.sMax);
+            if (!Number.isNaN(state.aMin)) rows = rows.filter(d => (+d.age||0)   >= state.aMin);
+            if (!Number.isNaN(state.aMax)) rows = rows.filter(d => (+d.age||0)   <= state.aMax);
+            if (state.titleType !== 'all') {
+                const DIGITAL = ['png','svg','design','template','dtf','pdf','mockup','digital','pattern','download'];
+                rows = rows.filter(d => { const t = (d.title||'').toLowerCase(); const has = DIGITAL.some(w => t.includes(w)); return state.titleType==='with' ? has : !has; });
             }
-
-            let result = closestKeyword !== ''
-            ? lowerText.substring(0, minPosition).trim().replace(/comfort colors /i, "")
-            : lowerText;
-
-            return result
-                .replace("&#39;", "'")
-                .replace(/'/g, "'")
-                .replace(/\b\w/g, char => char.toUpperCase())
-        }
-
-        async function checkTrademark(term) {
-            const classCode = '025'; // Filtrelenecek sınıf kodu
-            const url = `https://developer.uspto.gov/trademark/v1/trademarks?searchText=${encodeURIComponent(term)}&fields=markIdentification,goodsAndServicesClassification`;
-
-            try {
-                const response = await fetch(url, {
-                    headers: {
-                        'X-Api-Key': config.apiKeyUspto, // API anahtarını header'a ekleyin
-                    },
+            if (state.sortKey) {
+                rows = [...rows].sort((a, b) => {
+                    if (state.sortKey === 'rank')  return (trendScore(a,stats) - trendScore(b,stats)) * state.sortDir;
+                    if (state.sortKey === 'title') return (a.title||'').localeCompare(b.title||'') * state.sortDir;
+                    return ((+a[state.sortKey]||0) - (+b[state.sortKey]||0)) * state.sortDir;
                 });
-
-                // Yanıtı kontrol et
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
-                }
-
-                const data = await response.json();
-
-                // Sınıf kodu ile filtreleme
-                const filteredResults = data.results.filter(result => {
-                    // goodsAndServicesClassification alanını kontrol et
-                    return result.goodsAndServicesClassification && result.goodsAndServicesClassification.includes(classCode);
-                });
-
-                if (filteredResults.length > 0) {
-                    console.log(`'${term}' kelimesi 025 sınıfında zaten kayıtlı.`);
-                    console.log(filteredResults);
-                } else {
-                    console.log(`'${term}' kelimesi 025 sınıfında kayıtlı değil.`);
-                }
-            } catch (error) {
-                console.error('Hata oluştu:', error);
             }
+            renderRows(rows);
+            updateSortUI();
         }
 
-        async function logToGoogleSheets(data) {
-            const sheetUrl = "https://script.google.com/macros/s/AKfycbxuh_lJRDY4ZCVY3js2JVlIdusGmb3RtDd4IlH82hisewmwR13PUogxW9pUuX8h0C-e/exec";
-            const body = (data.sheetName) ? JSON.stringify(data) : JSON.stringify({
-                id: String(data.id), // ID'yi string'e kesin olarak dönüştür
-                link: data.link || "",
-                img: data.img || "",
-                title: data.title || "",
-                tag: data.tag || "",
-                sls: data.sls || "",
-                day: data.day || "",
-                quantity: data.quantity || "",
-                views: data.views || "",
-                favorers: data.favorers || "",
-                est_conversion_rate: data.est_conversion_rate || "",
-                team: config.team || ""
-            })
-            //console.log(body)
-            try {
-                const response = await fetch(sheetUrl, {
-                    method: "POST",
-                    mode: 'no-cors', //KALDIRILDI (CORS sorunu için alternatif çözüm aşağıda)
-                    body,
-                    headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + getAccessToken() // Opsiyonel güvenlik
-                }
+        function updateSortUI() {
+            modal.querySelectorAll('thead th[data-k]').forEach(th => {
+                th.classList.remove('er-th-sort','asc','desc');
+                if (th.dataset.k === state.sortKey) th.classList.add('er-th-sort', state.sortDir > 0 ? 'asc' : 'desc');
+            });
+        }
+
+        const getNum = id => { const v = doc.getElementById(id)?.value; return v == null || v === '' ? NaN : +v; };
+
+        // Event bindings
+        doc.getElementById('er-search').oninput = e => { state.q = e.target.value.toLowerCase(); applyPipeline(); };
+        doc.getElementById('sf-title').onchange = e => { state.titleType = e.target.value; applyPipeline(); };
+        doc.getElementById('sf-rank').onchange  = e => { state.rank = e.target.value; applyPipeline(); };
+        ['sf-smin','sf-smax','sf-amin','sf-amax'].forEach(id => {
+            doc.getElementById(id).oninput = () => {
+                state.sMin = getNum('sf-smin'); state.sMax = getNum('sf-smax');
+                state.aMin = getNum('sf-amin'); state.aMax = getNum('sf-amax');
+                applyPipeline();
+            };
+        });
+        modal.querySelectorAll('thead th[data-k]').forEach(th => {
+            th.onclick = () => { state.sortDir = state.sortKey === th.dataset.k ? -state.sortDir : 1; state.sortKey = th.dataset.k; applyPipeline(); };
+        });
+        doc.getElementById('er-close').onclick = () => modal.remove();
+        doc.getElementById('er-clear').onclick = () => { clearErankCache(); doc.getElementById('er-clear').textContent = 'Deleted'; };
+
+        const box = modal.querySelector('.er-box');
+        const toggleBtn = doc.getElementById('er-theme');
+        if (localStorage.getItem('er_theme') === 'dark') { box.classList.add('er-dark'); toggleBtn.textContent = '☀️ Light'; }
+        toggleBtn.onclick = () => {
+            const d = box.classList.toggle('er-dark');
+            localStorage.setItem('er_theme', d ? 'dark' : 'light');
+            toggleBtn.textContent = d ? '☀️ Light' : '🌙 Dark';
+        };
+
+        // Image preview tooltip
+        const preview = doc.createElement('div'); preview.className = 'er-preview'; preview.innerHTML = '<img>'; doc.body.appendChild(preview);
+        doc.body.addEventListener('mousemove', e => {
+            const t = e.target;
+            if (t.tagName === 'IMG' && t.dataset.previews) {
+                const img = preview.querySelector('img');
+                if (img.src !== t.dataset.previews) img.src = t.dataset.previews;
+                preview.style.display = 'block';
+                const [pw, ph, vw, vh] = [preview.offsetWidth, preview.offsetHeight, win.innerWidth, win.innerHeight];
+                let x = e.clientX + 20, y = e.clientY + 20;
+                if (x + pw > vw) x = e.clientX - pw - 20;
+                if (y + ph > vh) y = e.clientY - ph - 20;
+                preview.style.left = x + 'px'; preview.style.top = y + 'px';
+            } else { preview.style.display = 'none'; }
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.text();
-        console.log("Sunucu yanıtı:", result);
-                return result;
-            } catch (error) {
-                //console.error("İletişim hatası:", error);
-            }
-        }
-
-        const createOverlayOnElement = async ({
-            element,
-            id,
-            imgUrl = null,
-            url = null
-        }) => {
-            //console.log(element);
-            //console.log(element?.querySelector('h1, h3'));
-            //console.log("Creating overlay id : ", id);
-            // Etsy ürün linkini al
-            url ??= element.querySelector("a.listing-link")?.href ?? element.querySelector("a.v2-listing-card__img")?.href ?? window.location.href
-            const currentUrl = simplifyEtsyUrl(url);
-            //console.log(currentUrl);
-            const img = imgUrl ?? element.querySelector("img")?.src;
-            const titleEl = element.querySelector('h1','h3');
-            let title = element?.querySelector('h1, h3')?.textContent?.trim()?? document.querySelector('h1[data-buy-box-listing-title="true"]')?.textContent?.trim();
-            let sales, age, tags;
-            const overlay = window.document.createElement("div");
-            overlay.style.display = "flex";
-            overlay.style.gap = "0.5rem";
-            overlay.style.cursor = "alias";
-            overlay.style.color = "black";
-            overlay.style.padding = "1px";
-            element.appendChild(overlay);
-
-            const loadingEl = window.document.createElement("div");
-            loadingEl.textContent = "Erank verileri yükleniyor...";
-            overlay.appendChild(loadingEl);
-            try {
-                const erankData = await getErankData(id,element,img,currentUrl);
-                if (erankData.error) {
-                    if (erankData.error === "Not found") {
-                        loadingEl.textContent = "Erank verileri bulunamadı.";
-                    } else {
-                        loadingEl.textContent = "Erank'a giriş yapın.";
-                    }
-                    return;
-                }
-                ({ sales, age, title, tags } = erankData);
-
-            } catch (error) {
-                console.error(error)
-                //showToast('Konfigure YOK', 'info');
-                sales = -1;
-                age = -1;
-                tags = "";
-            }
-
-            //showToast('Title:' + title, 'info');
-            loadingEl.remove();
-            //console.log(img)
-            if (config.sheetId !== "") {
-                let { dnoValue, gDrive, teamname } = findEValueById(id) || ""; // Eğer değer bulunmazsa boş string
-                const result = dnoValue ? "❤️" : "🤍";
-                const tooltipText = dnoValue ? `Dizayn NO: ${dnoValue} by ${teamname}` : `Listeye EKLE!`;
-
-                // Kalp sarmalayıcı
-                const heartWrapper = window.document.createElement("div");
-                heartWrapper.style.position = "relative"; // Konumlandırma için relative
-                heartWrapper.style.display = "inline-block";
-
-                // Kalp elementi
-                const resultEl = window.document.createElement("div");
-                resultEl.textContent = result;
-                resultEl.title = tooltipText;
-                resultEl.style.marginLeft = "1px";
-                resultEl.style.fontSize = "1.6rem";
-                resultEl.style.color = dnoValue ? "red" : "black";
-
-                if (!dnoValue) {
-                    resultEl.style.cursor = "cell";
-                    resultEl.href = "#";
-                    heartWrapper.addEventListener("click", async function () {
-                        resultEl.style.backgroundColor = "orange"
-                        await saveToGoogleSheet(config.sheetId, currentUrl, title, img, sales, age, tags);
-                        resultEl.textContent = "❤️"
-                        resultEl.style.backgroundColor = null
-                    });
-                } else {
-                    if (gDrive) {
-                        heartWrapper.addEventListener("click", async function () {
-                            window.open(gDrive, "_blank");
-                        });
-                    }
-                    // Rozet elementi (sadece değer varsa ekle)
-                    const badgeEl = window.document.createElement("span");
-                    resultEl.style.cursor = "hand";
-                    badgeEl.textContent = dnoValue;
-                    badgeEl.style.position = "absolute";
-                    badgeEl.style.top = "-4px"; // Daha yukarı taşı
-                    badgeEl.style.left = "-19px"; // Daha sağa taşı
-                    badgeEl.style.backgroundColor = "gold";
-                    badgeEl.style.color = "black";
-                    badgeEl.style.borderRadius = "50%";
-                    badgeEl.style.padding = "2px 5px";
-                    badgeEl.style.fontSize = "0.8rem";
-                    badgeEl.style.fontWeight = "bold";
-                    heartWrapper.appendChild(badgeEl);
-                }
-                // Kalp ve overlay düzenlemeleri
-                heartWrapper.appendChild(resultEl);
-                overlay.appendChild(heartWrapper);
-            }else{
-                showToast('Sheet Id okunamadı', 'error');
-            }
-            // Satış ve yaş elementleri
-            const salesEl = window.document.createElement("div");
-            salesEl.textContent = `Satış: ${sales}`;
-            if (Number(sales) / 1.3 > Number(age)) salesEl.style.backgroundColor = "green";
-            else if (Number(sales) == 0 ) salesEl.style.backgroundColor = "red";
-            if (sales==-1) salesEl.style.backgroundColor = "#b00bb3";
-            overlay.appendChild(salesEl);
-
-            const ageEl = window.document.createElement("div");
-            ageEl.textContent = `Yaş: ${age}`;
-            if (age==-1) ageEl.style.backgroundColor = "#b00bb3";
-            if (age >= 1 && age <= 50) ageEl.style.backgroundColor = "#73C476";
-            else if (age >= 51 && age <= 100) ageEl.style.backgroundColor = "#C5E1A5";
-            else if (age >= 101 && age <= 300) ageEl.style.backgroundColor = "#FFD54F";
-            else if (age >= 301 && age <= 7000) ageEl.style.backgroundColor = "#EF9A9A";
-            overlay.appendChild(ageEl);
-
-            function copyTextToClipboard(text) {
-                navigator.clipboard.writeText(text).then(function () {
-                    showToast('Text successfully copied to clipboard!');
-                    console.log('Text successfully copied to clipboard!');
-                }).catch(function (error) {
-                    console.error('Unable to copy text to clipboard', error);
-                });
-            }
-
-            const buttonEl = window.document.createElement("button")
-            buttonEl.textContent = "C"
-            buttonEl.title = "Tag copy erank"
-            buttonEl.style = "cursor: grab"
-            buttonEl.onclick = () => copyTextToClipboard(tags.join(", "))
-            overlay.appendChild(buttonEl);
-            let trade = extractFirstParts(title)
-            if (trade) {
-                let uspto;
-                if (config.apiKeyUspto) {
-                    //uspto = checkTrademark(trade);
-                }
-                if (config.apiKeyUspto && uspto) {
-                    const buttonElTrade = window.document.createElement("button")
-                    buttonElTrade.title = "Trade Mark Var"
-                    buttonElTrade.style = "cursor: no-drop"
-                    buttonElTrade.textContent = "🚨"
-                    //buttonElTrade.onclick = () => window.open(`https://www.trademarkia.com/search/trademarks?q=${trade}&country=us&codes=025&status=registered`, '_blank')
-                    overlay.appendChild(buttonElTrade);
-                } else {
-                    const buttonElTrade = window.document.createElement("button")
-                    buttonElTrade.title = "Trade Mark Kontrol et"
-                    buttonElTrade.style = "cursor: help"
-                    buttonElTrade.textContent = "T"
-                    buttonElTrade.onclick = () => window.open(`https://www.trademarkia.com/search/trademarks?q=${trade}&country=us&codes=025&status=registered`, '_blank')
-                    overlay.appendChild(buttonElTrade);
-                }
-            }
-
-            if (config.sheetId2 !== "") {
-                // Kalp2 elementi
-                let { dnoValue, gDrive, teamname } = findEValueById(id, 2) || ""; // Eğer değer bulunmazsa boş string
-                const result2 = dnoValue ? "✅" : "⭐";
-                const tooltipText2 = dnoValue ? `Dizayn NO: ${dnoValue} by ${teamname}` : `İsteğe EKLE! -${id}`;
-                const resultEl2 = window.document.createElement("div");
-                resultEl2.textContent = result2;
-                resultEl2.title = tooltipText2;
-                resultEl2.style.marginLeft = "1px";
-                resultEl2.style.fontSize = "1.6rem";
-
-                if (!dnoValue) {
-                    resultEl2.style.cursor = "cell";
-                    resultEl2.href = "#";
-                    resultEl2.addEventListener("click", async function () {
-                        resultEl2.style.backgroundColor = "orange"
-                        await saveToGoogleSheet(config.sheetId2, currentUrl, title, img, sales, age, tags);
-                        resultEl2.textContent = "✅"
-                        resultEl2.style.backgroundColor = null
-                        //showToast(title + '\n listeye eklendi!');
-                    });
-                } else {
-                    if (gDrive) {
-                        resultEl2.addEventListener("click", async function () {
-                            window.open(gDrive, "_blank");
-                        });
-                    }
-                }
-                overlay.appendChild(resultEl2);
-            }
-        };
-
-        const handleListingPage = async () => {
-            const urlParts = window.location.pathname.split('/');
-            const id = urlParts[urlParts.indexOf('listing') + 1];
-            const titleElement = window.document.querySelector("#listing-page-cart > div.wt-mt-xs-1.wt-mb-xs-1 > h1")
-            const imgElement = window.document.querySelector("#photos > div > div > ul > li > img")
-            if (titleElement && id) {
-                await createOverlayOnElement({
-                    element: titleElement,
-                    id,
-                    imgUrl: imgElement.src,
-                });
-            }
-        };
-
-        const initOverlay = async () => {
-            const addOverlay = async (el) => {
-                //console.log(el);
-                const id = el.dataset.listingId;
-                //const infoEl = el.querySelector(".streamline-spacing-pricing-info streamline-spacing-reduce-margin") || el;
-                await createOverlayOnElement({
-                    element: el,
-                    id
-                });
-            };
-            observeElements("[data-listing-id][data-listing-card-v2]", addOverlay, window.document);
-        };
-
-        if (config.sheetId !== "") await fetchColumnData();
-        if (config.sheetId2 !== "") await fetchColumnData(2);
-
-        async function waitFor(conditionFn, delay = 500, timeout = 30_000) {
-            const startTime = Date.now();
-
-            while (!conditionFn()) {
-                if (Date.now() - startTime > timeout) {
-                    throw new Error('Timeout reached while waiting for condition');
-                }
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-            return true;
-        }
-
-        function ehuntOverlay() {
-            //console.log("ehuntOverlay is working");
-            const addOverlay = async (el) => {
-                const imgEl = el.querySelector("img");
-                await waitFor(() => imgEl.dataset.src); // wait for img tag to load
-
-                const imgUrl = imgEl.dataset.src.replace("/il_120xN","/il_620xN");
-                const infoEl = el.querySelector(".src-css-product-productInfoSub-3svU") || el;
-                const linkEl = el.querySelector(".cell > div > a:first-child")
-                const url = linkEl.href;
-                const id = /https:\/\/www\.etsy\.com\/listing\/(\d+)\/.+/.exec(url)[1];
-
-                const titleEl = el.querySelector(".product_title")
-                const title = titleEl.textContent;
-
-                await createOverlayOnElement({
-                    element: infoEl,
-                    id,
-                    imgUrl,
-                    url,
-                });
-            };
-
-            observeElements(".el-table__row", addOverlay, window.document);
-        }
-
-        function purchasesOverlay() {
-
-            const addOverlay = async (el) => {
-                const info = readTransaction(el)
-                const imgUrl = info.image.replace("/il_300x300","/il_600x600");
-                const infoEl = el.querySelector('.transaction-download.transaction-data') || el.querySelector('.transaction-downloads') || el.querySelector('.transaction-download');
-                const url = info.link;
-                const id = /https:\/\/www\.etsy\.com\/listing\/(\d+)\/.+/.exec(url)[1];
-
-                await createOverlayOnElement({
-                    element: infoEl,
-                    id,
-                    imgUrl,
-                    url,
-                });
-            };
-            observeElements("li.transaction", addOverlay, window.document);
-        }
-
-        const ehuntOverlayDetail = async () => {
-            const urlParts = window.location.pathname.split('/');
-            const id = urlParts[3];
-            const addOverlay = async (el) => {
-                await waitFor(() => el.querySelector("#indexCarImg")?.src); // wait for img tag to load
-                const imgEl = el.querySelector("#indexCarImg")
-                const titleElement = el.querySelector('#header_container > div:nth-child(2) > div:nth-child(2)');
-                if (titleElement && id) {
-                    await createOverlayOnElement({
-                        element: titleElement,
-                        id,
-                        imgUrl: imgEl.src,
-                    });
-                }
-            }
-            observeElements(".etsy-container", addOverlay, window.document);
-        }
-
-        async function waitForValidEHuntDocument() {
-            while (
-                !(window.document.location.href.startsWith('https://ehunt.ai/iframe/etsy-product-research?') ||
-                  window.document.location.href.startsWith('https://ehunt.ai/iframe/product-detail'))
-                || window.document.readyState !== "complete"
-            ) {
-                await new Promise(resolve => requestAnimationFrame(resolve));
-            }
-        }
-
-        function parsePriceToNumber(s){
-            if(!s) return null;
-            s = s.toString().trim().replace(/\s+/g,'').replace(/[^0-9\.,-]/g,'');
-            if(s.indexOf('.')!==-1 && s.indexOf(',')!==-1){
-                const lastComma=s.lastIndexOf(','), lastDot=s.lastIndexOf('.');
-                if(lastComma>lastDot){ s = s.replace(/\./g,''); s = s.replace(/,/g,'.'); }
-                else { s = s.replace(/,/g,''); }
-            } else if(s.indexOf(',')!==-1) s = s.replace(/,/g,'.');
-            const v = parseFloat(s); return Number.isFinite(v)? v : null;
-        }
-
-        function toInt(v){
-            v=String(v).trim().toLowerCase()
-            if(v.endsWith("k"))return Math.round(parseFloat(v)*1000)
-            return Math.round(parseFloat(v))||0
-        }
-
-        function pastDateFromText(v){
-            const s=String(v).toLowerCase()
-            const y=s.match(/(\d+)\s*year/)
-            const m=s.match(/(\d+)\s*month/)
-            if(!y && !m) return ""
-            const d=new Date()
-            if(y) d.setFullYear(d.getFullYear()-Number(y[1]))
-            if(m) d.setMonth(d.getMonth()-Number(m[1]))
-            const yyyy=d.getFullYear()
-            const MM=String(d.getMonth()+1).padStart(2,"0")
-            const dd=String(d.getDate()).padStart(2,"0")
-            return `${yyyy}:${MM}:${dd}`
-        }
-
-        function readTransaction(li){
-            const titleEl = li.querySelector('.transaction-title a');
-            const imgEl = li.querySelector('.transaction-image img');
-            const priceEl = li.querySelector('.currency-value');
-            const priceText = priceEl ? priceEl.innerText.trim() : null;
-            return {
-                transactionId: li.getAttribute('data-transaction-id') || null,
-                receiptId: li.getAttribute('data-receipt-id') || null,
-                title: titleEl?.innerText?.trim() || null,
-                link: titleEl?.href || null,
-                image: imgEl?.src || imgEl?.getAttribute('data-src') || null,
-                priceText,
-                priceNumber: parsePriceToNumber(priceText)
-            };
-        }
-
-        async function shopOverlay(){
-            const shopData = shopDataFetch()
-            if(shopData) await logToGoogleSheets(shopData)
-        }
-
-        if (window.location.href.includes("/listing/")) {
-            handleListingPage();
-        } else if (window.location.href.includes("etsy.com/your/purchases")) {
-            purchasesOverlay()
-        } else if (window.name == "zbaseiframe") {
-            await waitForValidEHuntDocument();
-            if(window.location.href.includes("/product-detail/")){
-                ehuntOverlayDetail();
-                showToast("Ehunt Detail");
-            }else{
-                ehuntOverlay();
-                showToast("Ehunt");
-            }
-        } else {
-            if (window.location.href.includes("etsy.com/shop/")) shopOverlay()
-            initOverlay();
-        }
-    }
-
-    function onLoaded(doc, fn) {
-        if (doc.readyState == 'loading') {
-            doc.addEventListener("DOMContentLoaded", fn);
-        } else {
-            fn()
-        }
-    }
-
-    function runInIframe(iframeEl) {
-        const iframeWin = iframeEl.contentWindow;
-        const iframeDoc = iframeEl.contentDocument;
-
-        onLoaded(iframeDoc, () => {
-            doTheThing(iframeWin, iframeDoc);
+        // Heart click delegation
+        modal.addEventListener('click', async e => {
+            const w = e.target.closest('.heartWrapper');
+            if (!w) return;
+            e.preventDefault();
+            w.textContent = '⏳';
+            await saveToGoogleSheet(config.sheetId, w.dataset.currenturl, w.dataset.title, w.dataset.img, +w.dataset.sales, +w.dataset.age, JSON.parse(decodeURIComponent(w.dataset.tags)));
+            w.textContent = '❤️';
         });
+
+        applyPipeline();
     }
 
-    const isEtsyHunt = window.location.host == 'ehunt.ai' && (window.location.pathname == '/etsy-product-research' || window.location.href.includes("/product-detail/"));
+    // ─── OVERLAY CREATION ────────────────────────────────────────────────────────
+    const createOverlay = async ({ element, id, imgUrl = null, url = null, win = window }) => {
+        url ??= element.querySelector('a.listing-link')?.href ?? element.querySelector('a.v2-listing-card__img')?.href ?? location.href;
+        const currentUrl = simplifyEtsyUrl(url);
+        const img   = imgUrl ?? element.querySelector('img')?.src;
+        const overlay = win.document.createElement('div');
+        overlay.style.cssText = 'display:flex;gap:.5rem;cursor:alias;color:#000;padding:1px;flex-wrap:wrap;align-items:center';
+        element.appendChild(overlay);
+        let title = element?.querySelector('h1, h3')?.textContent?.trim()?? document.querySelector('h1[data-buy-box-listing-title="true"]')?.textContent?.trim();
+        let sales, age, tags;
+        const loading = win.document.createElement('div');
+        loading.textContent = 'Erank yükleniyor…';
+        overlay.appendChild(loading);
+        try {
+            const erankData = await getErankData(id,element,img,currentUrl);
+            if (erankData.error) {
+                if (erankData.error === "Not found") {
+                    loadingEl.textContent = "Erank verileri bulunamadı.";
+                } else {
+                    loadingEl.textContent = "Erank'a giriş yapın.";
+                }
+                return;
+            }
+            ({ sales, age, title, tags } = erankData);
+
+        } catch (error) {
+            console.error(error)
+            //showToast('Konfigure YOK', 'info');
+            sales = -1;
+            age = -1;
+            tags = "";
+        }
+
+        loading.remove();
+
+        // ── Heart button (sheet 1) ──
+        if (config.sheetId) {
+            const { dnoValue, gDrive, teamname } = findById(id);
+            const hw = win.document.createElement('div');
+            hw.style.cssText = 'position:relative;display:inline-block';
+
+            const heart = win.document.createElement('div');
+            heart.style.cssText = 'font-size:1.5rem;cursor:cell';
+
+            if (dnoValue) {
+                heart.textContent = '❤️';
+                heart.title = `Dizayn NO: ${dnoValue} by ${teamname}`;
+                heart.style.cursor = 'default';
+                const badge = win.document.createElement('span');
+                badge.textContent = dnoValue;
+                badge.style.cssText = 'position:absolute;top:-4px;left:-19px;background:gold;color:#000;border-radius:50%;padding:2px 5px;font-size:.75rem;font-weight:700';
+                hw.appendChild(badge);
+                if (gDrive) hw.addEventListener('click', () => win.open(gDrive, '_blank'));
+            } else {
+                heart.textContent = '🤍';
+                heart.title = 'Listeye EKLE!';
+                hw.addEventListener('click', async () => {
+                    heart.textContent = '⏳';
+                    await saveToGoogleSheet(config.sheetId, currentUrl, title, img, sales, age, tags);
+                    heart.textContent = '❤️';
+                });
+            }
+            hw.appendChild(heart);
+            overlay.appendChild(hw);
+        }
+
+        // ── Sales / Age ──
+        const mkDiv = (text, bg) => { const d = win.document.createElement('div'); d.textContent = text; if (bg) d.style.backgroundColor = bg; return d; };
+        const salesBg = sales === -1 ? '#b00bb3' : +sales / 1.3 > +age ? 'green' : +sales === 0 ? 'red' :'';
+        overlay.appendChild(mkDiv(`Satış: ${sales}`, salesBg));
+
+        const ageBg = age === -1 ? '#b00bb3' : age >= 1 && age <= 50 ? '#73C476' : age <= 100 ? '#C5E1A5' : age <= 300 ? '#FFD54F' : '#EF9A9A';
+        overlay.appendChild(mkDiv(`Yaş: ${age}`, ageBg));
+
+        // ── Copy tags ──
+        const copyBtn = win.document.createElement('button');
+        copyBtn.textContent = 'C'; copyBtn.title = 'Tag copy'; copyBtn.style.cursor = 'grab';
+        copyBtn.onclick = () => navigator.clipboard.writeText(Array.isArray(tags) ? tags.join(', ') : '').then(() => showToast('Tags kopyalandı!'));
+        overlay.appendChild(copyBtn);
+
+        // ── Trademark ──
+        const trade = extractFirstParts(title);
+        if (trade) {
+            const tm = win.document.createElement('button');
+            tm.textContent = 'T'; tm.title = 'Trademark kontrol et'; tm.style.cursor = 'help';
+            tm.onclick = () => win.open(`https://www.trademarkia.com/search/trademarks?q=${encodeURIComponent(trade)}&country=us&codes=025&status=registered`, '_blank');
+            overlay.appendChild(tm);
+        }
+
+        // ── Heart button (sheet 2) ──
+        if (config.sheetId2) {
+            const { dnoValue, gDrive } = findById(id, 2);
+            const h2 = win.document.createElement('div');
+            h2.style.cssText = 'font-size:1.5rem;cursor:cell';
+            h2.textContent = dnoValue ? '✅' : '⭐';
+            h2.title = dnoValue ? `Dizayn NO: ${dnoValue}` : `İsteğe EKLE! –${id}`;
+            if (!dnoValue) {
+                h2.addEventListener('click', async () => {
+                    h2.textContent = '⏳';
+                    await saveToGoogleSheet(config.sheetId2, currentUrl, title, img, sales, age, tags);
+                    h2.textContent = '✅';
+                });
+            } else if (gDrive) {
+                h2.style.cursor = 'pointer';
+                h2.addEventListener('click', () => win.open(gDrive, '_blank'));
+            }
+            overlay.appendChild(h2);
+        }
+    };
+
+    // ─── PAGE HANDLERS ────────────────────────────────────────────────────────────
+    async function handleListingPage(win) {
+        const parts = win.location.pathname.split('/');
+        const id    = parts[parts.indexOf('listing') + 1];
+        const el    = win.document.querySelector('#listing-page-cart > div.wt-mt-xs-1.wt-mb-xs-1 > h1');
+        const imgEl = win.document.querySelector('#photos > div > div > ul > li > img');
+        if (el && id) await createOverlay({ element: el, id, imgUrl: imgEl?.src, win });
+    }
+
+    async function initOverlay(win) {
+        observeElements('[data-listing-id][data-listing-card-v2]', el => {
+            createOverlay({ element: el, id: el.dataset.listingId, win });
+        }, win.document);
+    }
+
+    function purchasesOverlay(win) {
+        observeElements('li.transaction', async el => {
+            const info   = readTransaction(el);
+            const imgUrl = info.image?.replace('/il_300x300', '/il_600x600');
+            const infoEl = el.querySelector('.transaction-download.transaction-data') || el.querySelector('.transaction-downloads') || el.querySelector('.transaction-download');
+            const match  = /etsy\.com\/listing\/(\d+)/.exec(info.link||'');
+            if (!match) return;
+            await createOverlay({ element: infoEl, id: match[1], imgUrl, url: info.link, win });
+        }, win.document);
+    }
+
+    function ehuntOverlay(win) {
+        observeElements('.el-table__row', async el => {
+            const imgEl = el.querySelector('img');
+            await waitFor(() => imgEl?.dataset.src);
+            const imgUrl = imgEl.dataset.src.replace('/il_120xN', '/il_620xN');
+            const linkEl = el.querySelector('.cell > div > a:first-child');
+            const url    = linkEl?.href;
+            const match  = /etsy\.com\/listing\/(\d+)/.exec(url||'');
+            if (!match) return;
+            const infoEl = el.querySelector('.src-css-product-productInfoSub-3svU') || el;
+            await createOverlay({ element: infoEl, id: match[1], imgUrl, url, win });
+        }, win.document);
+    }
+
+    async function ehuntOverlayDetail(win) {
+        const id = win.location.pathname.split('/')[3];
+        observeElements('.etsy-container', async el => {
+            await waitFor(() => el.querySelector('#indexCarImg')?.src);
+            const imgEl = el.querySelector('#indexCarImg');
+            const titleEl = el.querySelector('#header_container > div:nth-child(2) > div:nth-child(2)');
+            if (titleEl && id) await createOverlay({ element: titleEl, id, imgUrl: imgEl.src, win });
+        }, win.document);
+    }
+
+    async function shopOverlay(win) {
+        const data = shopDataFetch(win);
+        if (data) await logToGoogleSheets(data);
+    }
+
+    function shopDataFetch(win) {
+        const doc = win.document;
+        if (!doc.querySelector('h1.shop-name')) return null;
+        return {
+            name:             doc.querySelector('h1.shop-name')?.innerText.trim(),
+            location:         doc.querySelector('.sb-shop-location')?.innerText.trim(),
+            icon:             doc.querySelector('img.shop-icon-external')?.src,
+            starSeller:       !!doc.querySelector('.star-seller-badge'),
+            rating:           doc.querySelector('[data-review-ratings-count]')?.getAttribute('data-rating'),
+            reviews:          toInt(doc.querySelector('.rating-and-reviews-count__reviews-count')?.innerText.replace(/[()]/g,'').trim()),
+            sales:            toInt(doc.querySelector('[data-highlight="sales"] .highlight__primary-content')?.innerText.trim()),
+            onEtsy:           pastDateFromText(doc.querySelector('[data-highlight="on_etsy"] .highlight__primary-content')?.innerText.trim()),
+            latestActivity:   doc.querySelector('[data-latest-activity-date]')?.innerText.replace('Latest activity:','').trim(),
+            latestActivityTs: doc.querySelector('[data-latest-activity-date]')?.getAttribute('data-latest-activity-date'),
+            link:             'https://www.etsy.com/shop/' + doc.querySelector('h1.shop-name')?.innerText.trim(),
+            team:             config.team || '',
+            sheetName:        'Shop'
+        };
+    }
+
+    function readTransaction(li) {
+        const titleEl = li.querySelector('.transaction-title a');
+        const imgEl   = li.querySelector('.transaction-image img');
+        const priceEl = li.querySelector('.currency-value');
+        const priceText = priceEl?.innerText.trim() ?? null;
+        return {
+            transactionId: li.getAttribute('data-transaction-id'),
+            receiptId:     li.getAttribute('data-receipt-id'),
+            title:         titleEl?.innerText?.trim() ?? null,
+            link:          titleEl?.href ?? null,
+            image: (imgEl?.src || imgEl?.getAttribute('data-src')) ?? null,
+            priceText,
+            priceNumber:   parsePriceToNumber(priceText)
+        };
+    }
+
+    async function waitForValidEHuntDoc(win) {
+        while (
+            !(win.location.href.startsWith('https://ehunt.ai/iframe/etsy-product-research?') ||
+              win.location.href.startsWith('https://ehunt.ai/iframe/product-detail')) ||
+            win.document.readyState !== 'complete'
+        ) await new Promise(r => requestAnimationFrame(r));
+    }
+
+    // ─── MAIN ENTRY ───────────────────────────────────────────────────────────────
+    async function doTheThing(win) {
+        if (!configLoaded) { showToast('Config yüklenemedi', 'error'); return; }
+
+        // Add floating table button
+        const btn = win.document.createElement('button');
+        btn.textContent = '📊 eRank Table';
+        btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:999999;padding:8px 14px;border-radius:6px;border:none;background:#4285f4;color:#fff;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+        btn.onclick = () => openErankTableModal(win);
+        win.document.body.appendChild(btn);
+
+        const href = win.location.href;
+
+        if (href.includes('/listing/')) {
+            await handleListingPage(win);
+        } else if (href.includes('etsy.com/your/purchases')) {
+            purchasesOverlay(win);
+        } else if (win.name === 'zbaseiframe') {
+            await waitForValidEHuntDoc(win);
+            if (href.includes('/product-detail/')) {
+                ehuntOverlayDetail(win);
+                showToast('Ehunt Detail');
+            } else {
+                ehuntOverlay(win);
+                showToast('Ehunt');
+            }
+        } else {
+            if (href.includes('etsy.com/shop/')) shopOverlay(win);
+            // Prefetch sheet data in parallel
+            await Promise.all([
+                config.sheetId  ? fetchColumnData(1) : Promise.resolve(),
+                config.sheetId2 ? fetchColumnData(2) : Promise.resolve()
+            ]);
+            initOverlay(win);
+        }
+    }
+
+    function runInIframe(iframe) {
+        const iWin = iframe.contentWindow, iDoc = iframe.contentDocument;
+        onLoaded(iDoc, () => doTheThing(iWin));
+    }
+
+    // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
+    await loadConfig();
+    GM.registerMenuCommand('⚙️ Ayarlar', showConfigMenu);
+    showToast('Pod Tool Yüklendi.', 'info', 2000);
+
+    await ensureBearer();
+
+    const isEtsyHunt = location.host === 'ehunt.ai' &&
+        (location.pathname === '/etsy-product-research' || location.href.includes('/product-detail/'));
+
     if (isEtsyHunt) {
-        // Run in iframe
-        observeElements("iframe#zbaseiframe", runInIframe, window.document)
-    } else { // In etsy
-        onLoaded(window.document, () => doTheThing(window, window.document))
+        observeElements('iframe#zbaseiframe', runInIframe, document);
+    } else {
+        console.log("doTheThing")
+        onLoaded(document, () => doTheThing(window));
     }
 
-    // Initialize
-    async function initialize() {
-        // Load config
-        await loadConfig();
-        // Register menu commands
-        GM.registerMenuCommand("Ayarlar", showConfigMenu);
-        //GM.registerMenuCommand("KeyGüncelle", () => ensureBearer())
-        // Show welcome message
-        showToast('Pod Tool Yüklendi.', 'info');
-    }
-
-    // Start the script
-    initialize();
 })();
