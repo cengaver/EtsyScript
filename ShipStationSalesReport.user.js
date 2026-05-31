@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShipStation Sales Report Enhanced
 // @namespace    https://github.com/cengaver/EtsyScript/
-// @version      2.00
+// @version      2.02
 // @description  Show sales data by store for Yesterday, Last 7 Days, and Last 30 Days with floating button and improved UI
 // @author       cengaver
 // @icon         https://www.google.com/s2/favicons?domain=shipstation.com
@@ -55,7 +55,7 @@
 
         /* Report panel */
         #sales-report-container {
-            position: fixed; top: 80px; right: 20px;
+            position: fixed; top: 80px; right: 50px;
             width: 460px; max-height: 88vh;
             background: #fff;
             border: 1px solid #dde;
@@ -417,12 +417,11 @@
      */
     async function resolveStoreMap(pod) {
         const myStores = parseStoreIds();
-        //console.log(config.pod)
         if (pod == 1){
             if(config?.pod == 1){
-                pod=1;
+                pod='1';
             }else{
-                pod=0;
+                pod='0';
             }
         }
         if (pod === '1') {
