@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      2.00
+// @version      2.01
 // @description  Open all matching links with delay + ROAS coloring — Optimized v2
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -18,7 +18,7 @@
     // SELECTORS
     // ─────────────────────────────────────────────
     const SEL_ROWS  = '#listings-header > table > tbody > tr';
-    const SEL_ROAS  = 'td:nth-child(10) > span';
+    const SEL_ROAS  = 'td:nth-child(11) > span';
     const SEL_LINKS = '#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-z-index-1 > div > div > a';
 
     const TIMER = { 0: 80_000, 1: 200_000 };
