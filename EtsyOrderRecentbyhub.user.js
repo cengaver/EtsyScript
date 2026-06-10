@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.01
+// @version      6.20
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -13,6 +13,7 @@
 // @grant        GM.getValue
 // @grant        GM.listValues
 // @grant        GM.deleteValue
+// @connect      *.tavsiyerobotu.com
 // @connect      www.tcmb.gov.tr
 // @connect      sheets.googleapis.com
 // @connect      script.google.com
@@ -326,12 +327,21 @@
             { id:'shipTee',     label:'Shirt Kargo' },
             { id:'shipTee2',    label:'Shirt Kargo 2. ürün' },
             { id:'credit',      label:'Kredi' },
+            { id:'apiBase',     label:'Api Base', type:'text' },
         ];
+
         const bodyHTML = fields.map(f => `
-            <div style="margin-bottom:15px">
-                <label style="display:block;margin-bottom:5px;font-weight:bold">${f.label}</label>
-                <input id="cfg_${f.id}" type="number" class="etsy-tool-input" value="${config[f.id] ?? ''}" style="width:100%">
-            </div>`).join('');
+    <div style="margin-bottom:15px">
+        <label style="display:block;margin-bottom:5px;font-weight:bold">${f.label}</label>
+        <input
+            id="cfg_${f.id}"
+            type="${f.type || 'number'}"
+            class="etsy-tool-input"
+            value="${config[f.id] ?? ''}"
+            style="width:100%"
+        >
+    </div>
+`).join('');
 
         overlay.innerHTML = `
             <div class="etsy-tool-modal">
@@ -355,7 +365,14 @@
         overlay.querySelector('.etsy-tool-modal-close').onclick = close;
         overlay.querySelector('#cfg_cancel').onclick = close;
         overlay.querySelector('#cfg_save').onclick = async () => {
-            fields.forEach(f => { config[f.id] = parseFloat(document.getElementById('cfg_' + f.id).value) || 0; });
+            fields.forEach(f => {
+                const value = document.getElementById('cfg_' + f.id).value;
+
+                config[f.id] = f.type === 'text'
+                    ? value
+                : (parseFloat(value) || 0);
+            });
+
             await saveConfig();
             showToast('Ayarlar kaydedildi', 'success');
             close();
@@ -366,7 +383,7 @@
     // EXCHANGE RATE  — session-cached + stale guard
     // ─────────────────────────────────────────────
     let _rateCache = null; // { value: number, ts: number }
-    const RATE_TTL = 30 * 60 * 1000; // 30 min
+    const RATE_TTL = 300 * 60 * 1000; // 300 min
 
     function getExchangeRate() {
         if (_rateCache && Date.now() - _rateCache.ts < RATE_TTL) {
@@ -539,25 +556,104 @@
     // ─────────────────────────────────────────────
 
     // Cached localStorage sets — avoid JSON.parse per row
-    const _localCache = {
+    const _cache = {
+
         _data: {},
+
         get(key) {
             if (!this._data[key]) {
-                try { this._data[key] = new Set(JSON.parse(localStorage.getItem(key) || '[]')); }
-                catch { this._data[key] = new Set(); }
+                try {
+                    this._data[key] = new Set(
+                        JSON.parse(localStorage.getItem(key) || '[]')
+                    );
+                } catch {
+                    this._data[key] = new Set();
+                }
             }
+
             return this._data[key];
         },
-        add(key, value) {
+
+        async load(key) {
+            if (!config.apiBase) return
+            try {
+                const res = await fetch(`${config.apiBase}/api/objects/${key}`);
+                if (!res.ok) {
+                    throw new Error(`Server failed with `)
+                };
+
+                const json = await res.json();
+
+                localStorage.setItem(
+                    key,
+                    JSON.stringify(json.object)
+                );
+
+            } catch (err) {
+                console.error(err);
+            }
+
+            return this.get(key);
+        },
+
+        async save(key) {
+            if (!config.apiBase) return
+            const values = [...this.get(key)];
+
+            try {
+                await fetch(`${config.apiBase}/api/objects/${key}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(values)
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        },
+
+        async add(key, value) {
             const set = this.get(key);
+
             if (set.has(value)) return;
+
             set.add(value);
-            localStorage.setItem(key, JSON.stringify([...set]));
+
+            localStorage.setItem(
+                key,
+                JSON.stringify([...set])
+            );
+
+            await this.save(key);
         },
-        remove(key) {
-            this._data[key] = new Set();
+
+        async remove(key, value) {
+            const set = this.get(key);
+
+            if (!set.delete(value)) return;
+
+            localStorage.setItem(
+                key,
+                JSON.stringify([...set])
+            );
+
+            await this.save(key);
+        },
+
+        async clear(key) {
+            delete this._data[key];
+
             localStorage.removeItem(key);
-        },
+            if (!config.apiBase) return
+            try {
+                await fetch(`${config.apiBase}/api/objects/${key}`, {
+                    method: 'DELETE'
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
     };
 
     // Per-row upload observer registry — disconnect on use (no leak)
@@ -634,10 +730,10 @@
 
         // Apply saved highlight classes
         if (td) {
-            if (_localCache.get('orderNumbers').has(order))      td.classList.add('toast-success');
-            if (_localCache.get('orderNumbersWait').has(order))  td.classList.add('toast-warning');
-            if (_localCache.get('orderNumbersDelay').has(order)) td.classList.add('toast-info');
-            if (_localCache.get('orderImg').has(order))          td.classList.add('toast-error');
+            if (_cache.get('orderNumbers').has(order))      td.classList.add('toast-success');
+            if (_cache.get('orderNumbersWait').has(order))  td.classList.add('toast-warning');
+            if (_cache.get('orderNumbersDelay').has(order)) td.classList.add('toast-info');
+            if (_cache.get('orderImg').has(order))          td.classList.add('toast-error');
         }
 
         const mk = (label, cls, onClick) => {
@@ -651,31 +747,32 @@
 
         const copyBtn = mk('Copy', 'copy-icon', e => {
             navigator.clipboard.writeText(order).then(() => { e.target.style.backgroundColor = 'aqua'; });
+            reapplyProofLogic(sNode);
         });
         const appBtn = mk('Gönder', 'approve-icon', e => {
-            _localCache.add('orderNumbers', order);
+            _cache.add('orderNumbers', order);
             td?.classList.add('toast-success');
             e.target.style.backgroundColor = 'green';
         });
         const waitBtn = mk('Beklet', 'wait-icon', e => {
-            _localCache.add('orderNumbersWait', order);
+            _cache.add('orderNumbersWait', order);
             td?.classList.add('toast-warning');
             e.target.style.backgroundColor = 'olive';
         });
         const delBtn = mk('Ertele', 'wait-icon', e => {
-            _localCache.add('orderNumbersDelay', order);
+            _cache.add('orderNumbersDelay', order);
             td?.classList.add('toast-info');
             e.target.style.backgroundColor = 'blue';
         });
 
         const imgBtn = mk('OrderImg', 'wait-icon', async e => {
-            if (_localCache.get('orderImg').has(order)) { imgBtn.style.backgroundColor = 'pink'; return; }
+            if (_cache.get('orderImg').has(order)) { imgBtn.style.backgroundColor = 'pink'; return; }
             imgBtn.style.backgroundColor = 'orange';
             try {
                 const link = await getLinkById(order);
                 if (link) {
                     window.open(link, '_blank');
-                    _localCache.add('orderImg', order);
+                    _cache.add('orderImg', order);
                     td?.classList.add('toast-info');
                     imgBtn.style.backgroundColor = 'pink';
                 } else {
@@ -683,7 +780,7 @@
                 }
             } catch { imgBtn.style.backgroundColor = 'red'; }
         });
-        if (_localCache.get('orderImg').has(order)) imgBtn.style.backgroundColor = 'pink';
+        if (_cache.get('orderImg').has(order)) imgBtn.style.backgroundColor = 'pink';
 
         orderEl.parentNode.append(copyBtn, appBtn, waitBtn, delBtn, imgBtn);
     }
@@ -940,13 +1037,13 @@
         const gonderBtn = mkBtn('Gönder');
         gonderBtn.addEventListener('click', e => {
             e.stopPropagation(); e.preventDefault();
-            _localCache.add('orderNumbers', orderId);
+            _cache.add('orderNumbers', orderId);
             e.currentTarget.style.backgroundColor = 'green';
         });
         const bekletBtn = mkBtn('Beklet');
         bekletBtn.addEventListener('click', e => {
             e.stopPropagation(); e.preventDefault();
-            _localCache.add('orderNumbersWait', orderId);
+            _cache.add('orderNumbersWait', orderId);
             e.currentTarget.style.backgroundColor = 'olive';
         });
         popNode.append(gonderBtn, bekletBtn);
@@ -956,7 +1053,7 @@
     // APPROVE BUTTONS (top bar)
     // ─────────────────────────────────────────────
     function checkCheckboxesFromLocalStorage(key) {
-        const saved = _localCache.get(key);
+        const saved = _cache.get(key);
         document.querySelectorAll('tr').forEach(tr => {
             const linkText = tr.querySelector('td a')?.textContent.trim();
             if (!linkText || !saved.has(linkText)) return;
@@ -981,8 +1078,8 @@
 
         const btnApp       = mk('App',       () => { checkCheckboxesFromLocalStorage('orderNumbers');     btnApp.style.backgroundColor  = 'green'; });
         const btnWait      = mk('Wait',      () => { checkCheckboxesFromLocalStorage('orderNumbersWait'); btnWait.style.backgroundColor = 'olive'; });
-        const btnClearApp  = mk('ClearApp',  () => { _localCache.remove('orderNumbers');     btnClearApp.style.backgroundColor  = 'red'; btnApp.style.backgroundColor  = ''; });
-        const btnClearWait = mk('ClearWait', () => { _localCache.remove('orderNumbersWait'); btnClearWait.style.backgroundColor = 'red'; btnWait.style.backgroundColor = ''; });
+        const btnClearApp  = mk('ClearApp',  () => { _cache.clear('orderNumbers');     btnClearApp.style.backgroundColor  = 'red'; btnApp.style.backgroundColor  = ''; });
+        const btnClearWait = mk('ClearWait', () => { _cache.clear('orderNumbersWait'); btnClearWait.style.backgroundColor = 'red'; btnWait.style.backgroundColor = ''; });
 
         [btnApp, btnWait, btnClearApp, btnClearWait].forEach(b => container.insertBefore(b, container.firstChild));
     }
@@ -1934,6 +2031,9 @@
         initUI();
         checkCheckboxes();
         createFloatingPanelSystem();
+        _cache.load('orderNumbers');
+        _cache.load('orderNumbersWait');
+        _cache.load('orderNumbersDelay');
 
         // Handle elements already in the DOM at load time
         const existingPop = document.querySelector(SEL.popupCart);
