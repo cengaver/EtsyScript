@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.21
+// @version      6.22
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -361,6 +361,10 @@
             })
         );
 
+        localStorage.setItem(
+            'DropShipGrid_3_Grid_Layout',
+            '{"Columns":[{"Width":"50px"},{"ColumnType":"Selection","Width":"50px"},{"Width":"106px","FieldName":"OrderNumber"},{"Visible":false,"Width":"120px","FieldName":"Marketplace"},{"Width":"141px","FieldName":"Shop"},{"Width":"134px","FieldName":"Status"},{"Width":"91px","FieldName":"OrderDate"},{"Width":"177px","FieldName":"TrackingNumber"},{"Visible":false,"Width":"50px","FieldName":"ReasonForRejection"},{"Visible":false,"Width":"80px","FieldName":"Zone"},{"Visible":false,"Width":"160px","FieldName":"Weight.Value"},{"Visible":false,"Width":"160px","FieldName":"CalculatedWeight"},{"Visible":false,"Width":"100px","FieldName":"TagItems"},{"Visible":false,"Width":"100px","FieldName":"BatchItems"},{"Visible":false,"Width":"100px","FieldName":"AssigneeItems"},{"Visible":false,"Width":"200px","FieldName":"Provider"},{"Visible":false,"Width":"200px","FieldName":"Service"},{"Visible":false,"Width":"200px","FieldName":"Package"},{"Visible":false,"Width":"200px","FieldName":"Destination"},{"Visible":false,"Width":"200px","FieldName":"RequestedShippingService"},{"Visible":false,"Width":"200px","FieldName":"FullName"},{"Visible":false,"Width":"200px","FieldName":"Email"},{"Visible":false,"Width":"200px","FieldName":"Address"},{"Visible":false,"Width":"100px","FieldName":"Country"},{"Visible":false,"Width":"200px","FieldName":"State"},{"Visible":false,"Width":"200px","FieldName":"City"},{"Visible":false,"Width":"130px","FieldName":"PostalCode"},{"Visible":false,"Width":"150px","FieldName":"ResendDescription"},{"Width":"50px","FieldName":"Quantity"},{"Width":"50px","FieldName":"Count"},{"Width":"50px","FieldName":"GrandTotal"},{"Width":"100px","FieldName":"MissingCost"},{"Width":"65px","FieldName":"ShippingCost"},{"Width":"58px","FieldName":"Cost"}]}'
+        );
         localStorage.setItem(
             'DealerTransactions_Grid_Layout',
             '{"Columns":[{"ColumnType":"Selection","Width":"50px"},{"Width":"108px","FieldName":"OrderNumber"},{"Visible":false,"Width":"150px","FieldName":"InvoiceNumber"},{"Width":"150px","FieldName":"Shop"},{"Visible":false,"Width":"150px","FieldName":"DealerName"},{"Width":"94px","FieldName":"Date"},{"Width":"94px","FieldName":"OrderDate"},{"Visible":false,"Width":"200px","FieldName":"TrackingNumber"},{"Width":"123px","FieldName":"Description"},{"Width":"50px","FieldName":"TransactionType"},{"Width":"86px","FieldName":"Debit"},{"Width":"81px","FieldName":"Credit"},{"Visible":false,"Width":"150px","FieldName":"Balance"},{"Width":"157px","FieldName":"CreatedUser"},{"Visible":false,"Width":"60px"}]}'
