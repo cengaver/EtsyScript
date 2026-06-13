@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.20
+// @version      6.21
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -83,7 +83,8 @@
         .error   { background:#ffeef0; color:#cb2431; }
         #charPreviewContainer { display:flex; flex-wrap:wrap; gap:10px; }
         #charPreviewContainer img { max-height:50px; object-fit:contain; }
-    `);
+        #mainToolPanel{display:none;position:fixed;bottom:150px;right:20px;width:350px;max-height:70vh;background:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:9999;overflow:hidden}
+        #mainToolButton{position:fixed;top:85px;right:20px;width:60px;height:60px;border-radius:50%;background:#5EE2E9;color:#000;display:flex;align-items:center;justify-content:center;border:none;box-shadow:0 4px 12px rgba(0,0,0,.2);cursor:pointer;z-index:10000;transition:transform .2s ease}   `);
 
     // ─────────────────────────────────────────────
     // CONFIG
@@ -314,6 +315,64 @@
     function initUI() {
         GM.registerMenuCommand('⚙️ Ayarları Düzenle', showConfigMenu);
         GM.registerMenuCommand('⚙️ Verileri Düzenle', createUniversalDataManager);
+        GM.registerMenuCommand('⭐ Liste Fix', listFix);
+    }
+
+    async function listFix() {
+        localStorage.setItem(
+            'DropShipGrid_0_Grid_Layout',
+            JSON.stringify({
+                Columns: [
+                    { Width: '40px' },
+                    { ColumnType: 'Selection', Width: '50px' },
+                    { Width: '110px', FieldName: 'OrderNumber' },
+                    { Visible: false, Width: '120px', FieldName: 'Marketplace' },
+                    { Width: '147px', FieldName: 'Shop' },
+                    { Width: '92px', FieldName: 'Status' },
+                    { Width: '124px', FieldName: 'OrderDate' },
+                    { Visible: false, Width: '200px', FieldName: 'TrackingNumber' },
+                    { Visible: false, Width: '250px', FieldName: 'ReasonForRejection' },
+                    { Visible: false, Width: '80px', FieldName: 'Zone' },
+                    { Visible: false, Width: '160px', FieldName: 'Weight.Value' },
+                    { Visible: false, Width: '160px', FieldName: 'CalculatedWeight' },
+                    { Visible: false, Width: '100px', FieldName: 'TagItems' },
+                    { Visible: false, Width: '100px', FieldName: 'BatchItems' },
+                    { Visible: false, Width: '100px', FieldName: 'AssigneeItems' },
+                    { Visible: false, Width: '200px', FieldName: 'Provider' },
+                    { Visible: false, Width: '200px', FieldName: 'Service' },
+                    { Visible: false, Width: '200px', FieldName: 'Package' },
+                    { Visible: false, Width: '200px', FieldName: 'Destination' },
+                    { Visible: false, Width: '200px', FieldName: 'RequestedShippingService' },
+                    { Visible: false, Width: '200px', FieldName: 'FullName' },
+                    { Visible: false, Width: '200px', FieldName: 'Email' },
+                    { Visible: false, Width: '200px', FieldName: 'Address' },
+                    { Visible: false, Width: '100px', FieldName: 'Country' },
+                    { Visible: false, Width: '200px', FieldName: 'State' },
+                    { Visible: false, Width: '200px', FieldName: 'City' },
+                    { Visible: false, Width: '130px', FieldName: 'PostalCode' },
+                    { Visible: false, Width: '150px', FieldName: 'ResendDescription' },
+                    { Width: '58px', FieldName: 'Quantity' },
+                    { Width: '50px', FieldName: 'Count' },
+                    { Width: '80px', FieldName: 'GrandTotal' },
+                    { Width: '100px', FieldName: 'MissingCost' },
+                    { Width: '80px', FieldName: 'ShippingCost' },
+                    { Width: '120px', FieldName: 'Cost' }
+                ]
+            })
+        );
+
+        localStorage.setItem(
+            'DealerTransactions_Grid_Layout',
+            '{"Columns":[{"ColumnType":"Selection","Width":"50px"},{"Width":"108px","FieldName":"OrderNumber"},{"Visible":false,"Width":"150px","FieldName":"InvoiceNumber"},{"Width":"150px","FieldName":"Shop"},{"Visible":false,"Width":"150px","FieldName":"DealerName"},{"Width":"94px","FieldName":"Date"},{"Width":"94px","FieldName":"OrderDate"},{"Visible":false,"Width":"200px","FieldName":"TrackingNumber"},{"Width":"123px","FieldName":"Description"},{"Width":"50px","FieldName":"TransactionType"},{"Width":"86px","FieldName":"Debit"},{"Width":"81px","FieldName":"Credit"},{"Visible":false,"Width":"150px","FieldName":"Balance"},{"Width":"157px","FieldName":"CreatedUser"},{"Visible":false,"Width":"60px"}]}'
+        );
+
+        // Aynı değeri ikinci key'e de yaz
+        localStorage.setItem(
+            'DropShipGrid_2_Grid_Layout',
+            localStorage.getItem('DropShipGrid_0_Grid_Layout')
+        );
+
+        showToast('Liste ayarlandı', 'success');
     }
 
     async function showConfigMenu() {
@@ -1230,22 +1289,11 @@
         const btn = document.createElement('button');
         btn.id = 'mainToolButton';
         btn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V20M4 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-        Object.assign(btn.style, {
-            position:'fixed', bottom:'85px', right:'20px', width:'60px', height:'60px',
-            borderRadius:'50%', background:'#5EE2E9', color:'#000', display:'flex',
-            alignItems:'center', justifyContent:'center', border:'none',
-            boxShadow:'0 4px 12px rgba(0,0,0,.2)', cursor:'pointer', zIndex:'10000', transition:'transform .2s ease',
-        });
         btn.addEventListener('mouseenter', () => { btn.style.transform = 'scale(1.1)'; });
         btn.addEventListener('mouseleave', () => { btn.style.transform = 'scale(1)'; });
 
         const panel = document.createElement('div');
         panel.id = 'mainToolPanel';
-        Object.assign(panel.style, {
-            display:'none', position:'fixed', bottom:'160px', right:'20px', width:'350px',
-            maxHeight:'70vh', background:'#fff', borderRadius:'12px',
-            boxShadow:'0 8px 24px rgba(0,0,0,.15)', zIndex:'9999', overflow:'hidden',
-        });
         panel.innerHTML = `
             <div style="display:flex;border-bottom:1px solid #eee">
                 <button class="tab-button active" data-tab="generate">Generate</button>
