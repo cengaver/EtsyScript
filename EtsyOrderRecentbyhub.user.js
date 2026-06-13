@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.22
+// @version      6.23
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -84,7 +84,7 @@
         #charPreviewContainer { display:flex; flex-wrap:wrap; gap:10px; }
         #charPreviewContainer img { max-height:50px; object-fit:contain; }
         #mainToolPanel{display:none;position:fixed;bottom:150px;right:20px;width:350px;max-height:70vh;background:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:9999;overflow:hidden}
-        #mainToolButton{position:fixed;top:85px;right:20px;width:60px;height:60px;border-radius:50%;background:#5EE2E9;color:#000;display:flex;align-items:center;justify-content:center;border:none;box-shadow:0 4px 12px rgba(0,0,0,.2);cursor:pointer;z-index:10000;transition:transform .2s ease}   `);
+        #mainToolButton{position:fixed;top:65px;right:20px;width:40px;height:40px;border-radius:50%;background:#5EE2E9;color:#000;display:flex;align-items:center;justify-content:center;border:none;box-shadow:0 4px 12px rgba(0,0,0,.2);cursor:pointer;z-index:10000;transition:transform .2s ease}   `);
 
     // ─────────────────────────────────────────────
     // CONFIG
