@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.23
+// @version      6.24
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -369,7 +369,18 @@
             'DealerTransactions_Grid_Layout',
             '{"Columns":[{"ColumnType":"Selection","Width":"50px"},{"Width":"108px","FieldName":"OrderNumber"},{"Visible":false,"Width":"150px","FieldName":"InvoiceNumber"},{"Width":"150px","FieldName":"Shop"},{"Visible":false,"Width":"150px","FieldName":"DealerName"},{"Width":"94px","FieldName":"Date"},{"Width":"94px","FieldName":"OrderDate"},{"Visible":false,"Width":"200px","FieldName":"TrackingNumber"},{"Width":"123px","FieldName":"Description"},{"Width":"50px","FieldName":"TransactionType"},{"Width":"86px","FieldName":"Debit"},{"Width":"81px","FieldName":"Credit"},{"Visible":false,"Width":"150px","FieldName":"Balance"},{"Width":"157px","FieldName":"CreatedUser"},{"Visible":false,"Width":"60px"}]}'
         );
-
+       localStorage.setItem(
+           'Orders_Grid_Layout',
+           '{"Columns":[{"Width":"40px"},{"ColumnType":"Selection","Width":"50px"},{"Width":"138px","FieldName":"OrderNumber"},{"Visible":false,"Width":"150px","FieldName":"OrderType"},{"Visible":false,"Width":"120px","FieldName":"Marketplace"},{"Visible":false,"Width":"200px","FieldName":"Dealer"},{"Width":"200px","FieldName":"Shop"},{"Visible":false,"Width":"200px","FieldName":"Status"},{"Width":"127px","FieldName":"OrderDate"},{"Visible":false,"Width":"200px","FieldName":"TrackingNumber"},{"Visible":false,"Width":"80px","FieldName":"Zone"},{"Visible":false,"Width":"160px","FieldName":"Weight.Value"},{"Visible":false,"Width":"160px","FieldName":"CalculatedWeight"},{"Visible":false,"Width":"100px","FieldName":"TagItems"},{"Visible":false,"Width":"100px","FieldName":"BatchItems"},{"Width":"77px","FieldName":"IsGift","SortIndex":0,"SortOrder":"Descending"},{"Visible":false,"Width":"100px","FieldName":"AssigneeItems"},{"Visible":false,"Width":"200px","FieldName":"Provider"},{"Visible":false,"Width":"200px","FieldName":"Service"},{"Visible":false,"Width":"200px","FieldName":"Package"},{"Visible":false,"Width":"200px","FieldName":"Destination"},{"Visible":false,"Width":"200px","FieldName":"RequestedShippingService"},{"Visible":false,"Width":"120px","FieldName":"ShippingServiceLevelName"},{"Visible":false,"Width":"200px","FieldName":"FullName"},{"Visible":false,"Width":"200px","FieldName":"Email"},{"Visible":false,"Width":"300px","FieldName":"FullAddress"},{"Visible":false,"Width":"200px","FieldName":"Address"},{"Visible":false,"Width":"100px","FieldName":"Country"},{"Visible":false,"Width":"200px","FieldName":"State"},{"Visible":false,"Width":"200px","FieldName":"City"},{"Visible":false,"Width":"130px","FieldName":"PostalCode"},{"Visible":false,"Width":"150px","FieldName":"ResendDescription"},{"Width":"62px","FieldName":"Quantity"},{"Width":"66px","FieldName":"Count"},{"Width":"73px","FieldName":"Cost"},{"Width":"72px","FieldName":"GrandTotal"},{"Visible":false,"Width":"180px","FieldName":"Message.Buyer"},{"Width":"155px","FieldName":"Message.Seller"},{"Visible":false,"Width":"180px","FieldName":"Message.Internal"},{"Width":"180px","FieldName":"Message.Gift"},{"Visible":false,"Width":"180px","FieldName":"Message.Payment"},{"Visible":false,"Width":"180px","FieldName":"DestinationApiCredential"}]}'
+       );
+        localStorage.setItem(
+            'Issue_Grid_Layout',
+            '{"Columns":[{"ColumnType":"Selection","Width":"50px"},{"Width":"80px","FieldName":"Image"},{"Width":"109px","FieldName":"OrderNumber"},{"Width":"150px","FieldName":"Shop"},{"Visible":false,"Width":"98px","FieldName":"Dealer"},{"Visible":false,"Width":"150px","FieldName":"Sku"},{"Visible":false,"Width":"400px","FieldName":"Title"},{"Visible":false,"Width":"120px","FieldName":"TrackingNumber"},{"Visible":false,"Width":"200px","FieldName":"RequestedShippingService"},{"Visible":false,"Width":"150px","FieldName":"FullName"},{"Visible":false,"Width":"50px","FieldName":"Country"},{"Visible":false,"Width":"50px","FieldName":"State"},{"Width":"143px","FieldName":"Option1"},{"Width":"150px","FieldName":"Option2"},{"Visible":false,"Width":"150px","FieldName":"Options"},{"Visible":false,"Width":"150px","FieldName":"ReverseOptions"},{"Visible":false,"Width":"150px","FieldName":"Personalization"},{"Width":"92px","FieldName":"OrderDate"},{"Visible":false,"Width":"200px"},{"Width":"50px","FieldName":"Quantity"},{"Width":"50px"},{"Visible":false,"Width":"100px","FieldName":"TagItems"},{"Visible":false,"Width":"100px","FieldName":"Assignees"},{"Width":"112px","FieldName":"Message.Seller"},{"Visible":false,"Width":"150px","FieldName":"Message.Buyer"},{"Visible":false,"Width":"150px","FieldName":"Message.Payment"},{"Visible":false,"Width":"150px","FieldName":"Message.Gift"},{"Width":"136px","FieldName":"Message.Internal"},{"Visible":false,"Width":"150px"}]}'
+        );
+        localStorage.setItem(
+            'Batch_Grid_Layout',
+            '{"Columns":[{"ColumnType":"Selection","Width":"90px"},{"Width":"80px","FieldName":"Image"},{"Width":"106px","FieldName":"OrderNumber"},{"Width":"154px","FieldName":"Shop"},{"Visible":false,"Width":"200px","FieldName":"Dealer"},{"Width":"80px","FieldName":"Sku"},{"Visible":false,"Width":"400px","FieldName":"Title"},{"Visible":false,"Width":"120px","FieldName":"TrackingNumber"},{"Visible":false,"Width":"200px","FieldName":"RequestedShippingService"},{"Visible":false,"Width":"150px","FieldName":"FullName"},{"Visible":false,"Width":"50px","FieldName":"Country"},{"Visible":false,"Width":"50px","FieldName":"State"},{"Width":"150px","FieldName":"Option1"},{"Width":"150px","FieldName":"Option2"},{"Visible":false,"Width":"150px","FieldName":"Options"},{"Visible":false,"Width":"150px","FieldName":"ReverseOptions"},{"Visible":false,"Width":"150px","FieldName":"Personalization"},{"Width":"92px","FieldName":"OrderDate"},{"Visible":false,"Width":"200px"},{"Width":"51px","FieldName":"Quantity"},{"Width":"50px"},{"Visible":false,"Width":"100px","FieldName":"TagItems"},{"Visible":false,"Width":"100px","FieldName":"Assignees"},{"Visible":false,"Width":"150px","FieldName":"Message.Seller"},{"Visible":false,"Width":"150px","FieldName":"Message.Buyer"},{"Visible":false,"Width":"150px","FieldName":"Message.Payment"},{"Visible":false,"Width":"150px","FieldName":"Message.Gift"},{"Width":"123px","FieldName":"Message.Internal"},{"Visible":false,"Width":"150px"}]}'
+        );
         // Aynı değeri ikinci key'e de yaz
         localStorage.setItem(
             'DropShipGrid_2_Grid_Layout',
@@ -1139,12 +1150,13 @@
             return btn;
         };
 
-        const btnApp       = mk('App',       () => { checkCheckboxesFromLocalStorage('orderNumbers');     btnApp.style.backgroundColor  = 'green'; });
-        const btnWait      = mk('Wait',      () => { checkCheckboxesFromLocalStorage('orderNumbersWait'); btnWait.style.backgroundColor = 'olive'; });
-        const btnClearApp  = mk('ClearApp',  () => { _cache.clear('orderNumbers');     btnClearApp.style.backgroundColor  = 'red'; btnApp.style.backgroundColor  = ''; });
-        const btnClearWait = mk('ClearWait', () => { _cache.clear('orderNumbersWait'); btnClearWait.style.backgroundColor = 'red'; btnWait.style.backgroundColor = ''; });
-
-        [btnApp, btnWait, btnClearApp, btnClearWait].forEach(b => container.insertBefore(b, container.firstChild));
+        const btnApp       = mk('App',     () => { checkCheckboxesFromLocalStorage('orderNumbers');     btnApp.style.backgroundColor  = 'green'; });
+        const btnWait      = mk('Wait',    () => { checkCheckboxesFromLocalStorage('orderNumbersWait'); btnWait.style.backgroundColor = 'olive'; });
+        const btnDelay     = mk('Delay',   () => { checkCheckboxesFromLocalStorage('orderNumbersDelay');btnDelay.style.backgroundColor= 'olive'; });
+        const btnClearApp  = mk('ClrApp',  () => { _cache.clear('orderNumbers');     btnClearApp.style.backgroundColor  = 'red'; btnApp.style.backgroundColor  = ''; });
+        const btnClearWait = mk('ClrWait', () => { _cache.clear('orderNumbersWait'); btnClearWait.style.backgroundColor = 'red'; btnWait.style.backgroundColor = ''; });
+        const btnClearDelay= mk('ClrDelay',() => { _cache.clear('orderNumbersDelay');btnClearDelay.style.backgroundColor= 'red'; btnDelay.style.backgroundColor= ''; });
+        [btnApp, btnWait, btnDelay, btnClearApp, btnClearWait, btnClearDelay].forEach(b => container.insertBefore(b, container.firstChild));
     }
 
     // shift+click multi-select — delegate to tbody for performance
