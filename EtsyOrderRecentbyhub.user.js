@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.24
+// @version      6.26
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -174,7 +174,7 @@
         { name:"Sage Green",                   ischecked:1, hex:"#9CAF88" },
         { name:"True Royal",                   ischecked:0, hex:"#4169E1" },
         { name:"True Navy",                    ischecked:0, hex:"#223452" },
-        { name:"True Royal (Royal Blue)",      ischecked:0, hex:"#4169E1" },
+        { name:"True Royal Royal Blue",        ischecked:0, hex:"#4169E1" },
         { name:"Sport Grey",                   ischecked:1, hex:"#B3B5B6" },
         { name:"Navy",                         ischecked:0, hex:"#0C1E33" },
         { name:"Military Green",               ischecked:0, hex:"#545941" },
