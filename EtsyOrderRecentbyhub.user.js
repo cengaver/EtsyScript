@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.26
+// @version      6.27
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -151,6 +151,49 @@
         { name:"Comfort Colors Wine",          ischecked:0, hex:"#722F37" },
         { name:"Comfort Colors Sage",          ischecked:0, hex:"#C3C7B4" },
         { name:"Comfort Colors Mustard",       ischecked:1, hex:"#E2BC75" },
+        { name:"Comfort Colors Banana",        ischecked:1, hex:"#FCE9A6" },
+        { name:"Comfort Colors Blue Jean",     ischecked:0, hex:"#5C7FA4" },
+        { name:"Butter",        ischecked:1, hex:"#F6E39A" },
+        { name:"Chalky Mint",   ischecked:1, hex:"#A8D5BA" },
+        { name:"Chambray",      ischecked:1, hex:"#A6C8DD" },
+        { name:"Denim",         ischecked:0, hex:"#4F728E" },
+        { name:"Burnt Orange",  ischecked:1, hex:"#CC5500" },
+        { name:"Granite",       ischecked:0, hex:"#706C66" },
+        { name:"Grey",          ischecked:0, hex:"#B2B3B5" },
+        { name:"Hemp",          ischecked:0, hex:"#D5C8A6" },
+        { name:"Ice Blue",      ischecked:0, hex:"#7ba2bb" },
+        { name:"Ivory",         ischecked:1, hex:"#EFE8D2" },
+        { name:"Light Green",   ischecked:1, hex:"#BFD8B8" },
+        { name:"Midnight",      ischecked:0, hex:"#2E3B4E" },
+        { name:"Orchid",        ischecked:1, hex:"#C3A3BF" },
+        { name:"Pepper",        ischecked:0, hex:"#4D4D4F" },
+        { name:"Seafoam",       ischecked:1, hex:"#9FD7C1" },
+        { name:"Watermelon",    ischecked:0, hex:"#FA6C6C" },
+        { name:"White",         ischecked:1, hex:"#FFFFFF" },
+        { name:"Yam",           ischecked:0, hex:"#FF8C42" },
+        { name:"Terracotta",    ischecked:0, hex:"#C66A4C" },
+        { name:"Berry",         ischecked:0, hex:"#A43E64" },
+        { name:"Black",         ischecked:0, hex:"#000000" },
+        { name:"Blue Spruce",   ischecked:0, hex:"#2F4D40" },
+        { name:"Brick",         ischecked:0, hex:"#9C3E2E" },
+        { name:"Blossom",       ischecked:1, hex:"#F4C2C2" },
+        { name:"Boysenberry",   ischecked:0, hex:"#873260" },
+        { name:"Crimson",       ischecked:0, hex:"#8B1C2D" },
+        { name:"Crunchberry",   ischecked:0, hex:"#D96A82" },
+        { name:"Espresso",      ischecked:0, hex:"#3B2F2F" },
+        { name:"Grape",         ischecked:0, hex:"#6A3E80" },
+        { name:"Lagoon Blue",   ischecked:0, hex:"#0098A4" },
+        { name:"Moss",          ischecked:0, hex:"#8A9A5B" },
+        { name:"Neon Red Orange",ischecked:0,hex:"#FF533F" },
+        { name:"Neon Yellow",   ischecked:0, hex:"#FFFF33" },
+        { name:"Red",           ischecked:0, hex:"#C1272D" },
+        { name:"Rose",          ischecked:1, hex:"#E7A2A2" },
+        { name:"Sunset",        ischecked:0, hex:"#FA8072" },
+        { name:"Violet",        ischecked:0, hex:"#8F509D" },
+        { name:"Washed Denim",  ischecked:0, hex:"#4A647E" },
+        { name:"Wine",          ischecked:0, hex:"#722F37" },
+        { name:"Sage",          ischecked:0, hex:"#C3C7B4" },
+        { name:"Mustard",       ischecked:1, hex:"#E2BC75" },
         { name:"Blossom",                      ischecked:1, hex:"#F4C2C2" },
         { name:"Daisy",                        ischecked:1, hex:"#FFE462" },
         { name:"Dark Gray",                    ischecked:0, hex:"#A9A9A9" },
@@ -761,6 +804,7 @@
 
             // Slider listeners
             initSliderListeners(sNode);
+            setTimeout(() => reapplyProofLogic(sNode), 2500);
 
             // Persona card
             const personaText = getText(SEL.personaCut, sNode);
