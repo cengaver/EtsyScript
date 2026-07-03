@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      5.01
+// @version      5.02
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -632,7 +632,7 @@
             id: String(data.id), link: data.link||'', img: data.img||'', title: data.title||'',
             tag: data.tag||'', sls: data.sls||'', day: data.day||'',
             quantity: data.quantity||'', views: data.views||'', favorers: data.favorers||'',
-            est_conversion_rate: data.est_conversion_rate||'', team: config.team||''
+            est_conversion_rate: data.est_conversion_rate||'', team: config.team||'', shopId: data.shopId||''
         };
         try {
             await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
@@ -1125,8 +1125,16 @@
 
     function shopDataFetch(win) {
         const doc = win.document;
+
         if (!doc.querySelector('h1.shop-name')) return null;
+
+        const shopId = doc
+        .querySelector('meta[property="al:ios:url"]')
+        ?.content
+        ?.match(/etsy:\/\/shop\/(\d+)/)?.[1] || '';
+
         return {
+            shopId,
             name:             doc.querySelector('h1.shop-name')?.innerText.trim(),
             location:         doc.querySelector('.sb-shop-location')?.innerText.trim(),
             icon:             doc.querySelector('img.shop-icon-external')?.src,
