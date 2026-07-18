@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Changer
 // @description  Etsy Listing Changer for input
-// @version      0.53
+// @version      0.54
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/listing-editor/edit/*
@@ -87,17 +87,14 @@
     }
 
     function setReactInputValue(el, value) {
-        const nativeInputValueSetter =
-              Object.getOwnPropertyDescriptor(
-                  window.HTMLTextAreaElement.prototype,
-                  'value'
-              ).set;
+        const proto = Object.getPrototypeOf(el);
+        const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
 
-        nativeInputValueSetter.call(el, value);
+        setter.call(el, value);
 
-        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
     }
-
     const colors = [
         "Black","Blue","Brown","Burgundy","Columbia","Forest Green",
         "Gold","Green","Grey","Kelly Green","Magenta","Maroon",
