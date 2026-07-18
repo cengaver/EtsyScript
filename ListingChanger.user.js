@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Changer
 // @description  Etsy Listing Changer for input
-// @version      0.54
+// @version      0.55
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/listing-editor/edit/*
@@ -67,10 +67,8 @@
             textarea.dispatchEvent(new Event('change', { bubbles: true }));
 
             await new Promise(r => setTimeout(r, 400));
-            const addBtn = [...document.querySelectorAll('.wt-textarea__btn-input > button')]
-            .filter(btn => btn.textContent.trim() === 'Add' && !btn.disabled)
-            .pop(); // Son bulunan Add butonu
-
+            const addBtn = [...document.querySelectorAll('button[type="submit"]')]
+            .find(btn => btn.textContent.trim() === "Add");
             if (!addBtn) {
                 console.warn("Aktif Add butonu bulunamadı:", color);
                 continue;
