@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.33
+// @version      6.34
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -209,7 +209,7 @@
         { name:"Irish Green",                  ischecked:1, hex:"#009A44" },
         { name:"Light Pink",                   ischecked:1, hex:"#FFB6C1" },
         { name:"Light Pink Pink",              ischecked:1, hex:"#FFB6C1" },
-        { name:"Kelly Green",                  ischecked:1, hex:"#4CBB17" },
+        { name:"Kelly Green",                  ischecked:0, hex:"#4CBB17" },
         { name:"Light Blue",                   ischecked:1, hex:"#ADD8E6" },
         { name:"Dark Grey Heather",            ischecked:0, hex:"#555555" },
         { name:"Heather Indigo Blue",          ischecked:0, hex:"#395573" },
