@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Changer
 // @description  Etsy Listing Changer for input
-// @version      0.55
+// @version      0.56
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/listing-editor/edit/*
@@ -241,6 +241,62 @@
         }
     }
 
+    async function boxChecker() {
+        let lastRow = null;
+        let ctrlDown = false;
+
+        document.addEventListener("keydown", e => {
+            if (e.key === "Control") ctrlDown = true;
+        });
+
+        document.addEventListener("keyup", e => {
+            if (e.key === "Control") ctrlDown = false;
+        });
+
+        document.addEventListener("click", e => {
+            const cb = e.target.closest(
+                'tbody tr td:first-child input[data-clg-id="WtCheckbox"]'
+            );
+            if (!cb) return;
+
+            const currentRow = cb.closest("tr");
+
+            // İlk seçim
+            if (!ctrlDown || !lastRow) {
+                requestAnimationFrame(() => {
+                    lastRow = currentRow;
+                });
+                return;
+            }
+
+            // React'ın seçimi tamamlamasını bekle
+            requestAnimationFrame(() => {
+                const tbody = currentRow.closest("tbody");
+                const rows = [...tbody.querySelectorAll('tr[data-clg-id="WtTableRow"]')];
+
+                const start = rows.indexOf(lastRow);
+                const end = rows.indexOf(currentRow);
+
+                if (start === -1 || end === -1) {
+                    lastRow = currentRow;
+                    return;
+                }
+
+                const [min, max] = start < end ? [start, end] : [end, start];
+
+                for (let i = min; i <= max; i++) {
+                    if (!rows[i].classList.contains("wt-table__row--selected")) {
+                        rows[i]
+                            .querySelector('td:first-child input[data-clg-id="WtCheckbox"]')
+                            ?.click();
+                    }
+                }
+
+                lastRow = currentRow;
+            });
+        }, true);
+    }
+
     function save() {
         try {
             const btn = document.querySelector("#shop-manager--listing-publish-edit");
@@ -316,6 +372,7 @@
     window.addEventListener("load", async () => {
         // yüklenince hash'i #shipping yap #pricing-logistics
         try {
+           await boxChecker();
             if (location.hash !== "#pricing-logistics") {
                // location.hash = "#pricing-logistics"
                 //setTimeout(() => ShowAllVariant(), 300);
