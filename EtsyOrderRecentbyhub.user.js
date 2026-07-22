@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.34
+// @version      6.35
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -998,6 +998,10 @@
                 <div class="generation-controls">
                     <div class="d-flex gap-1 align-items-center">
                         <button title="${btnTitle}" class="mud-button mud-button-filled mud-button-filled-${btnStyl} mud-button-filled-size-small" id="${btnId}">Oluştur ve Yükle</button>
+                        <button class="mud-button mud-button-outlined mud-button-outlined-secondary mud-button-outlined-size-small"
+                                id="parse-${inputId}">
+                            📝 Parse
+                        </button>
                         ${extra}
                     </div>
                     <div class="status-message mt-1" id="status-${btnId}"></div>
@@ -1011,8 +1015,87 @@
         wrapper.className += ' d-flex flex-row gap-3 col-md-12 single-note-item all-category note-social';
         wrapper.id = noteId;
         wrapper.innerHTML =
-            makeCard('Dizayn oluştur Font ile',  `pi1-${noteId}`, `gb1-${noteId}`, btnFont, SkuSettings?.fontName  ?? '', 'font') +
-            makeCard('Dizayn oluştur Resim ile', `pi2-${noteId}`, `gb2-${noteId}`, btnImag, SkuSettings?.imageSet ?? '', 'image');
+        makeCard('Dizayn oluştur Font ile',  `pi1-${noteId}`, `gb1-${noteId}`, btnFont, SkuSettings?.fontName  ?? '', 'font') +
+        makeCard('Dizayn oluştur Resim ile', `pi2-${noteId}`, `gb2-${noteId}`, btnImag, SkuSettings?.imageSet ?? '', 'image');
+        function parsePersonalization(text) {
+
+            const obj = {};
+
+            text
+                .split(/\r?\n/)
+                .map(x => x.trim())
+                .filter(Boolean)
+                .forEach(line => {
+
+                const idx = line.indexOf(':');
+                if (idx === -1) return;
+
+                const label = line.substring(0, idx).trim();
+
+                let value = line.substring(idx + 1).trim();
+
+                if (value.startsWith(label))
+                    value = value.substring(label.length).trim();
+
+                obj[label] = value;
+            });
+
+            return obj;
+        }
+
+        function installParser(inputId){
+
+            const btn=document.getElementById(`parse-${inputId}`);
+            const input=document.getElementById(inputId);
+
+            if(!btn || !input) return;
+
+            btn.onclick=()=>{
+
+                let panel=document.getElementById(`panel-${inputId}`);
+
+                if(panel){
+                    panel.style.display=panel.style.display==="none"?"block":"none";
+                    return;
+                }
+
+                panel=document.createElement("div");
+                panel.id=`panel-${inputId}`;
+                panel.style.marginTop="10px";
+
+                const data=parsePersonalization(personaRaw);
+
+                Object.entries(data).forEach(([label,value])=>{
+
+                    const row=document.createElement("div");
+
+                    row.style.cssText=`
+                display:flex;
+                align-items:center;
+                gap:10px;
+                margin-bottom:8px;
+            `;
+
+                    row.innerHTML=`
+                <label style="width:220px;font-weight:600">
+                    ${label}
+                </label>
+
+                <input
+                    class="mud-input-slot mud-input-root mud-input-root-text mud-input-root-adorned-end mud-input-root-margin-normal"
+                    style="flex:1;padding:6px"
+                    value="${value}">
+            `;
+
+                    panel.appendChild(row);
+
+                });
+
+                input.closest(".card").appendChild(panel);
+
+            };
+
+        }
         targetCell.appendChild(wrapper);
 
         // Color palette
@@ -1106,7 +1189,8 @@
             generateImageWithSKUSettings(sku, text,
                 document.getElementById(`selected-color-${noteId}`)?.value,
                 document.getElementById(`selected-font-${noteId}`)?.value));
-
+        installParser(`pi1-${noteId}`);
+        installParser(`pi2-${noteId}`);
         handleGen(`pi2-${noteId}`, `gb2-${noteId}`, (sku, text) =>
             generateImageWithCharacterImages(sku, text,
                 document.getElementById(`selected-charset-${noteId}`)?.value));
