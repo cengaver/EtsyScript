@@ -2,7 +2,7 @@
 // @name         Etsy Title GEM Optimizer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
-// @version      1.0.4
+// @version      1.0.5
 // @description  Etsy listing title GEM ile yeniden yazma butonu
 // @match        https://www.etsy.com/your/shops/me/listing-editor/*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
@@ -189,7 +189,7 @@
             btn.disabled=true
             btn.innerText='⏳ Optimizing...'
             const GEM_PROMPT=`
-You are an expert Etsy SEO optimization engine specialized in Etsy’s 2025 search model.
+You are an expert Etsy SEO optimization engine specialized in Etsy’s 2026 search model.
 
 Rules:
 - Do NOT rewrite from scratch
@@ -219,7 +219,7 @@ Output STRICT JSON:
             };
             const GEM_API_KEY= await getApiKey()
             if(!GEM_API_KEY) return;
-            const GEM_ENDPOINT=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEM_API_KEY}`
+            const GEM_ENDPOINT=`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEM_API_KEY}`
             //console.log(GEM_ENDPOINT);
             GM.xmlHttpRequest({
                 method:"POST",
