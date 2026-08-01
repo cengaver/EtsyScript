@@ -2,8 +2,8 @@
 // @name         Etsy Title GEM Optimizer
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
-// @version      1.0.5
-// @description  Etsy listing title GEM ile yeniden yazma butonu
+// @version      1.0.6
+// @description  Etsy ilan başlığını Gemini ile güvenli biçimde optimize eder
 // @match        https://www.etsy.com/your/shops/me/listing-editor/*
 // @icon         https://www.google.com/s2/favicons?domain=etsy.com
 // @connect      generativelanguage.googleapis.com
@@ -12,270 +12,479 @@
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.addStyle
+// @run-at       document-idle
 // @downloadURL  https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyTitleOptimizer.user.js
 // @updateURL    https://github.com/cengaver/EtsyScript/raw/refs/heads/main/EtsyTitleOptimizer.user.js
 // ==/UserScript==
 
-(function(){
-  'use strict'
-      GM.addStyle(`
-       :root {
-            --primary-color: #4285f4;
-            --primary-dark: #3367d6;
-            --secondary-color: #34a853;
-            --secondary-dark: #2e7d32;
-            --danger-color: #ea4335;
-            --danger-dark: #c62828;
-            --warning-color: #fbbc05;
-            --warning-dark: #f57f17;
-            --light-color: #f8f9fa;
-            --dark-color: #202124;
-            --gray-color: #5f6368;
-            --border-radius: 4px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-            --font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-        }
+(function () {
+    'use strict';
 
-        /* Toast Notifications */
-        .toast-container {
+    const CONFIG = Object.freeze({
+        apiKeyStorageKey: 'api_key',
+        endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+        requestTimeoutMs: 45000,
+        buttonClass: 'gem-title-optimizer-btn',
+        idleButtonText: '✨ Başlığı Optimize Et (GEM)',
+        busyButtonText: '⏳ Optimize ediliyor...'
+    });
+
+    const GEM_PROMPT = `
+You edit an existing Etsy listing title for clarity and keyword order.
+
+Rules:
+- Do not claim access to Etsy's private ranking algorithm, search volume, or competitor data.
+- Do not rewrite the title from scratch.
+- Preserve at least 70% of the original meaningful words, case-insensitively.
+- Improve keyword order, readability, and clarity only.
+- Do not add product features, materials, audiences, occasions, or claims that are not present in the original title.
+- Do not add emojis or promotional fluff.
+- Aim for 110-130 characters only when the original information supports it; never exceed 140 characters.
+- Return only the requested JSON fields.
+`;
+
+    let isProcessing = false;
+    let toastContainer = null;
+    let mountTimer = null;
+
+    GM.addStyle(`
+        .gem-opt-toast-container {
             position: fixed;
-            bottom: 20px;
             right: 20px;
-            z-index: 9999;
+            bottom: 20px;
+            z-index: 2147483647;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            pointer-events: none;
         }
 
-        .toast {
+        .gem-opt-toast {
             min-width: 280px;
+            max-width: min(420px, calc(100vw - 40px));
             padding: 12px 16px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            font-family: var(--font-family);
+            border-radius: 6px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
             font-size: 14px;
+            line-height: 1.4;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
+            gap: 12px;
             opacity: 0;
-            transform: translateY(20px);
-            transition: var(--transition);
+            transform: translateY(16px);
+            transition: opacity 180ms ease, transform 180ms ease;
+            pointer-events: auto;
         }
 
-        .toast.show {
+        .gem-opt-toast.is-visible {
             opacity: 1;
             transform: translateY(0);
         }
 
-        .toast-success {
-            background-color: var(--secondary-color);
-            color: white;
-        }
+        .gem-opt-toast--success { background: #2e7d32; color: #fff; }
+        .gem-opt-toast--error { background: #c62828; color: #fff; }
+        .gem-opt-toast--warning { background: #fbbc05; color: #202124; }
+        .gem-opt-toast--info { background: #3367d6; color: #fff; }
 
-        .toast-error {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        .toast-info {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
+        .gem-opt-toast__close {
+            flex: 0 0 auto;
+            padding: 0;
+            border: 0;
+            background: transparent;
             color: inherit;
             cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
+            font: inherit;
+            font-size: 18px;
+            line-height: 1;
+            opacity: 0.75;
+        }
+
+        .gem-opt-toast__close:hover { opacity: 1; }
+
+        .${CONFIG.buttonClass} {
+            margin-bottom: 8px;
+        }
+
+        .${CONFIG.buttonClass}[disabled] {
+            cursor: wait;
             opacity: 0.7;
         }
-
-        .toast-close:hover {
-            opacity: 1;
-        }
     `);
-    GM.registerMenuCommand("⚙️ API Key Ayarla", async () => {
-        const currentKey = await getApiKey();
-        const key = prompt(" Sheet Url'nizi girin:" ,currentKey);
-        if (key) {
-            await GM.setValue("api_key", key.trim());
-            showToast('✅ Kaydedildi','info');
-        }
+
+    GM.registerMenuCommand('⚙️ Gemini API Anahtarını Ayarla', async () => {
+        const hasCurrentKey = Boolean(await getApiKey());
+        const message = hasCurrentKey
+            ? 'Yeni Gemini API anahtarını girin. İptal mevcut anahtarı korur; boş bırakırsanız anahtar silinir.'
+            : 'Gemini API anahtarınızı girin:';
+        const enteredKey = window.prompt(message, '');
+
+        if (enteredKey === null) return;
+
+        const cleanKey = enteredKey.trim();
+        await GM.setValue(CONFIG.apiKeyStorageKey, cleanKey);
+        showToast(
+            cleanKey ? 'Gemini API anahtarı kaydedildi.' : 'Gemini API anahtarı silindi.',
+            cleanKey ? 'success' : 'info'
+        );
     });
+
     async function getApiKey() {
-        const key = await GM.getValue("api_key", "");
-        return key;
+        const value = await GM.getValue(CONFIG.apiKeyStorageKey, '');
+        return typeof value === 'string' ? value.trim() : '';
     }
 
-    let isProcessing = false; // Flag to prevent multiple executions
-    let toastContainer = null;
-    // Modern Toast Notification System
     function createToastContainer() {
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            document.body.appendChild(toastContainer);
-        }
+        if (toastContainer?.isConnected) return toastContainer;
+
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'gem-opt-toast-container';
+        toastContainer.setAttribute('aria-live', 'polite');
+        toastContainer.setAttribute('aria-atomic', 'false');
+        (document.body || document.documentElement).appendChild(toastContainer);
         return toastContainer;
     }
 
-    function showToast(message, type = 'success', duration = 3000) {
+    function showToast(message, type = 'success', duration = 4000) {
         const container = createToastContainer();
-
         const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
+        toast.className = `gem-opt-toast gem-opt-toast--${type}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
 
         const messageSpan = document.createElement('span');
         messageSpan.textContent = message;
 
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        });
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'gem-opt-toast__close';
+        closeButton.setAttribute('aria-label', 'Bildirimi kapat');
+        closeButton.textContent = '×';
 
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeBtn);
+        let dismissTimer = null;
+        const dismiss = () => {
+            if (dismissTimer) clearTimeout(dismissTimer);
+            toast.classList.remove('is-visible');
+            window.setTimeout(() => toast.remove(), 200);
+        };
+
+        closeButton.addEventListener('click', dismiss);
+        toast.append(messageSpan, closeButton);
         container.appendChild(toast);
+        window.setTimeout(() => toast.classList.add('is-visible'), 10);
 
-        // Show animation
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        // Auto dismiss
         if (duration > 0) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
+            dismissTimer = window.setTimeout(dismiss, duration);
         }
 
         return toast;
     }
 
-    const waitFor=(fn,timeout=10000)=>{
-        const start=Date.now()
-        return new Promise((res,rej)=>{
-            const t=setInterval(()=>{
-                const v=fn()
-                if(v){clearInterval(t);res(v)}
-                if(Date.now()-start>timeout){clearInterval(t);rej()}
-            },200)
-            })
+    function getTitleInput() {
+        return document.querySelector('input[name="title"], textarea[name="title"]');
     }
 
-    const getTitleInput=()=>document.querySelector('input[name="title"], textarea[name="title"]')
+    function normalizeTitle(value) {
+        return String(value ?? '').replace(/\s+/g, ' ').trim();
+    }
 
-    const createButton=()=>{
-        const btn=document.createElement('button')
-        btn.type='button'
-        btn.innerHTML='✨ Optimize Title(GEM)'
-        btn.className='wt-btn wt-btn--small wt-btn--secondary'
-        btn.style.marginBottom='8px'
-        btn.onclick=async()=>{
-            const input=getTitleInput()
-            if(!input||!input.value.trim())return
+    function tokenizeTitle(value) {
+        return normalizeTitle(value).toLocaleLowerCase('en-US').match(/[\p{L}\p{N}]+/gu) || [];
+    }
 
-            const oldTitle=input.value.trim()
-            btn.disabled=true
-            btn.innerText='⏳ Optimizing...'
-            const GEM_PROMPT=`
-You are an expert Etsy SEO optimization engine specialized in Etsy’s 2026 search model.
+    function getRetentionRatio(originalTitle, newTitle) {
+        const originalWords = new Set(tokenizeTitle(originalTitle));
+        const newWords = new Set(tokenizeTitle(newTitle));
+        if (originalWords.size === 0) return 1;
 
-Rules:
-- Do NOT rewrite from scratch
-- Keep at least 70% of original wording
-- Improve keyword order and clarity
-- No emojis, no fluff, no new claims
-- Ideal length 110–130 chars (max 140)
-
-Output STRICT JSON:
-{
-  "new_title": "...",
-  "confidence": 0.0,
-  "change_type": "none|micro|light"
-}
-`;
-
-            const payload={
-                system_instruction:{
-                    parts:[{text:GEM_PROMPT}]
-                },
-                contents:[{
-                    role:"user",
-                    parts:[{
-                        text: JSON.stringify({ title: oldTitle })
-                    }]
-                }]
-            };
-            const GEM_API_KEY= await getApiKey()
-            if(!GEM_API_KEY) return;
-            const GEM_ENDPOINT=`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEM_API_KEY}`
-            //console.log(GEM_ENDPOINT);
-            GM.xmlHttpRequest({
-                method:"POST",
-                url:GEM_ENDPOINT,
-                headers:{
-                    "Content-Type":"application/json"
-                },
-                data: JSON.stringify(payload),
-                onload:function(res){
-                    try{
-                        const j=JSON.parse(res.responseText);
-                        let raw=j.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if(!raw) throw 'empty';
-
-                        raw=cleanJson(raw);
-
-                        const data=JSON.parse(raw);
-
-                        if(data.new_title){
-                            input.value=data.new_title;
-                            input.dispatchEvent(new Event('input',{bubbles:true}));
-
-                            showToast(
-                                `Optimize edildi (${data.change_type}, ${Math.round(data.confidence*100)}%)`,
-                                'success'
-                            );
-
-                            console.log('✨ GEM OK', data);
-                        }
-
-                    }catch(e){
-                        console.log('❌ GEM parse hatası', res.responseText);
-                    }
-                }
-
-            });
-
-            btn.disabled=false
-            btn.innerText='✨ Optimize Title(GEM)'
+        let retained = 0;
+        for (const word of originalWords) {
+            if (newWords.has(word)) retained += 1;
         }
-        return btn
+        return retained / originalWords.size;
     }
-    function cleanJson(text){
-        return text
-            .replace(/```json/gi,'')
-            .replace(/```/g,'')
+
+    function setControlledInputValue(input, value) {
+        const prototype = input instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+
+        input.focus();
+        if (setter) setter.call(input, value);
+        else input.value = value;
+
+        try {
+            input.dispatchEvent(new InputEvent('input', {
+                bubbles: true,
+                inputType: 'insertText',
+                data: value
+            }));
+        } catch (_) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function cleanJson(text) {
+        return String(text ?? '')
+            .replace(/^\s*```json\s*/i, '')
+            .replace(/^\s*```\s*/i, '')
+            .replace(/\s*```\s*$/i, '')
             .trim();
     }
-    const mount=async()=>{
-        const input=await waitFor(getTitleInput)
-        const wrap=input.closest('.wt-mb-xs-2,.wt-mb-xs-3')||input.parentElement
-        if(wrap.querySelector('.gem-btn'))return
-        const btn=createButton()
-        btn.classList.add('gem-btn')
-        wrap.prepend(btn)
-  }
 
-  mount()
-})()
+    function buildPayload(oldTitle) {
+        return {
+            systemInstruction: {
+                parts: [{ text: GEM_PROMPT }]
+            },
+            contents: [{
+                role: 'user',
+                parts: [{ text: JSON.stringify({ title: oldTitle }) }]
+            }],
+            generationConfig: {
+                responseFormat: {
+                    text: {
+                        mimeType: 'application/json',
+                        schema: {
+                            type: 'object',
+                            additionalProperties: false,
+                            properties: {
+                                new_title: {
+                                    type: 'string',
+                                    minLength: 1,
+                                    maxLength: 140
+                                },
+                                confidence: {
+                                    type: 'number',
+                                    minimum: 0,
+                                    maximum: 1
+                                },
+                                change_type: {
+                                    type: 'string',
+                                    enum: ['none', 'micro', 'light']
+                                }
+                            },
+                            required: ['new_title', 'confidence', 'change_type']
+                        }
+                    }
+                },
+                maxOutputTokens: 300,
+                thinkingConfig: {
+                    thinkingLevel: 'low'
+                }
+            }
+        };
+    }
+
+    function extractApiMessage(responseText) {
+        try {
+            const parsed = JSON.parse(responseText);
+            return typeof parsed?.error?.message === 'string' ? parsed.error.message.trim() : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function createHttpError(response) {
+        const status = Number(response.status) || 0;
+        const apiMessage = extractApiMessage(response.responseText);
+        let message = `Gemini API isteği başarısız oldu${status ? ` (${status})` : ''}.`;
+
+        if (status === 400) message = 'Gemini isteği geçersiz. API ayarlarını kontrol edin.';
+        else if (status === 401 || status === 403) message = 'Gemini API anahtarı geçersiz veya bu işlem için yetkisiz.';
+        else if (status === 429) message = 'Gemini kullanım limiti aşıldı. Bir süre sonra tekrar deneyin.';
+        else if (status >= 500) message = 'Gemini hizmetinde geçici bir sunucu hatası oluştu.';
+
+        return new Error(apiMessage ? `${message} ${apiMessage}` : message);
+    }
+
+    function requestGemini(apiKey, payload) {
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'POST',
+                url: CONFIG.endpoint,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                },
+                data: JSON.stringify(payload),
+                timeout: CONFIG.requestTimeoutMs,
+                anonymous: true,
+                onload: (response) => {
+                    if (response.status < 200 || response.status >= 300) {
+                        reject(createHttpError(response));
+                        return;
+                    }
+                    resolve(response.responseText);
+                },
+                onerror: () => reject(new Error('Gemini API bağlantısı kurulamadı. İnternet bağlantınızı kontrol edin.')),
+                ontimeout: () => reject(new Error('Gemini API isteği zaman aşımına uğradı.')),
+                onabort: () => reject(new Error('Gemini API isteği iptal edildi.'))
+            });
+        });
+    }
+
+    function parseGeminiResponse(responseText) {
+        let response;
+        try {
+            response = JSON.parse(responseText);
+        } catch (_) {
+            throw new Error('Gemini API geçersiz bir sunucu yanıtı döndürdü.');
+        }
+
+        const rawText = response.candidates?.[0]?.content?.parts
+            ?.map((part) => part?.text)
+            .filter(Boolean)
+            .join('');
+
+        if (!rawText) {
+            const blockReason = response.promptFeedback?.blockReason;
+            throw new Error(
+                blockReason
+                    ? `Gemini isteği engelledi: ${blockReason}`
+                    : 'Gemini boş bir yanıt döndürdü.'
+            );
+        }
+
+        try {
+            return JSON.parse(cleanJson(rawText));
+        } catch (_) {
+            throw new Error('Gemini yanıtı beklenen JSON biçiminde değil.');
+        }
+    }
+
+    function validateOptimization(data, oldTitle) {
+        if (!data || typeof data !== 'object') {
+            throw new Error('Gemini yanıtında optimize edilmiş başlık bulunamadı.');
+        }
+
+        const newTitle = normalizeTitle(data.new_title);
+        if (!newTitle) throw new Error('Gemini boş bir başlık döndürdü.');
+        if (newTitle.length > 140) {
+            throw new Error(`Gemini başlığı 140 karakter sınırını aştı (${newTitle.length}).`);
+        }
+
+        const retentionRatio = getRetentionRatio(oldTitle, newTitle);
+        if (retentionRatio < 0.7) {
+            throw new Error(
+                `Gemini mevcut kelimelerin yalnızca %${Math.round(retentionRatio * 100)} kadarını koruduğu için sonuç uygulanmadı.`
+            );
+        }
+
+        let confidence = Number(data.confidence);
+        if (confidence > 1 && confidence <= 100) confidence /= 100;
+        if (!Number.isFinite(confidence)) confidence = 0;
+        confidence = Math.min(1, Math.max(0, confidence));
+
+        const allowedChangeTypes = new Set(['none', 'micro', 'light']);
+        const changeType = allowedChangeTypes.has(data.change_type) ? data.change_type : 'none';
+
+        return { newTitle, confidence, changeType };
+    }
+
+    function setButtonBusy(button, busy) {
+        button.disabled = busy;
+        button.textContent = busy ? CONFIG.busyButtonText : CONFIG.idleButtonText;
+        button.setAttribute('aria-busy', String(busy));
+    }
+
+    async function optimizeTitle(button) {
+        if (isProcessing) return;
+
+        const input = getTitleInput();
+        const oldTitle = normalizeTitle(input?.value);
+        if (!input || !oldTitle) {
+            showToast('Önce Etsy başlık alanına bir başlık yazın.', 'warning');
+            return;
+        }
+
+        const apiKey = await getApiKey();
+        if (!apiKey) {
+            showToast('Önce Tampermonkey menüsünden Gemini API anahtarını ayarlayın.', 'warning', 6000);
+            return;
+        }
+
+        isProcessing = true;
+        setButtonBusy(button, true);
+
+        try {
+            const responseText = await requestGemini(apiKey, buildPayload(oldTitle));
+            const result = validateOptimization(parseGeminiResponse(responseText), oldTitle);
+
+            if (!input.isConnected || getTitleInput() !== input) {
+                throw new Error('Etsy başlık alanı işlem sırasında değişti; sonuç uygulanmadı.');
+            }
+
+            if (normalizeTitle(input.value) !== oldTitle) {
+                throw new Error('Başlık siz beklerken değiştirildi; Gemini sonucu uygulanmadı.');
+            }
+
+            if (result.newTitle === oldTitle) {
+                showToast('Başlık zaten uygun görünüyor; değişiklik yapılmadı.', 'info');
+                return;
+            }
+
+            setControlledInputValue(input, result.newTitle);
+
+            const changeLabels = {
+                none: 'değişiklik yok',
+                micro: 'çok küçük değişiklik',
+                light: 'hafif değişiklik'
+            };
+            showToast(
+                `Başlık optimize edildi (${changeLabels[result.changeType]}, model güveni %${Math.round(result.confidence * 100)}).`,
+                'success',
+                6000
+            );
+            console.info('✨ GEM başlık optimizasyonu tamamlandı', {
+                oldTitle,
+                newTitle: result.newTitle,
+                changeType: result.changeType,
+                confidence: result.confidence
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Başlık optimize edilirken bilinmeyen bir hata oluştu.';
+            console.error('❌ GEM başlık optimizasyonu başarısız', error);
+            showToast(message, 'error', 8000);
+        } finally {
+            isProcessing = false;
+            if (button.isConnected) setButtonBusy(button, false);
+        }
+    }
+
+    function createButton() {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `wt-btn wt-btn--small wt-btn--secondary ${CONFIG.buttonClass}`;
+        button.textContent = CONFIG.idleButtonText;
+        button.setAttribute('aria-busy', 'false');
+        button.addEventListener('click', () => optimizeTitle(button));
+        return button;
+    }
+
+    function mount() {
+        const input = getTitleInput();
+        if (!input?.isConnected) return;
+
+        const wrapper = input.closest('.wt-mb-xs-2, .wt-mb-xs-3') || input.parentElement;
+        if (!wrapper || wrapper.querySelector(`.${CONFIG.buttonClass}`)) return;
+
+        wrapper.prepend(createButton());
+    }
+
+    function scheduleMount() {
+        if (mountTimer) window.clearTimeout(mountTimer);
+        mountTimer = window.setTimeout(() => {
+            mountTimer = null;
+            mount();
+        }, 100);
+    }
+
+    const observer = new MutationObserver(scheduleMount);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener('popstate', scheduleMount);
+    window.addEventListener('pageshow', scheduleMount);
+    scheduleMount();
+})();
