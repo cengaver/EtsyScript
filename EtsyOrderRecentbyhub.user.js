@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.37
+// @version      6.38
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -676,21 +676,14 @@
 
     // Cached localStorage sets — avoid JSON.parse per row
     const _cache = {
-
-        _data: {},
-
         get(key) {
-            if (!this._data[key]) {
-                try {
-                    this._data[key] = new Set(
-                        JSON.parse(localStorage.getItem(key) || '[]')
-                    );
-                } catch {
-                    this._data[key] = new Set();
-                }
+            try {
+                return new Set(
+                    JSON.parse(localStorage.getItem(key) || '[]')
+                );
+            } catch {
+                return new Set();
             }
-
-            return this._data[key];
         },
 
         async load(key) {
@@ -761,8 +754,6 @@
         },
 
         async clear(key) {
-            delete this._data[key];
-
             localStorage.removeItem(key);
             if (!config.apiBase) return
             try {
