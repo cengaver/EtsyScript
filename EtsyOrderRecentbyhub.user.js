@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.35
+// @version      6.37
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -178,6 +178,7 @@
         { name:"Brick",         ischecked:0, hex:"#9C3E2E" },
         { name:"Blossom",       ischecked:1, hex:"#F4C2C2" },
         { name:"Boysenberry",   ischecked:0, hex:"#873260" },
+        { name:"Chrimson",      ischecked:0, hex:"#8B1C2D" },
         { name:"Crimson",       ischecked:0, hex:"#8B1C2D" },
         { name:"Crunchberry",   ischecked:0, hex:"#D96A82" },
         { name:"Espresso",      ischecked:0, hex:"#3B2F2F" },
@@ -1263,7 +1264,9 @@
             if (!saved.has(linkText)) return;
 
             const cb = tr.querySelector('input[type="checkbox"]');
-            if (cb && !cb.checked) {
+            console.log("clicking", linkText, cb);
+
+            if (cb) {
                 cb.click();
             }
         });
@@ -1281,22 +1284,24 @@
             return btn;
         };
 
-        const btnApp       = mk('App',     () => { checkCheckboxesFromLocalStorage('orderNumbers');     btnApp.style.backgroundColor  = 'green'; });
-        const btnWait      = mk('Wait',    () => { checkCheckboxesFromLocalStorage('orderNumbersWait'); btnWait.style.backgroundColor = 'olive'; });
-        const btnDelay     = mk('Delay',   () => { checkCheckboxesFromLocalStorage('orderNumbersDelay');btnDelay.style.backgroundColor= 'olive'; });
-        const btnClearApp  = mk('ClrApp',  () => { _cache.clear('orderNumbers');     btnClearApp.style.backgroundColor  = 'red'; btnApp.style.backgroundColor  = ''; });
-        const btnClearWait = mk('ClrWait', () => { _cache.clear('orderNumbersWait'); btnClearWait.style.backgroundColor = 'red'; btnWait.style.backgroundColor = ''; });
-        const btnClearDelay= mk('ClrDelay',() => { _cache.clear('orderNumbersDelay');btnClearDelay.style.backgroundColor= 'red'; btnDelay.style.backgroundColor= ''; });
-        [btnApp, btnWait, btnDelay, btnClearApp, btnClearWait, btnClearDelay].forEach(b => container.insertBefore(b, container.firstChild));
+        const btnApp       = mk('App',    () => { checkCheckboxesFromLocalStorage('orderNumbers');     btnApp.style.backgroundColor  = 'green'; });
+        const btnWait      = mk('Wait',   () => { checkCheckboxesFromLocalStorage('orderNumbersWait'); btnWait.style.backgroundColor = 'olive'; });
+        const btnDelay     = mk('Delay',  () => { checkCheckboxesFromLocalStorage('orderNumbersDelay');btnDelay.style.backgroundColor= 'olive'; });
+        const btnClearApp  = mk('ClApp',  () => { _cache.clear('orderNumbers');     btnClearApp.style.backgroundColor  = 'red'; btnApp.style.backgroundColor  = ''; });
+        const btnClearWait = mk('ClWait', () => { _cache.clear('orderNumbersWait'); btnClearWait.style.backgroundColor = 'red'; btnWait.style.backgroundColor = ''; });
+        const btnClearDelay= mk('ClDelay',() => { _cache.clear('orderNumbersDelay');btnClearDelay.style.backgroundColor= 'red'; btnDelay.style.backgroundColor= ''; });
+        const btnSenk      = mk('Senk',   () => { _cache.load('orderNumbers'); _cache.load('orderNumbersWait'); _cache.load('orderNumbersDelay');checkCheckboxes(); btnSenk.style.backgroundColor= 'green'});
+       [btnApp, btnWait, btnDelay, btnClearApp, btnClearWait, btnClearDelay, btnSenk].forEach(b => container.insertBefore(b, container.firstChild));
     }
 
     // shift+click multi-select — delegate to tbody for performance
     let _shiftLastRow = null;
+
     function checkCheckboxes() {
         if (document.body.dataset.shiftListenerAttached) return;
         document.body.dataset.shiftListenerAttached = 'true';
 
-        document.body.addEventListener('click', e => {
+        document.body.addEventListener('change', e => {
             const target = e.target;
             if (!target.matches('input[type="checkbox"], dxbl-check')) return;
             const tr = target.closest('tr');
