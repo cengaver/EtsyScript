@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
 // @description  Etsy Listing Inline Analyzer — Optimized v2
-// @version      2.00
+// @version      2.01
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
-// @match        https://www.etsy.com/your/shops/me/tools/listings/*
+// @match        https://www.etsy.com/your/shops/me/tools/listings*
 // @grant        GM.xmlHttpRequest
 // @grant        GM.registerMenuCommand
 // @grant        GM.setValue
