@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order Recent by hub
 // @namespace    https://github.com/cengaver
-// @version      6.38
+// @version      6.40
 // @description  Etsy Order Recent - Optimized v6 (Blazor/WS compatible)
 // @author       Cengaver
 // @match        https://*.customhub.io/*
@@ -32,7 +32,7 @@
     // ─────────────────────────────────────────────
     GM.addStyle(`
         :root {
-            --pc: #4285f4; --pc-d: #3367d6;
+            --pc: #3367d6 !important; --pc-d: #3367d6 ;
             --sc: #34a853; --sc-d: #2e7d32;
             --dc: #ea4335; --dc-d: #c62828;
             --wc: #fbbc05; --wc-d: #f57f17;
@@ -862,18 +862,24 @@
         });
         const appBtn = mk('Gönder', 'approve-icon', e => {
             _cache.add('orderNumbers', order);
+            _cache.remove('orderNumbersWait', order);
+            _cache.remove('orderNumbersDelay', order);
             td?.classList.add('toast-success');
             e.target.style.backgroundColor = 'green';
         });
         const waitBtn = mk('Beklet', 'wait-icon', e => {
             _cache.add('orderNumbersWait', order);
+            _cache.remove('orderNumbers', order);
+            _cache.remove('orderNumbersDelay', order);
             td?.classList.add('toast-warning');
             e.target.style.backgroundColor = 'olive';
         });
         const delBtn = mk('Ertele', 'wait-icon', e => {
             _cache.add('orderNumbersDelay', order);
+            _cache.remove('orderNumbers', order);
+            _cache.remove('orderNumbersWait', order);
             td?.classList.add('toast-info');
-            e.target.style.backgroundColor = 'blue';
+            e.target.style.backgroundColor = 'lightblue';
         });
 
         const imgBtn = mk('OrderImg', 'wait-icon', async e => {
@@ -1092,9 +1098,9 @@
 
         // Color palette
         const COLORS = {
-            black:'#000000',white:'#ffffff',red:'#ac110d',royal:'#00237d',columbia:'#74cae3',
-            navy:'#192145',sky_blue:'#0397d5',purple:'#6c35aa',neon_orange:'#f3541c',grey:'#646263',
-            maroon:'#650d0a',orange:'#ee7a3f',yellow:'#f1ea33',vegas:'#c4b454',gold:'#d3af37',
+            black:'#000000',white:'#ffffff',red:'#ac110d',royal:'#164397',columbia:'#74cae3',
+            navy:'#000c46',sky_blue:'#0397d5',purple:'#6c35aa',neon_orange:'#f3541c',grey:'#646263',
+            maroon:'#650d0a',orange:'#ee7a3f',yellow:'#f1ea33',vegas:'#c4b454',gold:'#bf8c17',
             teal:'#008081',sand:'#c3ae81',neon_pink:'#ee398d',green:'#008000',neon_green:'#4fb848',
             silver:'#c0c0c0',brown:'#964b00',magenta:'#ff00fe',pink:'#ffbfcd',burgundy:'#811930',
             kelly_green:'#4CBB17',blue:'#0000ff',forest_green:'#00452a',
@@ -1758,67 +1764,126 @@
 
     async function generateImageWithSKUSettings(sku, text, color, font) {
         const s = await getSkuSettings(sku);
-        if (!s) { alert(`"${sku}" için ayar bulunamadı`); return null; }
-        const fontName   = font  || s.fontName;
-        const fillColor  = color || s.fillColor;
-        const { strokeColor = '#000000', strokeWidth = 0 } = s;
-        if (!fontName) { alert(`SKU ${sku} için font tanımlı değil`); return null; }
-        const fontData = await getImage(`font_${fontName}`);
-        if (!fontData) { alert(`Font "${fontName}" bulunamadı`); return null; }
-        await injectFontFromStorage(fontData);
-
-        const lines = text.replace(/\\n/g, '\n').split('\n');
-        const padding = 40, maxW = 5000 - padding * 2;
-
-        const tmp = new OffscreenCanvas(1, 1).getContext('2d');
-        let fontSize = 3200, widths = [], ascents = [], descents = [];
-        do {
-            tmp.font = `${fontSize}px "${fontName}"`;
-            widths   = lines.map(l => tmp.measureText(l).width);
-            ascents  = lines.map(l => tmp.measureText(l).actualBoundingBoxAscent);
-            descents = lines.map(l => tmp.measureText(l).actualBoundingBoxDescent);
-            fontSize -= 10;
-        } while (Math.max(...widths) > maxW && fontSize > 10);
-
-        const lineHeights = lines.map((_, i) => ascents[i] + descents[i]);
-        const totalH = lineHeights.reduce((a, b) => a + b, 0) * 1.3;
-
-        const canvas = new OffscreenCanvas(
-            Math.max(...widths) + padding * 2,
-            totalH + padding * 2
-        );
-        const ctx = canvas.getContext('2d');
-        ctx.font = `${fontSize}px "${fontName}"`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'alphabetic';
-
-        const sf = fontSize / 3200;
-        let y = padding + ascents[0];
-
-        for (let i = 0; i < lines.length; i++) {
-            if (i > 0) y += lineHeights[i - 1] * 0.4 + lineHeights[i] * 0.6;
-
-            if (strokeWidth > 0) {
-                ctx.lineWidth = strokeWidth * sf;
-                ctx.strokeStyle = strokeColor;
-                ctx.strokeText(lines[i], canvas.width / 2, y);
-            }
-            ctx.fillStyle = fillColor;
-            ctx.fillText(lines[i], canvas.width / 2, y);
+        if (!s) {
+            alert(`"${sku}" için ayar bulunamadı`);
+            return null;
         }
 
-        const offBlob = await canvas.convertToBlob({ type: 'image/png', quality: 1 });
-        const bmp     = await createImageBitmap(offBlob);
-        const tmp2    = document.createElement('canvas');
-        tmp2.width    = canvas.width;
-        tmp2.height   = canvas.height;
-        tmp2.getContext('2d').drawImage(bmp, 0, 0);
-        bmp.close();
+        const fontName = font || s.fontName;
+        const fillColor = color || s.fillColor;
+        const { strokeColor = '#000000', strokeWidth = 0 } = s;
 
-        const trimmed = trimCanvas(tmp2);
-        return new Promise(res => trimmed.toBlob(async blob => res(await blobWith300DPI(blob)), 'image/png', 1.0));
-    }
+        if (!fontName) {
+            alert(`SKU ${sku} için font tanımlı değil`);
+            return null;
+        }
 
+        const fontData = await getImage(`font_${fontName}`);
+        if (!fontData) {
+            alert(`Font "${fontName}" bulunamadı`);
+            return null;
+        }
+
+      await injectFontFromStorage(fontData);
+
+      const lines = text.replace(/\\n/g, '\n').split('\n');
+      const padding = 40;
+      const maxW = 5000 - padding * 2;
+
+      const tmp = new OffscreenCanvas(1, 1).getContext('2d');
+
+      let fontSize = 3200;
+      let widths, ascents, descents;
+
+      while (fontSize > 10) {
+          tmp.font = `${fontSize}px "${fontName}"`;
+
+          widths = lines.map(l => tmp.measureText(l).width);
+          ascents = lines.map(l => tmp.measureText(l).actualBoundingBoxAscent);
+          descents = lines.map(l => tmp.measureText(l).actualBoundingBoxDescent);
+
+          if (Math.max(...widths) <= maxW) break;
+
+          fontSize -= 10;
+      }
+
+      const lineHeights = lines.map((_, i) => ascents[i] + descents[i]);
+
+      const lineSpacing = fontSize * 0.15;
+
+      const totalH =
+            lineHeights.reduce((a, b) => a + b, 0) +
+            lineSpacing * Math.max(0, lines.length - 1) +
+            padding * 2;
+
+      const canvas = new OffscreenCanvas(
+          Math.max(...widths) + padding * 2,
+          totalH
+      );
+
+      const ctx = canvas.getContext('2d');
+
+      ctx.font = `${fontSize}px "${fontName}"`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+
+      const sf = fontSize / 3200;
+
+      let y = padding + ascents[0];
+
+      for (let i = 0; i < lines.length; i++) {
+          if (i > 0) {
+              y += lineHeights[i - 1] + lineSpacing;
+          }
+
+          if (strokeWidth > 0) {
+              ctx.lineWidth = strokeWidth * sf;
+              ctx.strokeStyle = strokeColor;
+              ctx.strokeText(
+                  lines[i],
+                  canvas.width / 2,
+                  y
+              );
+          }
+
+          ctx.fillStyle = fillColor;
+
+          ctx.fillText(
+              lines[i],
+              canvas.width / 2,
+              y
+          );
+      }
+
+      const offBlob = await canvas.convertToBlob({
+          type: 'image/png',
+          quality: 1
+      });
+
+      const bmp = await createImageBitmap(offBlob);
+
+      const tmp2 = document.createElement('canvas');
+      tmp2.width = canvas.width;
+      tmp2.height = canvas.height;
+
+      tmp2.getContext('2d').drawImage(
+          bmp,
+          0,
+          0
+      );
+
+      bmp.close();
+
+      const trimmed = trimCanvas(tmp2);
+
+      return new Promise(res =>
+                         trimmed.toBlob(
+          async blob => res(await blobWith300DPI(blob)),
+          'image/png',
+          1.0
+      )
+                        );
+  }
     function trimCanvas(canvas) {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
