@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      2.3.0
+// @version      2.3.1
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -346,7 +346,7 @@ socks
 
         const config = await loadSheetConfig();
         if (!config.sheet_url) {
-            getToast().error('Google Sheet URL ayarlanmamış.');
+            //getToast().error('Google Sheet URL ayarlanmamış.');
             return;
         }
 
