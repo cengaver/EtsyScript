@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      3.10
+// @version      3.11
 // @description  Open all matching links with delay + 3-tier ROAS coloring (ad off / watch / keep) + progress panel (pause/play/stop)
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
@@ -35,11 +35,11 @@
     // ROAS_OFF..WATCH    → break-even-ish, keep an eye on it
     // >= ROAS_WATCH      → healthy, keep running
     const ROAS_OFF   = 1.5;
-    const ROAS_WATCH = 2.5;
+    const ROAS_WATCH = 2.0;
 
     const COLOR_OFF   = '#ff6b6b'; // strong red   → turn ad off
     const COLOR_WATCH = '#ffe08a'; // amber        → monitor / review
-    const COLOR_GOOD  = '';        // no color     → keep running
+    const COLOR_GOOD  = '#4fb848'; // neon green   → keep running
 
     // ─────────────────────────────────────────────
     // COLOR ROAS
