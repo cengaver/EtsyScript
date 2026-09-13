@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Open Links Sequentially for ETSY ad
-// @version      3.00
-// @description  Open all matching links with delay + ROAS coloring + progress panel (pause/play/stop)
+// @version      3.10
+// @description  Open all matching links with delay + 3-tier ROAS coloring (ad off / watch / keep) + progress panel (pause/play/stop)
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising?ref=seller-platform-mcnav
@@ -18,12 +18,28 @@
     // SELECTORS
     // ─────────────────────────────────────────────
     const SEL_ROWS  = '#listings-header > table > tbody > tr';
-    const SEL_ROAS  = 'td:nth-child(11) > span';
+    // NOTE: table columns are
+    // 1 checkbox, 2 Listing, 3 Ad on/off, 4 Strategy, 5 Ad group,
+    // 6 Views, 7 Clicks, 8 Click rate, 9 Orders, 10 Revenue, 11 Spend, 12 ROAS
+    // The old selector pointed at nth-child(11), which is Spend, not ROAS.
+    // That's why every row was being colored the same regardless of real ROAS.
+    const SEL_ROAS  = 'td:nth-child(12) > span';
     const SEL_LINKS = '#listings-header > table > tbody > tr > td.wt-table__row__cell.wt-pr-xs-3.wt-text-left-xs.wt-table__row__cell.wt-display-table-cell.wt-pt-xs-2.wt-pb-xs-2.wt-z-index-1 > div > div > a';
 
     const TIMER = { 0: 80_000, 1: 200_000 };
-    const LOW_ROAS_BG  = '#ffa59e';
-    const HIGH_ROAS_BG = '';
+
+    // ─────────────────────────────────────────────
+    // ROAS → ad on/off decision thresholds
+    // ─────────────────────────────────────────────
+    // < ROAS_OFF        → clearly losing money on ads, candidate to turn OFF
+    // ROAS_OFF..WATCH    → break-even-ish, keep an eye on it
+    // >= ROAS_WATCH      → healthy, keep running
+    const ROAS_OFF   = 1.5;
+    const ROAS_WATCH = 2.5;
+
+    const COLOR_OFF   = '#ff6b6b'; // strong red   → turn ad off
+    const COLOR_WATCH = '#ffe08a'; // amber        → monitor / review
+    const COLOR_GOOD  = '';        // no color     → keep running
 
     // ─────────────────────────────────────────────
     // COLOR ROAS
@@ -39,8 +55,17 @@
             if (!span) return;
 
             const apply = () => {
-                const val = parseFloat(span.textContent.trim()) || 0;
-                row.style.backgroundColor = val < 2 ? LOW_ROAS_BG : HIGH_ROAS_BG;
+                const raw = span.textContent.trim().replace(',', '.');
+                const val = parseFloat(raw);
+                if (isNaN(val)) return; // e.g. totals/header rows without a numeric ROAS
+
+                if (val < ROAS_OFF) {
+                    row.style.backgroundColor = COLOR_OFF;
+                } else if (val < ROAS_WATCH) {
+                    row.style.backgroundColor = COLOR_WATCH;
+                } else {
+                    row.style.backgroundColor = COLOR_GOOD;
+                }
             };
 
             apply();
