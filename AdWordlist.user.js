@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Ad Wordlist
 // @description  Ad Wordlist for T-shirt
-// @version      2.3.1
+// @version      2.3.3
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/shops/me/advertising/listings/*
@@ -26,19 +26,14 @@
 (function () {
     'use strict';
 
-    // ─── Constants ────────────────────────────────────────────────────────────
-
     const WORD_LIST_URL = 'https://raw.githubusercontent.com/cengaver/EtsyScript/refs/heads/main/blackListWord.json';
 
-    // Default Google Apps Script Web App that receives the closed-keyword data.
-    // Change with the "Sheet ayarlarını düzenle" menu command (persists in GM storage).
     const DEFAULT_SHEET_CONFIG = {
         sheet_url: '',
         shop_name: '',
         version: GM_info.script.version,
     };
 
-    // Table columns in DOM order (after the <th> keyword cell).
     const COLUMN_KEYS = ['roas', 'orders', 'spend', 'revenue', 'clicks', 'clickRate', 'views'];
 
     const DEFAULT_WORDLIST = `dtf
@@ -78,7 +73,7 @@ cricut
 ready to press
 jacket
 =football
-=men&#39;s hoodies
+=men's hoodies
 =nurse
 =shirt
 =mens sweatshirt
@@ -94,11 +89,11 @@ socks
 =hoodie
 =womens hoodie
 =womens sweatshirts
-=women&#39;s sweatshirts
+=women's sweatshirts
 =women hoodies
 =graphic hoodies
 =graphic hoodie
-=hoddies&#39; for women
+=hoddies' for women
 =graphic hoodies for women
 =sweatshirt
 =sweater
@@ -114,8 +109,6 @@ socks
 =halloween
 =basketball`;
 
-    // ─── Toast (lazy-init) ────────────────────────────────────────────────────
-
     let _notyf = null;
 
     function getToast() {
@@ -129,18 +122,21 @@ socks
         return _notyf;
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    const randInt = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    const randInt = (lo, hi) =>
+        Math.floor(Math.random() * (hi - lo + 1)) + lo;
 
     function xmlGet(url) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'GET',
                 url,
-                onload:  (r) => (r.status === 200 ? resolve(r.responseText) : reject(new Error(`HTTP ${r.status}`))),
+                onload: (r) => (
+                    r.status === 200
+                        ? resolve(r.responseText)
+                        : reject(new Error(`HTTP ${r.status}`))
+                ),
                 onerror: (e) => reject(e),
             });
         });
@@ -153,60 +149,79 @@ socks
                 url,
                 headers: { 'Content-Type': 'application/json' },
                 data: JSON.stringify(jsonBody),
-                onload:  (r) => resolve(r),
+                onload: (r) => resolve(r),
                 onerror: (e) => reject(e),
             });
         });
     }
 
-    // ─── Sheet config (sheet_url / shop_name / version) ──────────────────────
-
     async function loadSheetConfig() {
         const raw = await GM.getValue('sheetConfig', '');
+
         if (!raw) {
-            await GM.setValue('sheetConfig', JSON.stringify(DEFAULT_SHEET_CONFIG));
+            await GM.setValue(
+                'sheetConfig',
+                JSON.stringify(DEFAULT_SHEET_CONFIG)
+            );
             return { ...DEFAULT_SHEET_CONFIG };
         }
+
         try {
-            return { ...DEFAULT_SHEET_CONFIG, ...JSON.parse(raw) };
+            return {
+                ...DEFAULT_SHEET_CONFIG,
+                ...JSON.parse(raw),
+            };
         } catch {
             return { ...DEFAULT_SHEET_CONFIG };
         }
     }
 
     async function saveSheetConfig(config) {
-        await GM.setValue('sheetConfig', JSON.stringify(config));
+        await GM.setValue(
+            'sheetConfig',
+            JSON.stringify(config)
+        );
     }
 
     async function editSheetConfig() {
         const config = await loadSheetConfig();
 
-        const newShop = window.prompt('Mağaza adı:', config.shop_name || '');
-        if (newShop === null) return; // cancelled
+        const newShop = window.prompt(
+            'Mağaza adı:',
+            config.shop_name || ''
+        );
+
+        if (newShop === null) return;
+
         config.shop_name = newShop.trim();
 
-        const newUrl = window.prompt('Google Sheet (Apps Script) URL:', config.sheet_url || '');
+        const newUrl = window.prompt(
+            'Google Sheet (Apps Script) URL:',
+            config.sheet_url || ''
+        );
+
         if (newUrl === null) return;
+
         config.sheet_url = newUrl.trim();
 
         await saveSheetConfig(config);
+
         getToast().success('Sheet ayarları kaydedildi.');
     }
 
-    /**
-     * If the running script's @version differs from what we last synced,
-     * update the stored config AND push the new version to the sheet so
-     * that row (keyed by listing id / shop) gets refreshed rather than
-     * duplicated.
-     */
     async function syncVersionIfChanged() {
         const config = await loadSheetConfig();
-        if (config.version === GM_info.script.version) return;
+
+        if (config.version === GM_info.script.version) {
+            return;
+        }
 
         config.version = GM_info.script.version;
+
         await saveSheetConfig(config);
 
         if (!config.sheet_url) return;
+
         try {
             await xmlPost(config.sheet_url, {
                 sheetName: 'ads',
@@ -217,7 +232,6 @@ socks
                 timestamp: new Date().toISOString(),
             });
         } catch {
-            // Non-fatal — version sync failing shouldn't block the tool.
         }
     }
 
@@ -226,127 +240,370 @@ socks
         return m ? m[1] : null;
     }
 
-    // ─── Wordlist ─────────────────────────────────────────────────────────────
-
-    /**
-     * Load wordlist from storage; seed with defaults on first run.
-     * Returns a parsed array — never calls getFilteredRows recursively.
-     */
     async function loadWordlist() {
         let raw = await GM.getValue('adWordlist', '');
+
         if (!raw.trim()) {
             raw = DEFAULT_WORDLIST;
             await GM.setValue('adWordlist', raw);
         }
+
         return raw
             .split('\n')
-            .map((w) => w.replace('\r', '').trim())
+            .map((w) => w.replace(/\r/g, '').trim())
             .filter((w) => w.length > 0);
+    }
+
+    function normalizeText(text) {
+        return String(text || '')
+            .replace(/\u00a0/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
     }
 
     function wordMatchesRow(word, rowWord) {
         if (!rowWord) return false;
-        if (word.startsWith('=')) return rowWord === word.slice(1);
-        if (word.startsWith('/') && word.endsWith('/')) {
-            try { return new RegExp(word.slice(1, -1)).test(rowWord); }
-            catch { return false; }
+
+        const target = normalizeText(rowWord);
+        const pattern = normalizeText(word);
+
+        if (pattern.startsWith('=')) {
+            return target === pattern.slice(1).trim();
         }
-        return rowWord.includes(word);
+
+        if (
+            pattern.startsWith('/') &&
+            pattern.endsWith('/') &&
+            pattern.length > 2
+        ) {
+            try {
+                return new RegExp(
+                    pattern.slice(1, -1),
+                    'i'
+                ).test(rowWord);
+            } catch {
+                return false;
+            }
+        }
+
+        return target.includes(pattern);
     }
 
-    // ─── DOM helpers ──────────────────────────────────────────────────────────
-
-    /** Extract keyword text from a table row */
     function getRowWord(rowEl) {
-        const wordEl = rowEl.querySelector('th.wt-table__row__cell');
-        return wordEl?.lastChild?.querySelector('p')?.textContent ?? null;
+        if (!rowEl) return null;
+
+        const wordCell = rowEl.querySelector(
+            'th.wt-table__row__cell'
+        );
+
+        if (!wordCell) return null;
+
+        const selectors = [
+            '.wt-content-toggle__body-wrapper p',
+            '.wt-content-toggle__body p',
+            '.wt-content-toggle__body-wrapper',
+            '.wt-content-toggle__body',
+            'p',
+        ];
+
+        for (const selector of selectors) {
+            const elements = wordCell.querySelectorAll(selector);
+
+            for (const el of elements) {
+                const text = el.textContent
+                    .replace(/\u00a0/g, ' ')
+                    .trim();
+
+                if (
+                    text &&
+                    text.toLowerCase() !== 'targeted keyword'
+                ) {
+                    return text;
+                }
+            }
+        }
+
+        const clone = wordCell.cloneNode(true);
+
+        clone
+            .querySelectorAll(
+                '.wt-table--responsive__title,' +
+                'button,' +
+                'label,' +
+                'input,' +
+                'svg'
+            )
+            .forEach((el) => el.remove());
+
+        const fallback = clone.textContent
+            .replace(/\u00a0/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        return fallback || null;
     }
 
-    /** The keyword table's container — everything must be scoped to this,
-     *  otherwise unrelated tables elsewhere on the page (order history, etc.)
-     *  get swept up by the generic `tr.wt-table__row` selector. */
+    function getKeywordsTable() {
+        const knownTable = document.querySelector(
+            '#listing-detail-targeted-keywords-accordion table'
+        );
+
+        if (knownTable) {
+            return knownTable;
+        }
+
+        const tables = Array.from(
+            document.querySelectorAll('table')
+        );
+
+        return tables.find((table) => {
+            const header = Array.from(
+                table.querySelectorAll('thead th')
+            ).find((th) =>
+                normalizeText(th.textContent)
+                    .startsWith('targeted keyword')
+            );
+
+            return !!header;
+        }) || null;
+    }
+
     function getKeywordsContainer() {
-        return document.querySelector('#listing-detail-targeted-keywords-accordion');
+        const byId = document.getElementById(
+            'listing-detail-targeted-keywords-accordion'
+        );
+
+        if (byId) {
+            return byId;
+        }
+
+        const table = getKeywordsTable();
+
+        if (!table) {
+            return null;
+        }
+
+        let el = table;
+
+        for (let i = 0; i < 8 && el; i++) {
+            if (el.querySelector('nav')) {
+                return el;
+            }
+
+            el = el.parentElement;
+        }
+
+        return table.parentElement || table;
     }
 
-    /** All keyword rows currently in the DOM — data rows only, header excluded */
     function getAllRows() {
         const container = getKeywordsContainer();
-        if (!container) return [];
-        return Array.from(container.querySelectorAll('tr.wt-table__row')).filter(
-            (row) => row.querySelector('input[type=checkbox]') // header row has none
-        );
-    }
 
-    /** Rows whose keyword matches the current wordlist */
-    async function getFilteredRows() {
-        const wordlist = await loadWordlist();
-        return getAllRows().filter((row) => {
-            const word = getRowWord(row);
-            return wordlist.some((w) => wordMatchesRow(w, word));
+        if (!container) {
+            return [];
+        }
+
+        const rows = Array.from(
+            container.querySelectorAll('tbody tr.wt-table__row')
+        );
+
+        if (rows.length) {
+            return rows.filter((row) => {
+                const checkbox = row.querySelector(
+                    'input[type="checkbox"]'
+                );
+
+                const keyword = getRowWord(row);
+
+                return !!checkbox && !!keyword;
+            });
+        }
+
+        return Array.from(
+            container.querySelectorAll('tr.wt-table__row')
+        ).filter((row) => {
+            const checkbox = row.querySelector(
+                'input[type="checkbox"]'
+            );
+
+            const keyword = getRowWord(row);
+
+            return !!checkbox && !!keyword;
         });
     }
 
-    /** Grab a <td>'s real value. Etsy's responsive table repeats the column
-     *  header as a hidden mobile label INSIDE each cell (in a
-     *  `.wt-table--responsive__title` wrapper), followed by the actual
-     *  value — which can be a <p>, a <span>, or even a bare text node
-     *  depending on the column. Instead of guessing the tag, take the
-     *  cell's full text and strip the known label prefix off the front. */
+    async function waitForKeywordTable(
+        timeout = 15000,
+        minRows = 1
+    ) {
+        const started = Date.now();
+
+        while (Date.now() - started < timeout) {
+            const table = getKeywordsTable();
+            const rows = getAllRows();
+
+            if (table && rows.length >= minRows) {
+                return {
+                    table,
+                    rows,
+                };
+            }
+
+            await sleep(250);
+        }
+
+        return {
+            table: getKeywordsTable(),
+            rows: getAllRows(),
+        };
+    }
+
+    async function waitForRowsChange(
+        previousSignature,
+        timeout = 15000
+    ) {
+        const started = Date.now();
+
+        while (Date.now() - started < timeout) {
+            const rows = getAllRows();
+
+            const signature = rows
+                .map((row) => getRowWord(row))
+                .filter(Boolean)
+                .join('|');
+
+            if (
+                rows.length > 0 &&
+                signature &&
+                signature !== previousSignature
+            ) {
+                return rows;
+            }
+
+            await sleep(250);
+        }
+
+        return getAllRows();
+    }
+
+    async function getFilteredRows() {
+        const wordlist = await loadWordlist();
+
+        return getAllRows().filter((row) => {
+            const word = getRowWord(row);
+
+            return wordlist.some((w) =>
+                wordMatchesRow(w, word)
+            );
+        });
+    }
+
     function getCellValue(cellEl) {
         if (!cellEl) return '';
-        const label = cellEl.querySelector('.wt-table--responsive__title')?.textContent.trim() ?? '';
-        let full = cellEl.textContent.trim();
+
+        const labelEl = cellEl.querySelector(
+            '.wt-table--responsive__title'
+        );
+
+        const label = labelEl
+            ? labelEl.textContent.trim()
+            : '';
+
+        let full = cellEl.textContent
+            .replace(/\u00a0/g, ' ')
+            .trim();
+
         if (label && full.startsWith(label)) {
-            full = full.slice(label.length).trim();
+            full = full
+                .slice(label.length)
+                .trim();
         }
+
         return full;
     }
 
-    /** Snapshot of a row's stats + current on/off state, keyed for sheet export */
+    function parseNumber(value) {
+        if (value === null || value === undefined) {
+            return 0;
+        }
+
+        let text = String(value)
+            .replace(/\u00a0/g, ' ')
+            .trim();
+
+        if (!text) return 0;
+
+        text = text
+            .replace(/[$€£₺]/g, '')
+            .replace(/%/g, '')
+            .replace(/,/g, '');
+
+        const number = parseFloat(text);
+
+        return Number.isFinite(number)
+            ? number
+            : 0;
+    }
+
     function getRowSnapshot(row) {
-        const cells = Array.from(row.querySelectorAll('td'));
-        const checkbox = row.querySelector('input[type=checkbox]');
+        const cells = Array.from(
+            row.querySelectorAll('td')
+        );
+
+        const checkbox = row.querySelector(
+            'input[type="checkbox"]'
+        );
+
         const snapshot = {
             keyword: getRowWord(row),
-            status: checkbox ? (checkbox.checked ? 'açık' : 'kapalı') : '',
+            status: checkbox
+                ? checkbox.checked
+                    ? 'açık'
+                    : 'kapalı'
+                : '',
         };
+
         COLUMN_KEYS.forEach((key, i) => {
             snapshot[key] = getCellValue(cells[i]);
         });
+
         return snapshot;
     }
-
-    // ─── ROAS colouring ───────────────────────────────────────────────────────
 
     function colorRoas() {
         const clicksIdx = COLUMN_KEYS.indexOf('clicks');
         const ordersIdx = COLUMN_KEYS.indexOf('orders');
+
         getAllRows().forEach((row) => {
-            const cells = Array.from(row.querySelectorAll('td'));
-            const clicks = Number(getCellValue(cells[clicksIdx])) || 0;
-            const orders = Number(getCellValue(cells[ordersIdx])) || 0;
-            const isHighCpc = (orders > 0 && clicks / orders > 25) || (orders === 0 && clicks > 25);
-            if (isHighCpc) row.style.backgroundColor = '#e814b1';
+            const cells = Array.from(
+                row.querySelectorAll('td')
+            );
+
+            const clicks = parseNumber(
+                getCellValue(cells[clicksIdx])
+            );
+
+            const orders = parseNumber(
+                getCellValue(cells[ordersIdx])
+            );
+
+            const isHighCpc =
+                (orders > 0 && clicks / orders > 25) ||
+                (orders === 0 && clicks > 25);
+
+            if (isHighCpc) {
+                row.style.backgroundColor = '#e814b1';
+            }
         });
     }
 
-    // ─── Sheet export ─────────────────────────────────────────────────────────
-
-    /**
-     * Sends keyword row data (plus listing id, shop name and script
-     * version) to the configured Google Sheet Apps Script endpoint.
-     * `rows` must be an array of DOM <tr> row elements — this function
-     * snapshots them itself. The Apps Script side upserts on
-     * listing_id + keyword so re-runs update existing rows instead of
-     * duplicating them.
-     */
     async function sendKeywordsToSheet(rows) {
         if (!rows.length) return;
 
         const config = await loadSheetConfig();
+
         if (!config.sheet_url) {
-            //getToast().error('Google Sheet URL ayarlanmamış.');
             return;
         }
 
@@ -361,218 +618,679 @@ socks
         };
 
         try {
-            const r = await xmlPost(config.sheet_url, payload);
+            const r = await xmlPost(
+                config.sheet_url,
+                payload
+            );
+
             if (r.status === 200) {
-                getToast().success(`${rows.length} kelime Google Sheet'e aktarıldı.`);
+                getToast().success(
+                    `${rows.length} kelime Google Sheet'e aktarıldı.`
+                );
             } else {
-                getToast().error(`Sheet gönderim hatası (${r.status})`);
+                getToast().error(
+                    `Sheet gönderim hatası (${r.status})`
+                );
             }
         } catch {
-            getToast().error('Sheet gönderilemedi.');
+            getToast().error(
+                'Sheet gönderilemedi.'
+            );
         }
     }
 
-    // ─── Core actions ─────────────────────────────────────────────────────────
+    async function toggleRows(
+        targetState,
+        autoPaginate = false,
+        syncToSheet = false
+    ) {
+        await waitForKeywordTable();
 
-    /**
-     * Toggle filtered rows on/off.
-     * @param {boolean} targetState  true = enable, false = disable
-     * @param {boolean} autoPaginate navigate to next page when done
-     */
-    async function toggleRows(targetState, autoPaginate = false) {
-        const filteredRows = await getFilteredRows();
-        const label = targetState ? 'açıldı' : 'kapatıldı';
+        const wordlist = await loadWordlist();
+        const allRows = getAllRows();
+
+        const filteredRows = allRows.filter((row) => {
+            const word = getRowWord(row);
+
+            return wordlist.some((w) =>
+                wordMatchesRow(w, word)
+            );
+        });
+
+        console.debug(
+            `[Etsy Ad Wordlist] toggleRows: ` +
+            `${allRows.length} satır bulundu, ` +
+            `${wordlist.length} kelimelik listeye göre ` +
+            `${filteredRows.length} eşleşme.`
+        );
+
+        const label = targetState
+            ? 'açıldı'
+            : 'kapatıldı';
+
         let count = 0;
 
         for (const row of filteredRows) {
-            const checkbox = row.querySelector('input[type=checkbox]');
-            if (!checkbox || checkbox.checked === targetState) continue;
+            const checkbox = row.querySelector(
+                'input[type="checkbox"]'
+            );
+
+            if (
+                !checkbox ||
+                checkbox.checked === targetState
+            ) {
+                continue;
+            }
+
+            const keyword = getRowWord(row);
+
             checkbox.click();
-            getToast().success(`${getRowWord(row)} <br> Kelime ${label}`);
+
+            getToast().success(
+                `${keyword}<br>Kelime ${label}`
+            );
+
             count++;
-            await sleep(randInt(800, 1200));
+
+            await sleep(
+                randInt(800, 1200)
+            );
         }
 
-        getToast().success(`Toplam ${count} kelime ${label}.`);
-
-        // Auto-close mode only: export ALL rows on this page (not just the
-        // ones matched/closed) to the sheet, AFTER closing so the status
-        // column reflects the real post-close state — and BEFORE
-        // checkNextButton below can close the tab on the last page, so
-        // nothing is lost when it closes itself.
-        if (autoPaginate && !targetState) {
-            const allRows = getAllRows();
-            if (allRows.length) await sendKeywordsToSheet(allRows);
-        }
-
-        if (autoPaginate) await checkNextButton();
-    }
-
-    async function checkNextButton() {
-        const nav = document.querySelector('#listing-detail-targeted-keywords-accordion nav');
-        if (!nav) return;
-
-        const nextBtn = Array.from(nav.querySelectorAll('button')).find(
-            (btn) => btn.querySelector('span.wt-screen-reader-only')?.textContent.trim() === 'Next'
+        getToast().success(
+            `Toplam ${count} kelime ${label}.`
         );
-        if (!nextBtn) return;
 
-        if (nextBtn.getAttribute('aria-disabled') === 'true') {
-            window.close();
-        } else {
-            nextBtn.click();
-            await sleep(randInt(1200, 2500));
-            await toggleRows(false, true);
+        if (
+            autoPaginate &&
+            !targetState &&
+            syncToSheet
+        ) {
+            const currentRows = getAllRows();
+
+            if (currentRows.length) {
+                await sendKeywordsToSheet(
+                    currentRows
+                );
+            }
+        }
+
+        if (autoPaginate) {
+            await checkNextButton(
+                syncToSheet
+            );
         }
     }
 
-    // ─── Export (review-first, no closing) ───────────────────────────────────
-
-    /**
-     * Grabs every keyword row currently on the page (regardless of blacklist
-     * match or on/off state) and pushes it to the sheet, then moves to the
-     * next page and repeats until pagination ends. This never touches any
-     * checkbox — it's purely for building a full picture to decide from
-     * later, separate from the actual close/open actions above.
-     */
-    async function exportAllKeywords(autoPaginate = true) {
-        const rows = getAllRows();
-        if (rows.length) {
-            await sendKeywordsToSheet(rows);
-        } else {
-            getToast().error('Sayfada kelime bulunamadı.');
-        }
-
-        if (autoPaginate) await goToNextPageForExport();
-    }
-
-    async function goToNextPageForExport() {
-        const nav = document.querySelector('#listing-detail-targeted-keywords-accordion nav');
-        if (!nav) return;
-
-        const nextBtn = Array.from(nav.querySelectorAll('button')).find(
-            (btn) => btn.querySelector('span.wt-screen-reader-only')?.textContent.trim() === 'Next'
+    function getPaginationNav() {
+        const exact = document.querySelector(
+            'nav[aria-label="Targeted Keywords Pagination"]'
         );
-        if (!nextBtn) return;
 
-        if (nextBtn.getAttribute('aria-disabled') === 'true') {
-            getToast().success('Tüm sayfalar tarandı ve aktarıldı.');
+        if (exact) {
+            return exact;
+        }
+
+        const container = getKeywordsContainer();
+
+        if (!container) {
+            return null;
+        }
+
+        const nested = container.querySelector(
+            'nav[aria-label="Targeted Keywords Pagination"]'
+        );
+
+        if (nested) {
+            return nested;
+        }
+
+        const navs = Array.from(
+            container.querySelectorAll('nav')
+        );
+
+        if (navs.length === 1) {
+            return navs[0];
+        }
+
+        const candidate = navs.find((nav) => {
+            const text = normalizeText(
+                nav.textContent
+            );
+
+            return (
+                text.includes('next') ||
+                nav.querySelector(
+                    '.wt-screen-reader-only'
+                )
+            );
+        });
+
+        return candidate || null;
+    }
+
+    function getNextButton(nav) {
+        if (!nav) return null;
+
+        const buttons = Array.from(
+            nav.querySelectorAll('button')
+        );
+
+        const exact = buttons.find((btn) => {
+            const text = normalizeText(
+                btn.querySelector(
+                    '.wt-screen-reader-only'
+                )?.textContent
+            );
+
+            return text === 'next';
+        });
+
+        if (exact) {
+            return exact;
+        }
+
+        const byAria = buttons.find((btn) => {
+            const label = normalizeText(
+                btn.getAttribute('aria-label')
+            );
+
+            return label === 'next';
+        });
+
+        if (byAria) {
+            return byAria;
+        }
+
+        const generic = buttons.find((btn) => {
+            const text = normalizeText(
+                btn.textContent
+            );
+
+            return text === 'next';
+        });
+
+        return generic || null;
+    }
+
+    function isButtonDisabled(button) {
+        if (!button) return true;
+
+        if (
+            button.disabled === true ||
+            button.hasAttribute('disabled')
+        ) {
+            return true;
+        }
+
+        const ariaDisabled =
+            button.getAttribute(
+                'aria-disabled'
+            );
+
+        return ariaDisabled === 'true';
+    }
+
+    async function checkNextButton(
+        syncToSheet = false
+    ) {
+        await waitForKeywordTable();
+
+        const nav = getPaginationNav();
+
+        if (!nav) {
+            console.warn(
+                '[Etsy Ad Wordlist] ' +
+                'Sayfalama bulunamadı.'
+            );
             return;
         }
 
+        const nextBtn = getNextButton(nav);
+
+        if (!nextBtn) {
+            console.warn(
+                '[Etsy Ad Wordlist] ' +
+                '"Next" butonu bulunamadı.'
+            );
+            return;
+        }
+
+        console.debug(
+            '[Etsy Ad Wordlist] Next bulundu, ' +
+            `disabled="${isButtonDisabled(nextBtn)}"`
+        );
+
+        if (isButtonDisabled(nextBtn)) {
+            getToast().success(
+                'Tüm sayfalar tamamlandı.'
+            );
+
+            await sleep(500);
+
+            try {
+                window.close();
+            } catch {
+            }
+
+            return;
+        }
+
+        const previousSignature = getAllRows()
+            .map((row) => getRowWord(row))
+            .filter(Boolean)
+            .join('|');
+
         nextBtn.click();
-        await sleep(randInt(1200, 2500));
-        await exportAllKeywords(true);
+
+        const newRows =
+            await waitForRowsChange(
+                previousSignature,
+                15000
+            );
+
+        if (!newRows.length) {
+            console.warn(
+                '[Etsy Ad Wordlist] ' +
+                'Next tıklandı ancak yeni satırlar ' +
+                'yüklenmedi.'
+            );
+            return;
+        }
+
+        await sleep(500);
+
+        await toggleRows(
+            false,
+            true,
+            syncToSheet
+        );
     }
 
-    // ─── Remote wordlist update ───────────────────────────────────────────────
+    async function exportAllKeywords(
+        autoPaginate = true
+    ) {
+        await waitForKeywordTable();
 
-    async function ensureWord() {
-        try {
-            const text = await xmlGet(`${WORD_LIST_URL}?t=${Date.now()}`);
-            getToast().success('Kelimeler alınıyor');
-            await GM.setValue('adWordlist', text);
-            getToast().success('Kelimeler güncellendi');
-        } catch {
-            getToast().error('Kelimeler alınamadı');
+        const rows = getAllRows();
+
+        if (rows.length) {
+            await sendKeywordsToSheet(rows);
+        } else {
+            getToast().error(
+                'Sayfada kelime bulunamadı.'
+            );
+        }
+
+        if (autoPaginate) {
+            await goToNextPageForExport();
         }
     }
 
-    // ─── Wordlist editor popup ────────────────────────────────────────────────
+    async function goToNextPageForExport() {
+        await waitForKeywordTable();
+
+        const nav = getPaginationNav();
+
+        if (!nav) {
+            console.warn(
+                '[Etsy Ad Wordlist] ' +
+                'Sayfalama bulunamadı.'
+            );
+            return;
+        }
+
+        const nextBtn = getNextButton(nav);
+
+        if (!nextBtn) {
+            console.warn(
+                '[Etsy Ad Wordlist] ' +
+                'Next butonu bulunamadı.'
+            );
+            return;
+        }
+
+        if (isButtonDisabled(nextBtn)) {
+            getToast().success(
+                'Tüm sayfalar tarandı ve aktarıldı.'
+            );
+            return;
+        }
+
+        const previousSignature =
+            getAllRows()
+                .map((row) => getRowWord(row))
+                .filter(Boolean)
+                .join('|');
+
+        nextBtn.click();
+
+        const newRows =
+            await waitForRowsChange(
+                previousSignature,
+                15000
+            );
+
+        if (!newRows.length) {
+            console.warn(
+                '[Etsy Ad Wordlist] ' +
+                'Yeni sayfa yüklenmedi.'
+            );
+            return;
+        }
+
+        await sleep(500);
+
+        await exportAllKeywords(true);
+    }
+
+    async function ensureWord() {
+        try {
+            const text = await xmlGet(
+                `${WORD_LIST_URL}?t=${Date.now()}`
+            );
+
+            getToast().success(
+                'Kelimeler alınıyor'
+            );
+
+            await GM.setValue(
+                'adWordlist',
+                text
+            );
+
+            getToast().success(
+                'Kelimeler güncellendi'
+            );
+        } catch {
+            getToast().error(
+                'Kelimeler alınamadı'
+            );
+        }
+    }
 
     async function openWordlistEditor() {
-        const popup = window.open('about:blank', 'wordlistEditor', 'width=420,height=620');
-        if (!popup) { alert('Popup engellenmiş olabilir.'); return; }
+        const popup = window.open(
+            'about:blank',
+            'wordlistEditor',
+            'width=420,height=620'
+        );
 
-        // Use document.write for reliable about:blank setup
+        if (!popup) {
+            alert(
+                'Popup engellenmiş olabilir.'
+            );
+            return;
+        }
+
         popup.document.write(`<!DOCTYPE html>
 <html>
 <head>
   <title>Yasaklı Kelimeleri Düzenle</title>
   <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs/editor/editor.main.css"
-        integrity="sha256-BRc+GN/apOv/hPbPAd2cp5FXIrQGkg6TkYgRYHQEmvo=" crossorigin="anonymous">
+        integrity="sha256-BRc+GN/apOv/hPbPAd2cp5FXIrQGkg6TkYgRYHQEmvo="
+        crossorigin="anonymous">
   <style>
     body { margin:0; font-family:system-ui; }
-    #info { padding:8px; font-size:12px; line-height:1.4; background:#f5f5f5; }
-    #container { width:100%; height:calc(100vh - 60px); }
+    #info {
+        padding:8px;
+        font-size:12px;
+        line-height:1.4;
+        background:#f5f5f5;
+    }
+    #container {
+        width:100%;
+        height:calc(100vh - 60px);
+    }
   </style>
 </head>
 <body>
-  <p id="info">Her satırdaki kelimeler, metin içinde geçiyorsa işaretlenecektir.
-    Tam eşleşme için başına <code>=</code>, regex için başına ve sonuna <code>/</code> koyun.</p>
+  <p id="info">
+    Her satırdaki kelimeler, metin içinde geçiyorsa
+    işaretlenecektir.
+    Tam eşleşme için başına <code>=</code>,
+    regex için başına ve sonuna <code>/</code> koyun.
+  </p>
   <div id="container"></div>
   <script src="https://requirejs.org/docs/release/2.3.7/minified/require.js"></script>
 </body>
 </html>`);
+
         popup.document.close();
 
-        window.addEventListener('message', (e) => {
-            if (e.source !== popup) return;
-            GM.setValue('adWordlist', e.data);
-        });
+        window.addEventListener(
+            'message',
+            (e) => {
+                if (e.source !== popup) return;
 
-        window.addEventListener('beforeunload', () => popup.close());
+                if (typeof e.data !== 'string') {
+                    return;
+                }
 
-        const value = JSON.stringify(await GM.getValue('adWordlist', ''));
+                GM.setValue(
+                    'adWordlist',
+                    e.data
+                );
+            }
+        );
 
-        // Inject editor script after require.js is ready
-        popup.addEventListener('load', () => {
-            const s = popup.document.createElement('script');
-            s.textContent = `
-                require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs' } });
-                require(['vs/editor/editor.main'], function () {
-                    var editor = monaco.editor.create(document.getElementById('container'), {
-                        value: ${value},
-                        language: 'plaintext',
-                        minimap: { enabled: false },
+        window.addEventListener(
+            'beforeunload',
+            () => {
+                try {
+                    popup.close();
+                } catch {
+                }
+            }
+        );
+
+        const currentWordlist =
+            await GM.getValue(
+                'adWordlist',
+                ''
+            );
+
+        const value =
+            JSON.stringify(currentWordlist);
+
+        popup.addEventListener(
+            'load',
+            () => {
+                const s =
+                    popup.document.createElement(
+                        'script'
+                    );
+
+                s.textContent = `
+                    require.config({
+                        paths: {
+                            vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs'
+                        }
                     });
-                    editor.onDidChangeModelContent(function () {
-                        opener.postMessage(editor.getValue(), '*');
-                    });
-                });
-            `;
-            popup.document.body.appendChild(s);
-        });
+
+                    require(
+                        ['vs/editor/editor.main'],
+                        function () {
+                            var editor =
+                                monaco.editor.create(
+                                    document.getElementById(
+                                        'container'
+                                    ),
+                                    {
+                                        value: ${value},
+                                        language: 'plaintext',
+                                        minimap: {
+                                            enabled: false
+                                        }
+                                    }
+                                );
+
+                            editor.onDidChangeModelContent(
+                                function () {
+                                    opener.postMessage(
+                                        editor.getValue(),
+                                        '*'
+                                    );
+                                }
+                            );
+                        }
+                    );
+                `;
+
+                popup.document.body.appendChild(s);
+            }
+        );
     }
 
-    // ─── Menu commands ────────────────────────────────────────────────────────
+    GM_registerMenuCommand(
+        'Kelimeleri kapat',
+        () => toggleRows(false)
+    );
 
-    GM_registerMenuCommand('Kelimeleri kapat',           () => toggleRows(false));
-    GM_registerMenuCommand('Kelimeleri aç',              () => toggleRows(true));
-    GM_registerMenuCommand('Kelimeleri Güncelle',        () => ensureWord());
-    GM_registerMenuCommand('Yasaklı kelimeleri düzenle', () => openWordlistEditor());
-    GM_registerMenuCommand('Sheet ayarlarını düzenle',   () => editSheetConfig());
-    GM_registerMenuCommand('Tüm kelimeleri Sheet\'e aktar (tüm sayfalar)', () => exportAllKeywords(true));
-    GM_registerMenuCommand('Bu sayfayı Sheet\'e aktar',  () => exportAllKeywords(false));
+    GM_registerMenuCommand(
+        'Kelimeleri aç',
+        () => toggleRows(true)
+    );
 
-    // ─── Keyboard shortcuts ───────────────────────────────────────────────────
+    GM_registerMenuCommand(
+        'Kelimeleri Güncelle',
+        () => ensureWord()
+    );
 
-    document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.altKey)                     { toggleRows(false, true);   return; }
-        if (e.ctrlKey && e.code === 'Space')           { toggleRows(false);         return; }
-        if (e.ctrlKey && e.shiftKey && e.code === 'KeyE') { exportAllKeywords(true); return; }
-    });
+    GM_registerMenuCommand(
+        'Yasaklı kelimeleri düzenle',
+        () => openWordlistEditor()
+    );
 
-    // ─── Auto-mode (URL ?mod=1) ───────────────────────────────────────────────
+    GM_registerMenuCommand(
+        'Sheet ayarlarını düzenle',
+        () => editSheetConfig()
+    );
 
-    if (new URLSearchParams(location.search).get('mod') === '1') {
-        setTimeout(() => toggleRows(false, true), 3000);
+    GM_registerMenuCommand(
+        'Tüm kelimeleri Sheet\'e aktar (tüm sayfalar)',
+        () => exportAllKeywords(true)
+    );
+
+    GM_registerMenuCommand(
+        'Bu sayfayı Sheet\'e aktar',
+        () => exportAllKeywords(false)
+    );
+
+    document.addEventListener(
+        'keydown',
+        (e) => {
+            if (
+                e.ctrlKey &&
+                e.altKey
+            ) {
+                toggleRows(
+                    false,
+                    true,
+                    true
+                );
+                return;
+            }
+
+            if (
+                e.ctrlKey &&
+                e.code === 'Space'
+            ) {
+                toggleRows(false);
+                return;
+            }
+
+            if (
+                e.ctrlKey &&
+                e.shiftKey &&
+                e.code === 'KeyE'
+            ) {
+                exportAllKeywords(true);
+            }
+        }
+    );
+
+    const mod =
+        new URLSearchParams(
+            location.search
+        ).get('mod');
+
+    if (mod === '1') {
+        setTimeout(
+            () => toggleRows(
+                false,
+                true,
+                false
+            ),
+            3000
+        );
+    } else if (mod === '2') {
+        setTimeout(
+            () => exportAllKeywords(true),
+            3000
+        );
+    } else if (mod === '3') {
+        setTimeout(
+            () => toggleRows(
+                false,
+                true,
+                true
+            ),
+            3000
+        );
     }
 
-    // ─── Page load ────────────────────────────────────────────────────────────
+    async function initialize() {
+        await waitForKeywordTable(
+            15000,
+            1
+        );
 
-    window.addEventListener('load', async () => {
-        // Run independently in parallel
-        const [filteredRows] = await Promise.all([
-            getFilteredRows(),
-            Promise.resolve(colorRoas()),   // sync, wrapped for Promise.all symmetry
+        await Promise.all([
             syncVersionIfChanged(),
+            Promise.resolve(
+                colorRoas()
+            ),
         ]);
 
-        filteredRows.forEach((row) => { row.style.backgroundColor = '#ffa59e'; });
+        const filteredRows =
+            await getFilteredRows();
 
-        getToast().success('Ads Tool : CTRL + Alt');
-    });
+        filteredRows.forEach((row) => {
+            row.style.backgroundColor =
+                '#ffa59e';
+        });
+
+        getToast().success(
+            'Ads Tool : CTRL + Alt'
+        );
+    }
+
+    if (
+        document.readyState ===
+        'loading'
+    ) {
+        document.addEventListener(
+            'DOMContentLoaded',
+            initialize,
+            { once: true }
+        );
+    } else {
+        initialize();
+    }
+
+    window.addEventListener(
+        'load',
+        () => {
+            setTimeout(
+                () => {
+                    colorRoas();
+                },
+                500
+            );
+        },
+        { once: true }
+    );
 
 })();
