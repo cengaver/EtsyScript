@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Finans
 // @description  Etsy monthly statement analyzer — Optimized v2
-// @version      2.00
+// @version      2.10
 // @namespace    https://github.com/cengaver
 // @author       Cengaver
 // @match        https://www.etsy.com/your/account/payments/monthly-statement*
@@ -41,15 +41,34 @@
         .ef-toast.info    { background:var(--pc); color:#fff; }
         .ef-toast-x { background:none; border:none; color:inherit; cursor:pointer; font-size:16px; margin-left:10px; opacity:.7; }
         .ef-toast-x:hover { opacity:1; }
+
+        .ef-table-wrap { font-family:var(--ff); margin:16px 0; border-radius:8px; overflow:hidden; box-shadow:var(--bs); border:1px solid #e5e7eb; max-width:520px; }
+        .ef-table-title { background:var(--dk); color:#fff; padding:10px 16px; font-size:14px; font-weight:600; display:flex; align-items:center; justify-content:space-between; }
+        .ef-table-title span.ef-table-badge { font-size:11px; font-weight:500; background:rgba(255,255,255,.15); padding:2px 8px; border-radius:10px; }
+        table.ef-table { width:100%; border-collapse:collapse; background:#fff; }
+        table.ef-table th, table.ef-table td { padding:9px 16px; font-size:13.5px; text-align:right; }
+        table.ef-table th:first-child, table.ef-table td:first-child { text-align:left; color:var(--gc); font-weight:500; }
+        table.ef-table thead th { background:#f8f9fa; color:var(--gc); font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid #e5e7eb; }
+        table.ef-table tbody tr:not(:last-child) { border-bottom:1px solid #f1f3f4; }
+        table.ef-table tbody tr:hover { background:#fafafa; }
+        table.ef-table tr.ef-row-pod td { color:var(--dc); }
+        table.ef-table tr.ef-row-net { border-top:2px solid var(--dk); }
+        table.ef-table tr.ef-row-net td { font-weight:700; font-size:14.5px; padding-top:12px; padding-bottom:12px; }
+        table.ef-table tr.ef-row-net td.ef-positive { color:var(--sc); }
+        table.ef-table tr.ef-row-net td.ef-negative { color:var(--dc); }
     `);
 
     // ─────────────────────────────────────────────
     // SETTINGS — in-memory cache
     // ─────────────────────────────────────────────
-    const _cfg = { sheetUrl: null, shopName: null };
+    const _cfg = { sheetUrl: null, shopName: null, podPercent: null };
 
-    async function getSheetUrl() { return _cfg.sheetUrl ??= await GM.getValue('sheet_url', ''); }
-    async function getShopName() { return _cfg.shopName ??= await GM.getValue('shop_name', ''); }
+    async function getSheetUrl()   { return _cfg.sheetUrl   ??= await GM.getValue('sheet_url', ''); }
+    async function getShopName()   { return _cfg.shopName   ??= await GM.getValue('shop_name', ''); }
+    async function getPodPercent() {
+        if (_cfg.podPercent == null) _cfg.podPercent = Number(await GM.getValue('pod_percent', 0)) || 0;
+        return _cfg.podPercent;
+    }
 
     GM.registerMenuCommand('⚙️ Sheet Url Ayarla', async () => {
         const url = prompt('Sheet URL\'nizi girin:', await getSheetUrl());
@@ -58,6 +77,17 @@
     GM.registerMenuCommand('⭐ Mağaza Adı', async () => {
         const name = prompt('Mağaza Adını girin:', await getShopName());
         if (name?.trim()) { _cfg.shopName = name.trim(); await GM.setValue('shop_name', _cfg.shopName); showToast('✅ Kaydedildi', 'info'); }
+    });
+    GM.registerMenuCommand('📦 POD Gideri %', async () => {
+        const current = await getPodPercent();
+        const val = prompt('POD gideri, satışın yüzde kaçı? (ör: 45)', current || '');
+        if (val === null) return;
+        const num = Number(String(val).replace(',', '.'));
+        if (!Number.isFinite(num) || num < 0) { showToast('❌ Geçersiz yüzde', 'error'); return; }
+        _cfg.podPercent = num;
+        await GM.setValue('pod_percent', num);
+        showToast('✅ Kaydedildi', 'info');
+        processPage(false);
     });
     GM.registerMenuCommand('🔄 Güncelle', () => processPage(true));
 
@@ -151,6 +181,43 @@
     const getSummaryTitle = el =>
         el.querySelector('button .wt-text-title-01')?.textContent ?? '';
 
+    const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // ─────────────────────────────────────────────
+    // SUMMARY TABLE — POD gideri & net kâr dahil şık tablo
+    // ─────────────────────────────────────────────
+    function renderSummaryTable(rows, { origSymbol, podPercent, netUsd }, anchorEl) {
+        let wrap = document.getElementById('ef-summary-table');
+        if (!wrap) {
+            wrap = Object.assign(document.createElement('div'), { id: 'ef-summary-table', className: 'ef-table-wrap' });
+            anchorEl.insertAdjacentElement('afterend', wrap);
+        }
+
+        const netClass = netUsd >= 0 ? 'ef-positive' : 'ef-negative';
+
+        wrap.innerHTML = `
+            <div class="ef-table-title">
+                <span>💰 Finans Özeti</span>
+                <span class="ef-table-badge">POD %${podPercent}</span>
+            </div>
+            <table class="ef-table">
+                <thead>
+                    <tr><th>Kalem</th><th>${origSymbol}</th><th>USD</th><th>%</th></tr>
+                </thead>
+                <tbody>
+                    ${rows.map(r => `
+                        <tr class="${r.rowClass ?? ''}">
+                            <td>${r.label}</td>
+                            <td>${fmt(r.orig)} ${origSymbol}</td>
+                            <td>${fmt(r.usd)} $</td>
+                            <td>${r.pct != null ? r.pct.toFixed(2) + ' %' : '—'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
     // ─────────────────────────────────────────────
     // GOOGLE SHEETS LOG — fire-and-forget
     // ─────────────────────────────────────────────
@@ -205,7 +272,8 @@
         catch (e) { console.error('[EF] Kur alınamadı:', e); return; }
 
         // If values are already in USD (no "TL" text), treat rate as 1
-        const divisor = summaryEls[0]?.textContent.includes('TL') ? rate : 1;
+        const divisor     = summaryEls[0]?.textContent.includes('TL') ? rate : 1;
+        const origSymbol  = divisor === 1 ? '$' : '₺';
 
         // ── Annotate all summary modules ──────────────
         summaryEls.forEach(el => {
@@ -225,11 +293,35 @@
 
         if (!sales) return;
 
+        const salesUsd      = sales / divisor;
+        const feesUsd        = Math.abs(fees)      / divisor;
+        const marketingUsd   = Math.abs(marketing) / divisor;
+
         const feesPct      = Math.abs((fees      / sales) * 100);
         const marketingPct = Math.abs((marketing / sales) * 100);
 
         addText(feesEl,      'ef-pct', ` | ${feesPct.toFixed(2)} %`);
         addText(marketingEl, 'ef-pct', ` | ${marketingPct.toFixed(2)} %`);
+
+        // ── POD Gideri & Net Kâr ───────────────────────
+        const podPercent  = await getPodPercent();
+        const podUsd       = salesUsd * (podPercent / 100);
+        const podOrig       = Math.abs(sales) * (podPercent / 100);
+
+        const netUsd        = profitUsd - podUsd;
+        const netOrig        = profit - podOrig;
+
+        renderSummaryTable(
+            [
+                { label: 'Satış',              orig: sales,           usd: salesUsd },
+                { label: 'Komisyon (Fees)',     orig: Math.abs(fees),      usd: feesUsd,      pct: feesPct },
+                { label: 'Reklam (Marketing)',  orig: Math.abs(marketing), usd: marketingUsd, pct: marketingPct },
+                { label: 'POD Gideri',          orig: podOrig,          usd: podUsd,        pct: podPercent, rowClass: 'ef-row-pod' },
+                { label: 'Net Kâr',             orig: netOrig,          usd: netUsd,        rowClass: 'ef-row-net' },
+            ],
+            { origSymbol, podPercent, netUsd },
+            profitEl
+        );
 
         if (!sendToSheet) return;
 
@@ -241,6 +333,9 @@
             marketing:       Math.abs(Math.round(marketing / divisor)),
             feesProfit:      feesPct.toFixed(2),
             marketingProfit: marketingPct.toFixed(2),
+            podPercent:      podPercent,
+            podGideri:       Math.round(podUsd),
+            netKar:          Math.round(netUsd),
             period:          periodText,
             sheetName:       'finans',
         });
