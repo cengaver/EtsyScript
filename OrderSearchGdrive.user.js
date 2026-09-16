@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Order search gdrive
 // @namespace    https://github.com/cengaver
-// @version      2.0.0
+// @version      2.0.1
 // @description  Order Search Gdrive
 // @author       Cengaver
 // @match        https://www.etsy.com/your/orders/sold/*
@@ -161,7 +161,7 @@
         el.dataset.gdAdded = 'true';
 
         const link = makeIconLink(
-            `https://app.customhub.io/orders/order-search?q=${orderNo}`,
+            `https://podvest.customhub.io/tr/orders?search=${orderNo}`,
             HUB_ICON, 'Hub'
         );
         link.className = 'gdrive-icon';
