@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy Listing Inline Analyzer
-// @description  Etsy Listing Inline Analyzer — Optimized v2
-// @version      2.01
+// @description  Etsy Listing Inline Analyzer — Advanced Edition
+// @version      2.11
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/your/shops/me/tools/listings*
@@ -21,318 +21,1004 @@
 (async function () {
     'use strict';
 
+    const VERSION = '7';
+    const PERIOD = 120;
+    const SENT_KEY = `etsy_analyzer_sent_v${VERSION}`;
+    const QUEUE_KEY = `etsy_analyzer_queue_v${VERSION}`;
+    const MAX_RETRIES = 8;
+    const MAX_BACKOFF = 3600000;
+
+    const cfg = {
+        sheetUrl: await GM.getValue('sheet_url', ''),
+        shopName: await GM.getValue('shop_name', ''),
+        version: await GM.getValue('version', VERSION)
+    };
+
+    const SENT_KEY_CURRENT = `etsy_analyzer_sent_v${cfg.version}`;
+    const PREFIX = 'etsy_analyzer_sent_';
+
+    function readJSON(key, fallback) {
+        try {
+            const value = JSON.parse(localStorage.getItem(key) || 'null');
+            return value ?? fallback;
+        } catch {
+            return fallback;
+        }
+    }
+
+    const sent = readJSON(SENT_KEY_CURRENT, {});
+    let queue = readJSON(QUEUE_KEY, []);
+    if (!Array.isArray(queue)) queue = [];
+
+    function saveSent() {
+        try {
+            localStorage.setItem(SENT_KEY_CURRENT, JSON.stringify(sent));
+        } catch (e) {
+            console.error('[ELA] Sent storage error:', e);
+        }
+    }
+
+    function saveQueue() {
+        try {
+            localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+        } catch (e) {
+            console.error('[ELA] Queue storage error:', e);
+            showToast('Queue kaydedilemedi. Depolama alanını kontrol edin.', 'error');
+        }
+    }
+
+    const settings = {
+        sheetUrl: () => cfg.sheetUrl,
+        shopName: () => cfg.shopName
+    };
+
     // ─────────────────────────────────────────────
     // STYLES
     // ─────────────────────────────────────────────
+
     GM.addStyle(`
         :root {
-            --pc:#4285f4; --sc:#34a853; --dc:#ea4335;
-            --wc:#fbbc05; --dk:#202124; --gc:#5f6368;
-            --br:4px; --bs:0 2px 10px rgba(0,0,0,.1);
-            --tr:all .3s ease; --ff:'Segoe UI',Roboto,Arial,sans-serif;
+            --ela-green:#34a853;
+            --ela-blue:#4285f4;
+            --ela-red:#ea4335;
+            --ela-orange:#e67e22;
+            --ela-yellow:#fbbc05;
+            --ela-purple:#8e44ad;
+            --ela-dark:#202124;
+            --ela-gray:#5f6368;
         }
-        .ela-toast-wrap { position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
-        .ela-toast { min-width:260px; padding:10px 14px; border-radius:var(--br); box-shadow:var(--bs); font:14px var(--ff); display:flex; align-items:center; justify-content:space-between; opacity:0; transform:translateY(16px); transition:var(--tr); pointer-events:all; }
-        .ela-toast.show { opacity:1; transform:translateY(0); }
-        .ela-toast.success { background:var(--sc); color:#fff; }
-        .ela-toast.error   { background:var(--dc); color:#fff; }
-        .ela-toast.warning { background:var(--wc); color:var(--dk); }
-        .ela-toast.info    { background:var(--pc); color:#fff; }
-        .ela-toast-x { background:none; border:none; color:inherit; cursor:pointer; font-size:16px; margin-left:8px; opacity:.7; }
-        .ela-toast-x:hover { opacity:1; }
+
+        .ela-toast-wrap {
+            position:fixed;
+            bottom:20px;
+            right:20px;
+            z-index:99999;
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+            pointer-events:none;
+        }
+
+        .ela-toast {
+            min-width:260px;
+            max-width:400px;
+            padding:11px 14px;
+            border-radius:5px;
+            box-shadow:0 2px 10px rgba(0,0,0,.15);
+            font:14px 'Segoe UI',Arial,sans-serif;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            opacity:0;
+            transform:translateY(12px);
+            transition:all .25s ease;
+            pointer-events:all;
+        }
+
+        .ela-toast.show {
+            opacity:1;
+            transform:translateY(0);
+        }
+
+        .ela-toast.success {background:var(--ela-green);color:white}
+        .ela-toast.error {background:var(--ela-red);color:white}
+        .ela-toast.warning {background:var(--ela-yellow);color:#202124}
+        .ela-toast.info {background:var(--ela-blue);color:white}
+
+        .ela-toast-x {
+            background:none;
+            border:0;
+            color:inherit;
+            cursor:pointer;
+            font-size:18px;
+        }
+
         .ela-tip {
-            position:fixed; background:#fff; border:1px solid #ddd;
-            padding:10px; font-size:12px; font-family:var(--ff);
-            box-shadow:0 4px 12px rgba(0,0,0,.15);
-            display:none; z-index:9999; width:270px;
-            border-radius:var(--br); line-height:1.5;
+            position:fixed;
+            display:none;
+            z-index:999999;
+            width:290px;
+            max-width:calc(100vw - 24px);
+            padding:12px;
+            background:white;
+            color:#202124;
+            border:1px solid #ddd;
+            border-radius:6px;
+            box-shadow:0 4px 16px rgba(0,0,0,.18);
+            font:12px/1.6 'Segoe UI',Arial,sans-serif;
+            pointer-events:none;
+        }
+
+        .ela-tip-title {
+            font-weight:700;
+            font-size:13px;
+            margin-bottom:5px;
+        }
+
+        .ela-tip-name {
+            font-weight:600;
+            margin-bottom:8px;
+            overflow-wrap:anywhere;
+        }
+
+        .ela-tip-section {
+            font-weight:700;
+            margin-top:9px;
+            border-top:1px solid #eee;
+            padding-top:6px;
+        }
+
+        .ela-badge {
+            margin-left:8px;
+            font-size:18px;
+            cursor:pointer;
+            line-height:1;
+            user-select:none;
+        }
+
+        .ela-score {
+            display:inline-block;
+            margin-left:5px;
+            font-size:11px;
+            font-weight:700;
+            color:#555;
+            vertical-align:middle;
         }
     `);
 
     // ─────────────────────────────────────────────
     // TOAST
     // ─────────────────────────────────────────────
-    let _toastWrap = null;
-    function getToastWrap() {
-        if (!_toastWrap) {
-            _toastWrap = Object.assign(document.createElement('div'), { className:'ela-toast-wrap' });
-            document.body.appendChild(_toastWrap);
-        }
-        return _toastWrap;
-    }
+
+    let toastWrap;
+
     function showToast(message, type = 'success', duration = 3000) {
+        if (!toastWrap) {
+            toastWrap = document.createElement('div');
+            toastWrap.className = 'ela-toast-wrap';
+            document.body.appendChild(toastWrap);
+        }
+
         const toast = document.createElement('div');
         toast.className = `ela-toast ${type}`;
-        const span = Object.assign(document.createElement('span'), { textContent: message });
-        const btn  = Object.assign(document.createElement('button'), { className:'ela-toast-x', innerHTML:'&times;' });
-        btn.onclick = () => dismissToast(toast);
-        toast.append(span, btn);
-        getToastWrap().appendChild(toast);
-        toast.getBoundingClientRect(); // force reflow
+
+        const text = document.createElement('span');
+        text.textContent = message;
+
+        const close = document.createElement('button');
+        close.className = 'ela-toast-x';
+        close.textContent = '×';
+        close.onclick = () => dismissToast(toast);
+
+        toast.append(text, close);
+        toastWrap.appendChild(toast);
+
+        toast.getBoundingClientRect();
         toast.classList.add('show');
-        if (duration > 0) setTimeout(() => dismissToast(toast), duration);
+
+        if (duration > 0) {
+            setTimeout(() => dismissToast(toast), duration);
+        }
     }
-    function dismissToast(t) {
-        t.classList.remove('show');
-        t.addEventListener('transitionend', () => t.remove(), { once:true });
+
+    function dismissToast(toast) {
+        if (!toast.isConnected) return;
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
     }
 
     // ─────────────────────────────────────────────
-    // SETTINGS — in-memory cache, one GM.getValue each
+    // SETTINGS
     // ─────────────────────────────────────────────
-    const _cfg = { sheetUrl: null, shopName: null, version: null };
 
-    async function getSheetUrl()  { return _cfg.sheetUrl  ??= await GM.getValue('sheet_url',  ''); }
-    async function getShopName()  { return _cfg.shopName  ??= await GM.getValue('shop_name',  ''); }
-    async function getVersion()   { return _cfg.version   ??= await GM.getValue('version',    '7'); }
+    GM.registerMenuCommand('⚙️ Sheet URL Ayarla', async () => {
+        const value = prompt('Google Sheets Web App URL:', cfg.sheetUrl);
+        if (value === null) return;
 
-    GM.registerMenuCommand('⚙️ Sheet Url Ayarla', async () => {
-        const url = prompt('Sheet URL\'nizi girin:', await getSheetUrl());
-        if (url?.trim()) { _cfg.sheetUrl = url.trim(); await GM.setValue('sheet_url', _cfg.sheetUrl); showToast('✅ Kaydedildi', 'info'); }
+        cfg.sheetUrl = value.trim();
+        await GM.setValue('sheet_url', cfg.sheetUrl);
+
+        showToast('Sheet URL kaydedildi', 'success');
+        flushQueue();
     });
+
     GM.registerMenuCommand('⚙️ Mağaza Adı', async () => {
-        const shop = prompt('Mağaza adı girin:', await getShopName());
-        if (shop?.trim()) { _cfg.shopName = shop.trim(); await GM.setValue('shop_name', _cfg.shopName); showToast('✅ Kaydedildi', 'info'); }
-    });
-    GM.registerMenuCommand('⚙️ Versiyon', async () => {
-        const ver = prompt('Versiyon Numarası:', await getVersion());
-        if (ver?.trim()) { _cfg.version = ver.trim(); await GM.setValue('version', _cfg.version); showToast('✅ Kaydedildi', 'info'); }
-    });
+        const value = prompt('Mağaza adı:', cfg.shopName);
+        if (value === null) return;
 
-    // ─────────────────────────────────────────────
-    // SENT-KEY / localStorage
-    // ─────────────────────────────────────────────
-    const VERSION  = await getVersion();
-    const SENT_KEY = `etsy_analyzer_sent_v${VERSION}`;
+        cfg.shopName = value.trim();
+        await GM.setValue('shop_name', cfg.shopName);
 
-    // Load once; keep in memory; flush to localStorage on write
-    const sent = JSON.parse(localStorage.getItem(SENT_KEY) || '{}');
-
-    // Purge stale version keys
-    const PREFIX = 'etsy_analyzer_sent_';
-    Object.keys(localStorage).forEach(k => {
-        if (k.startsWith(PREFIX) && k !== SENT_KEY) localStorage.removeItem(k);
+        showToast('Mağaza adı kaydedildi', 'success');
     });
 
-    // ─────────────────────────────────────────────
-    // SCAN — debounced to avoid hammering on rapid DOM updates
-    // ─────────────────────────────────────────────
-    const seen = new Set();
-    let _scanTimer = null;
+    GM.registerMenuCommand('⚙️ Versiyon / Veri Anahtarı', async () => {
+        const value = prompt('Veri versiyonu:', cfg.version);
+        if (value === null || !value.trim()) return;
 
-    function scheduleScan() {
-        clearTimeout(_scanTimer);
-        _scanTimer = setTimeout(scan, 150);
-    }
+        cfg.version = value.trim();
+        await GM.setValue('version', cfg.version);
 
-    function scan() {
-        document.querySelectorAll('.card-actions.card-actions-3').forEach(actions => {
-            const card = findCard(actions);
-            if (!card) return;
-            const id = getListingId(card);
-            if (!id || seen.has(id)) return;
-            seen.add(id);
-            analyze(card, actions, id);
+        showToast('Versiyon kaydedildi. Sayfayı yenileyin.', 'warning');
+    });
+
+    GM.registerMenuCommand('🔄 Başarısız Sheets Gönderimlerini Yeniden Dene', () => {
+        let count = 0;
+
+        queue.forEach(item => {
+            if (item.attempts >= MAX_RETRIES) {
+                item.attempts = 0;
+                item.nextAt = Date.now();
+                count++;
+            }
         });
-    }
+
+        saveQueue();
+        flushQueue();
+        showToast(`${count} kayıt yeniden denemeye alındı`, 'info');
+    });
+
+    GM.registerMenuCommand('📊 Queue Durumu', () => {
+        const failed = queue.filter(x => x.attempts >= MAX_RETRIES).length;
+        showToast(
+            `Bekleyen: ${queue.length} | Kalıcı hata: ${failed} | Gönderilen: ${Object.keys(sent).length}`,
+            'info',
+            6000
+        );
+    });
 
     // ─────────────────────────────────────────────
     // DOM HELPERS
     // ─────────────────────────────────────────────
+
     function findCard(el) {
-        let cur = el;
-        for (let i = 0; i < 10; i++) {
-            if (!cur) return null;
-            if (/sales|favorites|visits/i.test(cur.innerText)) return cur;
-            cur = cur.parentElement;
-        }
-        return null;
+        return el.closest('.card');
     }
 
     function getListingId(card) {
-        const m = card.querySelector('a[href*="/listing/"]')?.href.match(/\/listing\/(\d+)/);
-        return m?.[1] ?? null;
-    }
+        const links = card.querySelectorAll('a[href*="/listing/"]');
 
-    function getSkuFromRow(card) {
-        const span = card.querySelector('.card-meta-row-sku span');
-        return span ? (span.getAttribute('title') || span.textContent || '').trim() : '';
-    }
+        for (const link of links) {
+            const match = link.href.match(/\/listing\/(\d+)/);
+            if (match) return match[1];
+        }
 
-    function getImgFromRow(card) {
-        return card.querySelector('.card-img-wrap img')?.src?.trim() ?? '';
+        return null;
     }
 
     function getTitleFromRow(card) {
-        const h2 = card.querySelector('h2.card-title');
-        return h2 ? (h2.getAttribute('title') || h2.textContent || '').trim() : '';
+        const element = card.querySelector('h2.card-title');
+        return (element?.getAttribute('title') || element?.textContent || '').trim();
+    }
+
+    function getSkuFromRow(card) {
+        const element = card.querySelector('.card-meta-row-sku span');
+
+        return element
+            ? (element.getAttribute('title') || element.textContent || '').trim()
+            : '';
+    }
+
+    function getImgFromRow(card) {
+        return card.querySelector('.card-img-wrap img')?.src?.trim() || '';
+    }
+
+    function pick(text, regex) {
+        const match = text.match(regex);
+        return match ? Number(match[1]) : 0;
+    }
+
+    function parseStats(card) {
+        const stats = { sales: 0, favs: 0, visits: 0, renewal: 0, ready: false };
+        let found = 0;
+
+        card.querySelectorAll('.card-meta-row-item').forEach(el => {
+            const t = (el.textContent || '').replace(/\u00a0/g, ' ').trim();
+            const m = t.match(/^([\d.,]+)\s+([^\d$].*)$/);
+            if (!m) return;
+
+            const n = Number(m[1].replace(/[.,](?=\d{3}\b)/g, '')) || 0;
+            const label = m[2].toLowerCase();
+
+            if (/^sales?\b|^satış|^satis/.test(label)) { stats.sales = n; found++; }
+            else if (/^favorites?\b|^favori/.test(label)) { stats.favs = n; found++; }
+            else if (/^visits?\b|^ziyaret/.test(label)) { stats.visits = n; found++; }
+            else if (/^renewals?\b|^yenileme/.test(label)) { stats.renewal = n; found++; }
+        });
+
+        stats.ready = found >= 4;
+        return stats;
+    }
+    // ─────────────────────────────────────────────
+    // LISTING AGE
+    // ─────────────────────────────────────────────
+
+    function parseRenewDate(text) {
+        const match = text.match(
+            /(?:Auto[-\s]?renews?|Expires)\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i
+        );
+
+        if (!match) return null;
+
+        const date = new Date(match[1]);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function calculateAge(expirationDate, renewalCount) {
+        if (!expirationDate) {
+            return {
+                age: null,
+                confidence: 'unavailable',
+                estimatedDate: null
+            };
+        }
+
+        const periods = Math.max(0, renewalCount) + 1;
+        const publicationDate = new Date(
+            expirationDate.getTime() - periods * PERIOD * 86400000
+        );
+
+        const today = new Date();
+        const todayUTC = Date.UTC(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+        );
+
+        const publicationUTC = Date.UTC(
+            publicationDate.getFullYear(),
+            publicationDate.getMonth(),
+            publicationDate.getDate()
+        );
+
+        const age = Math.max(
+            0,
+            Math.floor((todayUTC - publicationUTC) / 86400000)
+        );
+
+        return {
+            age,
+            confidence: 'estimated',
+            estimatedDate: publicationDate.toISOString().slice(0, 10)
+        };
+    }
+
+    // ─────────────────────────────────────────────
+    // PERFORMANCE ANALYSIS
+    // ─────────────────────────────────────────────
+
+    function calculateScore({ age, visits, favs, sales }) {
+        const trafficScore = Math.min(visits / 100, 1) * 30;
+
+        const favoriteRate = visits > 0 ? favs / visits : 0;
+        const favoriteScore = Math.min(favoriteRate / 0.05, 1) * 25;
+
+        const salesScore = Math.min(sales, 5) * 9;
+
+        const ageFactor = age === null ? 0.5 : age < 15 ? 0.5 : 1;
+
+        return Math.round(
+            Math.min(100, (trafficScore + favoriteScore + salesScore) * ageFactor)
+        );
+    }
+
+    function getLevel({ age, sales, visits, favs }) {
+        if (sales > 0) {
+            return {
+                icon: '🟢',
+                color: '#2ecc71',
+                label: 'Satış Var',
+                category: 'performing'
+            };
+        }
+
+        if (age === null) {
+            return {
+                icon: '⚪',
+                color: '#808080',
+                label: 'Yaş Bilgisi Yok',
+                category: 'unknown'
+            };
+        }
+
+        if (age <= 14) {
+            return {
+                icon: '🟡',
+                color: '#f1c40f',
+                label: 'Yeni – Dokunma',
+                category: 'new'
+            };
+        }
+
+        if (age <= 30) {
+            return {
+                icon: '🟠',
+                color: '#e67e22',
+                label: 'İzleme Aşaması',
+                category: 'monitor'
+            };
+        }
+
+        if (age <= 60) {
+            return {
+                icon: '🔴',
+                color: '#e74c3c',
+                label: 'Optimizasyon Gerekli',
+                category: 'optimize'
+            };
+        }
+
+        return {
+            icon: '🚨',
+            color: '#8e44ad',
+            label: 'Başarısız – İnceleme Gerekli',
+            category: 'failed'
+        };
+    }
+
+    function buildIssues({ age, visits, favs, sales }) {
+        if (sales > 0) {
+            return ['Satış almış', 'Öneri: Performansı takip et; gereksiz değişiklik yapma'];
+        }
+
+        if (age === null) {
+            return ['İlan yaşı hesaplanamadı', 'Öneri: Yayın tarihini doğrula'];
+        }
+
+        if (age <= 14) {
+            return ['Yeni listing', 'Öneri: Veri birikmesini bekle'];
+        }
+
+        if (visits < 10) {
+            return [
+                'Düşük trafik – görünürlük problemi',
+                'Öneri: SEO, etiketler ve kategori kontrolü'
+            ];
+        }
+
+        const rate = favs / visits;
+
+        if (visits >= 50 && rate < 0.01) {
+            return [
+                'Trafik var ancak favori oranı düşük',
+                'Öneri: Ana görsel, tasarım ve başlık testi'
+            ];
+        }
+
+        if (favs > 0 && rate >= 0.01) {
+            return [
+                'Ürün ilgisi var ancak satış yok',
+                'Öneri: Fiyat, kargo ve teklif kontrolü'
+            ];
+        }
+
+        if (visits >= 30) {
+            return [
+                'Trafik var ancak ürün ilgisi zayıf',
+                'Öneri: Görsel ve ürün sunumunu incele'
+            ];
+        }
+
+        return [
+            'Yeterli performans verisi yok',
+            'Öneri: Trafik ve favori gelişimini takip et'
+        ];
+    }
+
+    function decision2({ age, visits, favs, sales }) {
+        if (sales > 0) {
+            return ['Satış almış – performans takibi yap'];
+        }
+
+        if (age === null) {
+            return ['İlan yaşı bilinmiyor – öncelik belirlenemedi'];
+        }
+
+        const rate = visits > 0 ? favs / visits : 0;
+        const output = [];
+
+        if (visits >= 50 && rate >= 0.02) {
+            output.push(
+                'A. Ürün ilgisi güçlü, satış yok. Dönüşüm problemi olabilir.',
+                'Eylem: Fiyat, kargo, teslimat süresi ve güven unsurlarını incele.'
+            );
+        } else if (visits >= 50 && rate < 0.01) {
+            output.push(
+                'B. Yeterli trafik var ancak favori oranı düşük.',
+                'Eylem: Ana görsel, tasarım ve başlık optimizasyonu.'
+            );
+        } else if (visits >= 10 && favs > 0) {
+            output.push(
+                'C. Trafik ve ürün ilgisi mevcut.',
+                'Eylem: SEO ve dönüşüm optimizasyonunu birlikte değerlendir.'
+            );
+        } else if (visits >= 10) {
+            output.push(
+                'D. Trafik var ancak favori oluşmuyor.',
+                'Eylem: Ana görsel ve ürün sunumu testi.'
+            );
+        } else if (visits < 10 && age > 30) {
+            output.push(
+                'E. Görünürlük problemi olası.',
+                'Eylem: SEO, etiketler ve arama görünürlüğünü kontrol et.'
+            );
+        } else {
+            output.push(
+                'F. Veri yetersiz.',
+                'Eylem: Bir süre daha performans izle.'
+            );
+        }
+
+        return output;
+    }
+
+    // ─────────────────────────────────────────────
+    // SHARED TOOLTIP
+    // ─────────────────────────────────────────────
+
+    let sharedTip;
+
+    function getTooltip() {
+        if (sharedTip) return sharedTip;
+
+        sharedTip = document.createElement('div');
+        sharedTip.className = 'ela-tip';
+        document.body.appendChild(sharedTip);
+
+        return sharedTip;
+    }
+
+    function addTipLine(parent, label, value) {
+        const line = document.createElement('div');
+        line.textContent = `${label}: ${value}`;
+        parent.appendChild(line);
+    }
+
+    function renderTooltip(data) {
+        const tip = getTooltip();
+        tip.replaceChildren();
+
+        const heading = document.createElement('div');
+        heading.className = 'ela-tip-title';
+        heading.textContent = `${data.level.icon} ${data.level.label}`;
+        tip.appendChild(heading);
+
+        const title = document.createElement('div');
+        title.className = 'ela-tip-name';
+        title.textContent = data.title || 'Untitled';
+        tip.appendChild(title);
+
+        addTipLine(tip, 'Performance Score', `${data.score}/100`);
+        addTipLine(tip, 'Sales', data.sales);
+        addTipLine(tip, 'Favorites', data.favs);
+        addTipLine(tip, 'Visits', data.visits);
+        addTipLine(tip, 'Favorite Rate', `${data.favoriteRate}%`);
+        addTipLine(tip, 'Age', data.age === null ? 'Bilinmiyor' : `${data.age} gün`);
+        addTipLine(tip, 'Age Confidence', data.ageConfidence);
+        addTipLine(tip, 'Renewal', data.renewal);
+        addTipLine(tip, 'SKU', data.sku || 'N/A');
+
+        const section1 = document.createElement('div');
+        section1.className = 'ela-tip-section';
+        section1.textContent = 'Issues';
+        tip.appendChild(section1);
+
+        data.issues.forEach(item => {
+            const line = document.createElement('div');
+            line.textContent = `• ${item}`;
+            tip.appendChild(line);
+        });
+
+        const section2 = document.createElement('div');
+        section2.className = 'ela-tip-section';
+        section2.textContent = 'Advanced Decision';
+        tip.appendChild(section2);
+
+        data.issues2.forEach(item => {
+            const line = document.createElement('div');
+            line.textContent = `• ${item}`;
+            tip.appendChild(line);
+        });
+
+        return tip;
+    }
+
+    function positionTooltip(tip, event) {
+        tip.style.display = 'block';
+
+        const margin = 12;
+        const rect = tip.getBoundingClientRect();
+
+        let left = event.clientX + margin;
+        let top = event.clientY + margin;
+
+        if (left + rect.width > window.innerWidth) {
+            left = event.clientX - rect.width - margin;
+        }
+
+        if (top + rect.height > window.innerHeight) {
+            top = event.clientY - rect.height - margin;
+        }
+
+        tip.style.left = `${Math.max(8, left)}px`;
+        tip.style.top = `${Math.max(8, top)}px`;
+    }
+
+    // ─────────────────────────────────────────────
+    // GOOGLE SHEETS QUEUE
+    // ─────────────────────────────────────────────
+
+    let queueRunning = false;
+    let queueTimer = null;
+
+    function enqueue(payload) {
+        if (queue.some(item => item.payload.id === payload.id)) return;
+
+        queue.push({
+            id: payload.id,
+            payload,
+            attempts: 0,
+            nextAt: Date.now(),
+            createdAt: Date.now()
+        });
+
+        saveQueue();
+        flushQueue();
+    }
+
+    function sendRequest(payload) {
+        return new Promise((resolve, reject) => {
+            if (!cfg.sheetUrl) {
+                reject(new Error('Sheet URL ayarlanmamış'));
+                return;
+            }
+
+            GM.xmlHttpRequest({
+                method: 'POST',
+                url: cfg.sheetUrl,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(payload),
+                timeout: 30000,
+
+                onload(response) {
+                    try {
+                        if (response.status < 200 || response.status >= 300) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+
+                        const result = JSON.parse(response.responseText);
+
+                        if (result.status !== 'success') {
+                            throw new Error(result.message || 'Sheets işlem hatası');
+                        }
+
+                        resolve(result);
+                    } catch (error) {
+                        reject(error);
+                    }
+                },
+
+                onerror() {
+                    reject(new Error('Network error'));
+                },
+
+                ontimeout() {
+                    reject(new Error('Request timeout'));
+                }
+            });
+        });
+    }
+
+    function scheduleQueue(delay) {
+        clearTimeout(queueTimer);
+        queueTimer = setTimeout(flushQueue, Math.max(1000, delay));
+    }
+
+    async function flushQueue() {
+        if (queueRunning || !queue.length || !cfg.sheetUrl) return;
+
+        queueRunning = true;
+
+        try {
+            while (queue.length) {
+                const item = queue[0];
+
+                if (item.attempts >= MAX_RETRIES) {
+                    break;
+                }
+
+                const wait = item.nextAt - Date.now();
+
+                if (wait > 0) {
+                    scheduleQueue(wait);
+                    break;
+                }
+
+                try {
+                    await sendRequest(item.payload);
+
+                    queue.shift();
+
+                    sent[item.id] = Date.now();
+                    saveSent();
+                    saveQueue();
+
+                    showToast(`Analiz gönderildi: ${item.id}`, 'success');
+
+                } catch (error) {
+                    item.attempts++;
+
+                    const delay = Math.min(
+                        30000 * Math.pow(2, item.attempts - 1),
+                        MAX_BACKOFF
+                    );
+
+                    item.nextAt = item.attempts >= MAX_RETRIES
+                        ? Number.MAX_SAFE_INTEGER
+                        : Date.now() + delay;
+
+                    saveQueue();
+
+                    console.error('[ELA] Sheets error:', error);
+
+                    if (item.attempts >= MAX_RETRIES) {
+                        showToast(
+                            `${item.id}: Maksimum deneme sayısına ulaşıldı`,
+                            'error',
+                            6000
+                        );
+                    } else {
+                        showToast(
+                            `${item.id}: Gönderim başarısız. Tekrar denenecek.`,
+                            'warning'
+                        );
+                        scheduleQueue(delay);
+                    }
+
+                    break;
+                }
+            }
+        } finally {
+            queueRunning = false;
+        }
     }
 
     // ─────────────────────────────────────────────
     // ANALYSIS
     // ─────────────────────────────────────────────
-    const pick = (t, r) => { const m = t.match(r); return m ? +m[1] : 0; };
 
-    function isExpires(t)    { return /\bExpires\b/i.test(t); }
-    function parseRenew(t)   { return t.match(/(?:Auto[-\s]?renews?|Expires)\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i)?.[1] ?? null; }
-    function parseRenewDate(text) { return text ? new Date(text) : null; }
-
-    function ageFromRenew(d, r, s) {
-        if (!d) return 0;
-        const MS = 86400000, PERIOD = 120;
-        let pub = d.getTime() - PERIOD * MS;
-        if (s === 0 && r > 0) pub -= r * PERIOD * MS;
-        return Math.max(0, Math.floor((Date.now() - pub) / MS));
-    }
+    const seen = new Set();
+    const processing = new Set();
 
     async function analyze(card, actions, id) {
-        const t       = card.innerText;
-        const sales   = pick(t, /(\d+)\s+sales?/i);
-        const favs    = pick(t, /(\d+)\s+favorites?/i);
-        const visits  = pick(t, /(\d+)\s+visits?/i);
-        const renewal = pick(t, /(\d+)\s+renewal?/i);
-        const renewDate = parseRenewDate(parseRenew(t));
-        const expires = isExpires(t);
-        const age     = ageFromRenew(renewDate, renewal, sales);
-        const title   = getTitleFromRow(card);
-        const sku     = getSkuFromRow(card);
-        const img     = getImgFromRow(card);
+        if (processing.has(id) || seen.has(id)) return;
 
-        const data = {
-            id, title, sku, age, visits, favs, sales, renewal,
-            issues:  buildIssues({ age, visits, favs, sales }),
-            issues2: decision2({ age, visits, favs, sales }),
-            img, expires,
-            shopName:  await getShopName(),
-            sheetName: 'analiz',
-        };
+        processing.add(id);
 
-        inject(actions, data);
+        try {
+            const text = card.innerText || card.textContent || '';
+            const { sales, favs, visits, renewal, ready } = parseStats(card);
+
+            if (!ready) return;  // istatistikler henüz yüklenmedi, MutationObserver tekrar tetikleyecek
+
+            const expirationDate = parseRenewDate(text);
+            const ageData = calculateAge(expirationDate, renewal);
+
+            const metrics = {
+                age: ageData.age,
+                visits,
+                favs,
+                sales
+            };
+
+            const level = getLevel(metrics);
+            const score = calculateScore({ ...metrics, renewal });
+
+            const data = {
+                id,
+                title: getTitleFromRow(card),
+                sku: getSkuFromRow(card),
+                age: ageData.age,
+                ageConfidence: ageData.confidence,
+                estimatedDate: ageData.estimatedDate,
+                visits,
+                favs,
+                sales,
+                renewal,
+                favoriteRate: visits > 0
+                    ? ((favs / visits) * 100).toFixed(2)
+                    : '0.00',
+                score,
+                level,
+                issues: buildIssues(metrics),
+                issues2: decision2(metrics),
+                img: getImgFromRow(card),
+                expires: !!expirationDate,
+                shopName: settings.shopName(),
+                sheetName: 'analiz',
+                analyzedAt: new Date().toISOString(),
+                analyzerVersion: '2.1'
+            };
+
+            if (inject(actions, data)) {
+                seen.add(id);
+
+                if (!sent[id]) {
+                    enqueue(data);
+                }
+            }
+
+        } catch (error) {
+            console.error('[ELA] Analysis error:', id, error);
+        } finally {
+            processing.delete(id);
+        }
     }
 
     // ─────────────────────────────────────────────
-    // INJECT badge + tooltip
+    // BADGE INJECTION
     // ─────────────────────────────────────────────
+
     function inject(actions, data) {
-        const target = actions.querySelector('.wt-display-flex-xs.wt-align-items-center');
-        if (!target) return;
+        const target = actions.querySelector(
+            '.wt-display-flex-xs.wt-align-items-center'
+        );
 
-        const level = getLevel(data.age, data.sales, data.expires);
-
-        // Tooltip — shared singleton approach: one per badge
-        const tip = document.createElement('div');
-        tip.className = 'ela-tip';
-        tip.innerHTML = `
-            <div style="font-weight:700;font-size:13px;margin-bottom:6px">${level.icon} ${level.label}</div>
-            <div style="font-weight:600;margin-bottom:6px">${data.title || 'Untitled'}</div>
-            Sales: ${data.sales}<br>
-            Favorites: ${data.favs}<br>
-            Visits: ${data.visits}<br>
-            Age: ${data.age} gün<br>
-            Renewal: ${data.renewal || 'N/A'}<br><br>
-            <b>Issues</b><br>${data.issues.map(i => '• ' + i).join('<br>')}<br><br>
-            <b>Issues 2</b><br>${data.issues2.map(i => '• ' + i).join('<br>')}
-        `;
-        document.body.appendChild(tip);
+        if (!target || actions.querySelector('.ela-badge')) {
+            return false;
+        }
 
         const badge = document.createElement('span');
-        badge.textContent = level.icon;
-        badge.title = level.label;
-        badge.style.cssText = `margin-left:8px;font-size:18px;cursor:pointer;color:${level.color};`;
+        badge.className = 'ela-badge';
+        badge.dataset.icon = data.level.icon;
+        badge.textContent = data.level.icon;
+        badge.title = `${data.level.label} | Score: ${data.score}/100`;
+        badge.style.color = data.level.color;
 
-        badge.addEventListener('mouseenter', e => {
-            tip.style.display = 'block';
-            const margin = 12, vw = window.innerWidth, vh = window.innerHeight;
-            const { width: tw, height: th } = tip.getBoundingClientRect();
-            const top  = e.clientY + margin + th > vh ? e.clientY - th - margin : e.clientY + margin;
-            const left = e.clientX + margin + tw > vw ? e.clientX - tw - margin : e.clientX + margin;
-            tip.style.top  = Math.max(8, top)  + 'px';
-            tip.style.left = Math.max(8, left) + 'px';
+        const score = document.createElement('span');
+        score.className = 'ela-score';
+        score.textContent = data.score;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'wt-flex-xs-1';
+        wrapper.append(badge, score);
+
+        const tip = renderTooltip(data);
+
+        badge.addEventListener('mouseenter', event => {
+            renderTooltip(data);
+            positionTooltip(tip, event);
         });
-        badge.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
 
-        const badgeDiv = document.createElement('div');
-        badgeDiv.classList.add('wt-flex-xs-1');
-        badgeDiv.appendChild(badge);
-        target.appendChild(badgeDiv);
+        badge.addEventListener('mousemove', event => {
+            positionTooltip(tip, event);
+        });
 
-        // Send to Sheets only once per listing per session
-        if (!sent[data.id]) {
-            sendToSheets(data);
-            sent[data.id] = Date.now();
-            localStorage.setItem(SENT_KEY, JSON.stringify(sent));
-        }
+        badge.addEventListener('mouseleave', () => {
+            tip.style.display = 'none';
+        });
+
+        target.appendChild(wrapper);
+
+        return true;
     }
 
     // ─────────────────────────────────────────────
-    // LEVEL
+    // FAILED LISTING SELECTOR
     // ─────────────────────────────────────────────
-    function getLevel(age, sales, expires) {
-        if (sales > 0)  return { icon:'🟢', color:'#2ecc71', label:'Satış Var' };
-        if (age <= 14)  return { icon:'🟡', color:'#f1c40f', label:'Yeni – Dokunma' };
-        if (age <= 30)  return { icon:'🟠', color:'#e67e22', label:'İzleme Aşaması' };
-        if (age <= 60)  return { icon:'🔴', color:'#e74c3c', label:'Güçlü Optimizasyon' };
-        if (expires)    return { icon:'🚧', color:'#8e44ad', label:'Başarısız – Kapat/Yenile' };
-        return             { icon:'🚨', color:'#8e44ad', label:'Başarısız – Kapat/Yenile' };
+
+    function selectFailed() {
+        const badges = document.querySelectorAll(
+            '.ela-badge[data-icon="🚨"]'
+        );
+
+        let newly = 0;
+
+        badges.forEach(badge => {
+            const checkbox = badge.closest('.card')
+                ?.querySelector('.card-actions input[type="checkbox"]');
+
+            if (checkbox && !checkbox.checked) {
+                checkbox.click();
+                newly++;
+            }
+        });
+
+        showToast(
+            badges.length
+                ? `${badges.length} başarısız kart bulundu, ${newly} yeni seçildi`
+                : 'Bu sayfada başarısız kart yok',
+            badges.length ? 'success' : 'warning'
+        );
+    }
+
+    function ensureSelectBtn() {
+        if (document.getElementById('ela-select-fail')) return;
+
+        const bulk = document.querySelector(
+            '[data-tour-anchor="bulk-edit-button"]'
+        );
+
+        if (!bulk) return;
+
+        const button = document.createElement('button');
+        button.id = 'ela-select-fail';
+        button.type = 'button';
+        button.className = 'wt-btn wt-btn--secondary wt-btn--small';
+        button.textContent = '🚨 Seç';
+        button.title = 'Başarısız kartları seç';
+        button.addEventListener('click', selectFailed);
+
+        bulk.insertAdjacentElement('afterend', button);
     }
 
     // ─────────────────────────────────────────────
-    // ISSUE BUILDERS
+    // SCAN
     // ─────────────────────────────────────────────
-    function buildIssues({ age, visits, favs, sales }) {
-        if (sales > 0)  return ['Satış almış – dokunma'];
-        if (age <= 14)  return ['Yeni listing (0–14 gün)', 'Öneri: Dokunma, veri birikmesini bekle'];
-        if (age <= 30) {
-            if (visits >= 50 && favs === 0) return ['İlgi çekmiyor (favori yok)', 'Öneri: Ana görsel / başlık hafif test'];
-            return ['15–30 gün – izleme aşaması', 'Öneri: Küçük testler (görsel veya fiyat)'];
-        }
-        if (age <= 60) {
-            if (visits >= 100 && favs === 0) return ['Yüksek trafik var, ilgi yok', 'Öneri: Görsel + başlık köklü değişim'];
-            if (favs > 0)                    return ['Favori var, satış yok', 'Öneri: Fiyat / kargo / güven optimizasyonu'];
-            if (visits < 30)                 return ['Düşük trafik', 'Öneri: SEO ve yenileme'];
-            return ['30–60 gün – satış yok', 'Öneri: Güçlü genel optimizasyon'];
-        }
-        return ['60+ gün – satış yok (başarısız)', 'Öneri: Yeniden aç, varyasyon değiştir veya kapat'];
+
+    let scanTimer;
+
+    function scheduleScan() {
+        clearTimeout(scanTimer);
+        scanTimer = setTimeout(scan, 200);
     }
 
-    function decision2({ age, visits, favs, sales }) {
-        if (sales > 0) return ['Satış almış – dokunma'];
-        const out = [];
-        if (visits > 3  && favs >= 1) out.push('A. Yüksek trafik ve ilgi var, satış olmaması fiyat,<br> kargo veya güven/teklif kaynaklı bir dönüşüm sorunudur.<br> Eylem: Fiyat/Teklif Optimizasyonu.');
-        if (visits > 3  && favs === 0) out.push('B. Yüksek trafik var ancak ürün ilgiyi (favori) çekemiyor.<br> Sorun, listelemenin vitrininde (görsel, başlık) olmalı.<br> Eylem: Görsel/Başlık/Açıklama Optimizasyonu.');
-        if (visits >= 1 && visits <= 3 && favs >= 1) out.push('C. Ortalama trafik ve ilgi var.<br> Hem görünürlük (SEO) hem de satışa dönüştürme (Fiyat/Teklif) sorunu.<br> Eylem: Dönüşüm Odaklı SEO ve İyileştirme.');
-        if (visits >= 1 && visits <= 3 && favs === 0) out.push('D. Ortalama trafik var ancak ilgi (favori) çekemiyor.<br> Sorun, listelemenin vitrininde (görsel, başlık) olmalı.<br> Eylem: Başlık/Ana Görsel Testi ve SEO İncelemesi.');
-        if (visits < 1  && favs >= 1)  out.push('E. Listeleme potansiyel (Fav) gösteriyor ancak trafik alamıyor.<br> Öncelikli sorun görünürlük (SEO/Yenileme).<br> Eylem: Acil SEO ve Yenileme.');
-        if (visits < 1  && favs === 0) out.push('F. En düşük öncelikli, hem trafik hem de ilgi yok.<br> Ya temel SEO eksik ya da ürün/pazar uyumu zayıf.<br> Eylem: Temel SEO Kontrolü ve Sil/Değiştir Kararı.');
-        return out.length ? out : ['İzlenmeli'];
-    }
+    function scan() {
+        ensureSelectBtn();
 
-    // ─────────────────────────────────────────────
-    // SHEETS — fire-and-forget, Content-Type düzeltildi
-    // ─────────────────────────────────────────────
-    async function sendToSheets(payload) {
-        const url = await getSheetUrl();
-        if (!url) return;
-        GM.xmlHttpRequest({
-            method:  'POST',
-            url,
-            headers: { 'Content-Type': 'application/json' },
-            data:    JSON.stringify(payload),
-            onload(r) {
-                try {
-                    const d = JSON.parse(r.responseText);
-                    if (d.status === 'success') showToast('✅ Analiz edildi', 'success');
-                    else showToast('❌ ' + (d.message || 'Hata'), 'error');
-                } catch { showToast('❌ Yanıt işlenemedi', 'error'); }
-            },
-            onerror() { showToast('❌ Gönderilemedi', 'error'); },
+        document.querySelectorAll(
+            '.card-actions.card-actions-3'
+        ).forEach(actions => {
+            const card = findCard(actions);
+            if (!card) return;
+
+            const id = getListingId(card);
+            if (!id || seen.has(id) || processing.has(id)) return;
+
+            analyze(card, actions, id);
         });
     }
 
     // ─────────────────────────────────────────────
     // INIT
     // ─────────────────────────────────────────────
-    new MutationObserver(scheduleScan).observe(document.body, { childList:true, subtree:true });
-    setTimeout(scan, 800); // ilk yükleme — biraz bekle, Etsy SPA'sının listelemeleri render etmesi için
+
+    const observer = new MutationObserver(scheduleScan);
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    setTimeout(scan, 800);
+    flushQueue();
+
+    console.log(
+        `%c[Etsy Listing Inline Analyzer v2.1] Started`,
+        'color:#34a853;font-weight:bold'
+    );
 
 })();
