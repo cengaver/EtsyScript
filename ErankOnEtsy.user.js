@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      5.03
+// @version      5.10
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -958,9 +958,14 @@
         applyPipeline();
     }
 
+
+
     // ─── OVERLAY CREATION ────────────────────────────────────────────────────────
     const createOverlay = async ({ element, id, imgUrl = null, url = null, win = window }) => {
-        url ??= element.querySelector('a.listing-link')?.href ?? element.querySelector('a.v2-listing-card__img')?.href ?? location.href;
+        url ??= element.querySelector('a.listing-link')?.href
+            ?? element.querySelector('a.v2-listing-card__img')?.href
+            ?? location.href;
+
         const currentUrl = simplifyEtsyUrl(url);
         const img = imgUrl ?? element.querySelector('img')?.src;
 
@@ -979,25 +984,25 @@
 
         let sales, age, tags;
 
+        // ── Loading ──
         const loading = win.document.createElement('div');
         loading.textContent = 'Erank yükleniyor…';
         overlay.appendChild(loading);
 
         try {
-            const erankData = await getErankData(id,element,img,currentUrl);
+            const erankData = await getErankData(id, element, img, currentUrl);
+
             if (erankData.error) {
-                if (erankData.error === "Not found") {
-                    loadingEl.textContent = "Erank verileri bulunamadı.";
-                } else {
-                    loadingEl.textContent = "Erank'a giriş yapın.";
-                }
+                loading.textContent = erankData.error === "Not found"
+                    ? "Erank verileri bulunamadı."
+                : "Erank'a giriş yapın.";
                 return;
             }
+
             ({ sales, age, title, tags } = erankData);
 
         } catch (error) {
-            console.error(error)
-            //showToast('Konfigure YOK', 'info');
+            console.error(error);
             sales = -1;
             age = -1;
             tags = "";
@@ -1018,44 +1023,122 @@
                 heart.textContent = '❤️';
                 heart.title = `Dizayn NO: ${dnoValue} by ${teamname}`;
                 heart.style.cursor = 'default';
+
                 const badge = win.document.createElement('span');
                 badge.textContent = dnoValue;
                 badge.style.cssText = 'position:absolute;top:-4px;left:-19px;background:gold;color:#000;border-radius:50%;padding:2px 5px;font-size:.75rem;font-weight:700';
                 hw.appendChild(badge);
+
                 if (gDrive) hw.addEventListener('click', () => win.open(gDrive, '_blank'));
             } else {
                 heart.textContent = '🤍';
                 heart.title = 'Listeye EKLE!';
+
                 hw.addEventListener('click', async () => {
                     heart.textContent = '⏳';
                     await saveToGoogleSheet(config.sheetId, currentUrl, title, img, sales, age, tags);
                     heart.textContent = '❤️';
                 });
             }
+
             hw.appendChild(heart);
             overlay.appendChild(hw);
         }
 
-        // ── Sales / Age ──
-        const mkDiv = (text, bg) => { const d = win.document.createElement('div'); d.textContent = text; if (bg) d.style.backgroundColor = bg; return d; };
-        const salesBg = sales === -1 ? '#b00bb3' : +sales / 1.3 > +age ? 'green' : +sales === 0 ? 'red' :'';
-        overlay.appendChild(mkDiv(`Satış: ${sales}`, salesBg));
+        // ── Refresh Erank ──
+        const refreshBtn = win.document.createElement('button');
+        refreshBtn.textContent = '🔄';
+        refreshBtn.title = 'Erank verilerini yeniden yükle';
+        refreshBtn.style.cssText = 'cursor:pointer;border:0;background:transparent;font-size:1.2rem;padding:2px';
 
-        const ageBg = age === -1 ? '#b00bb3' : age >= 1 && age <= 50 ? '#73C476' : age <= 100 ? '#C5E1A5' : age <= 300 ? '#FFD54F' : '#EF9A9A';
-        overlay.appendChild(mkDiv(`Yaş: ${age}`, ageBg));
+        const resultBox = win.document.createElement('div');
+        resultBox.style.cssText = 'display:flex;gap:.5rem;align-items:center';
+
+        const mkDiv = (text, bg) => {
+            const d = win.document.createElement('div');
+            d.textContent = text;
+            if (bg) d.style.backgroundColor = bg;
+            return d;
+        };
+
+        const loadErank = async () => {
+            refreshBtn.textContent = '⏳';
+            refreshBtn.disabled = true;
+            resultBox.replaceChildren();
+
+            try {
+                const erankData = await getErankData(id, element, img, currentUrl);
+
+                if (erankData.error) {
+                    refreshBtn.textContent = '❌';
+                    showToast(erankData.error === "Not found"
+                              ? "Erank verileri bulunamadı."
+                              : "Erank'a giriş yapın.");
+                    return;
+                }
+
+                ({ sales, age, title, tags } = erankData);
+
+                const salesBg = sales === -1
+                ? '#b00bb3'
+                : +sales / 1.3 > +age ? 'green' : +sales === 0 ? 'red' : '';
+
+                const ageBg = age === -1
+                ? '#b00bb3'
+                : age >= 1 && age <= 50 ? '#73C476'
+                : age <= 100 ? '#C5E1A5'
+                : age <= 300 ? '#FFD54F' : '#EF9A9A';
+
+                resultBox.appendChild(mkDiv(`Satış: ${sales}`, salesBg));
+                resultBox.appendChild(mkDiv(`Yaş: ${age}`, ageBg));
+
+                refreshBtn.textContent = '🔄';
+
+            } catch (error) {
+                console.error(error);
+                refreshBtn.textContent = '❌';
+                showToast('Erank verileri alınamadı.');
+            } finally {
+                refreshBtn.disabled = false;
+            }
+        };
+
+        refreshBtn.onclick = loadErank;
+
+        overlay.appendChild(refreshBtn);
+        overlay.appendChild(resultBox);
+
+        // AUTO: doğrudan Erank yükle
+        if (config.manager === 'auto') {
+            loadErank();
+        }
 
         // ── Copy tags ──
         const copyBtn = win.document.createElement('button');
-        copyBtn.textContent = 'C'; copyBtn.title = 'Tag copy'; copyBtn.style.cursor = 'grab';
-        copyBtn.onclick = () => navigator.clipboard.writeText(Array.isArray(tags) ? tags.join(', ') : '').then(() => showToast('Tags kopyalandı!'));
+        copyBtn.textContent = 'C';
+        copyBtn.title = 'Tag copy';
+        copyBtn.style.cursor = 'grab';
+
+        copyBtn.onclick = () => navigator.clipboard.writeText(
+            Array.isArray(tags) ? tags.join(', ') : ''
+        ).then(() => showToast('Tags kopyalandı!'));
+
         overlay.appendChild(copyBtn);
 
         // ── Trademark ──
         const trade = extractFirstParts(title);
+
         if (trade) {
             const tm = win.document.createElement('button');
-            tm.textContent = 'T'; tm.title = 'Trademark kontrol et'; tm.style.cursor = 'help';
-            tm.onclick = () => win.open(`https://www.trademarkia.com/search/trademarks?q=${encodeURIComponent(trade)}&country=us&codes=025&status=registered`, '_blank');
+            tm.textContent = 'T';
+            tm.title = 'Trademark kontrol et';
+            tm.style.cursor = 'help';
+
+            tm.onclick = () => win.open(
+                `https://www.trademarkia.com/search/trademarks?q=${encodeURIComponent(trade)}&country=us&codes=025&status=registered`,
+                '_blank'
+            );
+
             overlay.appendChild(tm);
         }
 
@@ -1066,6 +1149,7 @@
             h2.style.cssText = 'font-size:1.5rem;cursor:cell';
             h2.textContent = dnoValue ? '✅' : '⭐';
             h2.title = dnoValue ? `Dizayn NO: ${dnoValue}` : `İsteğe EKLE! –${id}`;
+
             if (!dnoValue) {
                 h2.addEventListener('click', async () => {
                     h2.textContent = '⏳';
@@ -1076,6 +1160,7 @@
                 h2.style.cursor = 'pointer';
                 h2.addEventListener('click', () => win.open(gDrive, '_blank'));
             }
+
             overlay.appendChild(h2);
         }
     };
