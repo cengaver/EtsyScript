@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Etsy on Erank
 // @description  Erank overlay with unified menu for configuration and range selection. Sheet entegre
-// @version      5.02
+// @version      5.03
 // @author       Cengaver
 // @namespace    https://github.com/cengaver
 // @match        https://www.etsy.com/search*
@@ -962,15 +962,27 @@
     const createOverlay = async ({ element, id, imgUrl = null, url = null, win = window }) => {
         url ??= element.querySelector('a.listing-link')?.href ?? element.querySelector('a.v2-listing-card__img')?.href ?? location.href;
         const currentUrl = simplifyEtsyUrl(url);
-        const img   = imgUrl ?? element.querySelector('img')?.src;
+        const img = imgUrl ?? element.querySelector('img')?.src;
+
         const overlay = win.document.createElement('div');
         overlay.style.cssText = 'display:flex;gap:.5rem;cursor:alias;color:#000;padding:1px;flex-wrap:wrap;align-items:center';
         element.appendChild(overlay);
-        let title = element?.querySelector('h1, h3')?.textContent?.trim()?? document.querySelector('h1[data-buy-box-listing-title="true"]')?.textContent?.trim();
+
+        let titleElement = element?.querySelector('h1, h3')
+        ?? win.document.querySelector('h1[data-buy-box-listing-title="true"]');
+
+        if (titleElement && !titleElement.classList.contains('truncated-listing-title--expanded')) {
+            titleElement.classList.add('truncated-listing-title--expanded');
+        }
+
+        let title = titleElement?.textContent?.trim();
+
         let sales, age, tags;
+
         const loading = win.document.createElement('div');
         loading.textContent = 'Erank yükleniyor…';
         overlay.appendChild(loading);
+
         try {
             const erankData = await getErankData(id,element,img,currentUrl);
             if (erankData.error) {
